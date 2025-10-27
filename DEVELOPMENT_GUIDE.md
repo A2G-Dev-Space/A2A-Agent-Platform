@@ -24,28 +24,26 @@
 
 | Developer | Repository | 주요 책임 | 기술 스택 |
 |-----------|-----------|----------|----------|
-| **DEV1** 🔥<br>(Senior, SPRINT Lead) | `agent-platform-frontend`<br>`agent-platform-agent-service` | **Sprint 주도**<br>Frontend 전체<br>A2A 프로토콜<br>Top-K 추천 (RAG) | React, TypeScript<br>FastAPI<br>LangChain, FAISS |
-| **DEV2**<br>(Backend Lead) | `agent-platform-user-service`<br>`agent-platform-admin-service` | SSO 연동<br>인증/RBAC<br>LLM 관리<br>통계 API | FastAPI<br>JWT<br>PostgreSQL |
-| **DEV3** | `agent-platform-chat-service`<br>`agent-platform-worker-service` | WebSocket<br>Session/Message<br>Celery Tasks<br>Health Check | FastAPI<br>Redis Pub/Sub<br>Celery |
-| **DEV4**<br>(Infra Lead) | `agent-platform-tracing-service`<br>`agent-platform-infra` | Log Proxy<br>Mock SSO<br>Docker Compose<br>CI/CD | FastAPI<br>Docker<br>Nginx |
+| **DEV1 (한승하)** 🔥 | `agent-platform-frontend`<br>`agent-platform-infra`<br>`agent-platform-user-service` | **Frontend 전체 개발**<br>Infra 구축<br>SSO 연동/인증 | React, TypeScript<br>Docker, Nginx<br>FastAPI |
+| **DEV2 (이병주)** | `agent-platform-admin-service`<br>`agent-platform-worker-service` | LLM 관리<br>통계 API<br>Celery Tasks<br>Health Check | FastAPI<br>PostgreSQL<br>Celery, Redis |
+| **DEV3 (김영섭)** | `agent-platform-chat-service`<br>`agent-platform-tracing-service` | WebSocket<br>Session/Message<br>Log Proxy | FastAPI<br>WebSocket<br>Redis Pub/Sub |
+| **DEV4 (안준형)** | `agent-platform-agent-service`<br>(agent subrepo) | A2A 프로토콜<br>Top-K 추천 (RAG)<br>Agent CRUD | FastAPI<br>LangChain<br>FAISS |
 
-### 1.2 DEV1 (SPRINT Lead)의 특별 역할
+### 1.2 개발 방식
 
-**DEV1은 가장 능숙한 개발자**로, 다음을 담당합니다:
+**Frontend 개발**:
+- **DEV1 (한승하)**가 Frontend의 모든 기능을 단독 개발
+- Layout, 공통 컴포넌트, 상태 관리, 모든 페이지 구현
+- 완성된 Frontend를 다른 팀원들에게 제공
 
-1. **Sprint 주도**:
-   - 매 Sprint 시작 시 계획 수립 (Sprint Planning)
-   - 일일 스탠드업 진행 (Daily Standup)
-   - Sprint Review 및 Retrospective 리딩
+**Backend 개발 및 테스트**:
+- **DEV1~DEV4 모두** 각자 담당한 Backend 서비스를 구현
+- 각 개발자는 DEV1이 제공한 Frontend와 자신의 Backend 연동 테스트 수행
+- Frontend 기능에 이상이 없는지, 오류 동작은 없는지 확인
 
-2. **기술적 의사결정**:
-   - 아키텍처 설계 검토
-   - 난이도 높은 기능 구현 (A2A, Top-K 추천)
-   - 팀원 코드 리뷰 및 멘토링
-
-3. **Frontend + Agent Service 개발**:
-   - Frontend 전체 (Layout, 공통 컴포넌트, Playground)
-   - Agent Service의 핵심 기능 (A2A, Top-K)
+**Repository 관리**:
+- **Agent subrepo**: DEV4 (안준형) 전담
+- **Infra repo**: DEV1 (한승하) 전담
 
 ---
 
@@ -53,10 +51,10 @@
 
 | Sprint | 기간 | 주요 목표 | 주도 | 마일스톤 |
 |--------|------|----------|------|----------|
-| **Sprint 0** | Week 1 | 기반 구축 | DEV4, DEV2 | Mock Services, 7개 Repository 생성 |
-| **Sprint 1** | Week 2 | Core APIs | 전체 (DEV1 리드) | User/Agent/Chat Service 기본 API |
-| **Sprint 2** | Week 3 | Frontend + A2A | DEV1 (주도) | Frontend Core, A2A 프로토콜 |
-| **Sprint 3** | Week 4-5 | 고급 기능 | DEV1 (주도) | Top-K 추천, WebSocket, Tracing |
+| **Sprint 0** | Week 1 | 기반 구축 | DEV1 (Infra), 전체 (Repo) | Mock Services, 7개 Repository 생성 |
+| **Sprint 1** | Week 2 | Core APIs | 전체 (각 Backend) | User/Agent/Chat Service 기본 API |
+| **Sprint 2** | Week 3 | Frontend Core | DEV1 (Frontend), 전체 (테스트) | Frontend Core 개발, Backend 연동 |
+| **Sprint 3** | Week 4-5 | Frontend 완성 + Backend 고도화 | DEV1 (Frontend), 전체 (Backend) | Frontend 모든 기능, Top-K 추천, WebSocket |
 | **Sprint 4** | Week 6 | 통합 & 배포 | 전체 | 통합 테스트, 사내망 배포 |
 
 ---
@@ -65,7 +63,15 @@
 
 ### Sprint 0: 기반 구축 (Week 1) ⚡ 최우선
 
-#### DEV4 (Infra Lead) - 필수 완료 사항
+#### DEV1 (한승하) - Frontend + Infra + User Service
+
+- [ ] **`agent-platform-frontend` Repository 생성**
+  - [ ] React + Vite + TypeScript 프로젝트 초기화
+  - [ ] Tailwind CSS 설정
+  - [ ] MUI (Material-UI) 설치
+  - [ ] Zustand 스토어 생성 (`useAuthStore`, `useWorkspaceStore`)
+  - [ ] React Router 설정
+  - [ ] Layout 컴포넌트 스텁
 
 - [ ] **`agent-platform-infra` Repository 생성**
   - [ ] `docker-compose/docker-compose.external.yml` 작성
@@ -78,13 +84,6 @@
   - [ ] PostgreSQL, Redis Docker 설정
   - [ ] Mock Services 테스트 및 팀 공유
 
-- [ ] **`agent-platform-tracing-service` Repository 생성**
-  - [ ] FastAPI 프로젝트 초기화
-  - [ ] LogEntry 모델 정의
-  - [ ] `/api/log-proxy/{trace_id}/chat/completions` 엔드포인트 스텁
-
-#### DEV2 (Backend Lead) - 필수 완료 사항
-
 - [ ] **`agent-platform-user-service` Repository 생성**
   - [ ] FastAPI 프로젝트 초기화
   - [ ] User 모델 정의 (username, email, role, 부서 정보)
@@ -92,29 +91,21 @@
   - [ ] SSO 콜백 처리 로직 스텁 (`/api/auth/callback`)
   - [ ] JWT 발급 로직 스텁
 
+#### DEV2 (이병주) - Admin Service + Worker Service
+
 - [ ] **`agent-platform-admin-service` Repository 생성**
   - [ ] FastAPI 프로젝트 초기화
   - [ ] LLMModel 모델 정의
   - [ ] `/api/admin/llm-models` CRUD 엔드포인트 스텁
+  - [ ] `/api/admin/stats/llm-usage` 엔드포인트 스텁
 
-#### DEV1 (SPRINT Lead) - 필수 완료 사항
+- [ ] **`agent-platform-worker-service` Repository 생성**
+  - [ ] Celery 프로젝트 초기화
+  - [ ] Redis 연결 설정
+  - [ ] `check_llm_health` Task 스텁
+  - [ ] `check_agent_health` Task 스텁
 
-- [ ] **`agent-platform-frontend` Repository 생성**
-  - [ ] React + Vite + TypeScript 프로젝트 초기화
-  - [ ] Tailwind CSS 설정
-  - [ ] MUI (Material-UI) 설치
-  - [ ] Zustand 스토어 생성 (`useAuthStore`, `useWorkspaceStore`)
-  - [ ] React Router 설정
-  - [ ] Layout 컴포넌트 스텁
-
-- [ ] **`agent-platform-agent-service` Repository 생성**
-  - [ ] FastAPI 프로젝트 초기화
-  - [ ] Agent 모델 정의 (중요: `a2a_endpoint`, `capabilities`, `embedding_vector` 필드 포함)
-  - [ ] `/api/agents` CRUD 엔드포인트 스텁
-  - [ ] `/api/agents/a2a/register` 엔드포인트 스텁
-  - [ ] `/api/agents/recommend` 엔드포인트 스텁
-
-#### DEV3 - 필수 완료 사항
+#### DEV3 (김영섭) - Chat Service + Tracing Service
 
 - [ ] **`agent-platform-chat-service` Repository 생성**
   - [ ] FastAPI 프로젝트 초기화
@@ -123,11 +114,19 @@
   - [ ] `/api/chat/sessions` CRUD 엔드포인트 스텁
   - [ ] `/ws/trace/{trace_id}` WebSocket 엔드포인트 스텁
 
-- [ ] **`agent-platform-worker-service` Repository 생성**
-  - [ ] Celery 프로젝트 초기화
-  - [ ] Redis 연결 설정
-  - [ ] `check_llm_health` Task 스텁
-  - [ ] `check_agent_health` Task 스텁
+- [ ] **`agent-platform-tracing-service` Repository 생성**
+  - [ ] FastAPI 프로젝트 초기화
+  - [ ] LogEntry 모델 정의
+  - [ ] `/api/log-proxy/{trace_id}/chat/completions` 엔드포인트 스텁
+
+#### DEV4 (안준형) - Agent Service (agent subrepo)
+
+- [ ] **`agent-platform-agent-service` Repository 생성**
+  - [ ] FastAPI 프로젝트 초기화
+  - [ ] Agent 모델 정의 (중요: `a2a_endpoint`, `capabilities`, `embedding_vector` 필드 포함)
+  - [ ] `/api/agents` CRUD 엔드포인트 스텁
+  - [ ] `/api/agents/a2a/register` 엔드포인트 스텁
+  - [ ] `/api/agents/recommend` 엔드포인트 스텁
 
 #### Sprint 0 완료 조건
 
@@ -140,13 +139,41 @@
 
 ### Sprint 1: Core APIs (Week 2)
 
-#### DEV1 (SPRINT Lead)
+#### DEV1 (한승하) - User Service Backend
 
-- [ ] **Frontend - Layout 및 인증**
-  - [ ] WorkspaceHeader 컴포넌트 (로고, 모드 토글, 프로필 드롭다운)
-  - [ ] Layout 컴포넌트 (SSO 콜백 처리)
-  - [ ] PendingApprovalPage 컴포넌트
-  - [ ] 공통 컴포넌트 (Button, Modal, Input, Card)
+- [ ] **User Service - SSO 및 인증**
+  - [ ] SSO 콜백 처리 완성 (`/api/auth/callback`)
+  - [ ] JWT 발급 (`simplejwt`)
+  - [ ] API Key 생성 (`POST /api/keys`)
+  - [ ] 활성 API Key 조회 (`GET /api/keys/active`)
+  - [ ] User CRUD API 완성
+
+#### DEV2 (이병주) - Admin Service + Worker Service Backend
+
+- [ ] **Admin Service - LLM 관리**
+  - [ ] LLM CRUD API 완성
+  - [ ] LLM 헬스 체크 필드 추가 (`health_status`, `last_health_check`)
+  - [ ] 통계 API 기본 구조 구현
+
+- [ ] **Worker Service - Health Check**
+  - [ ] `check_llm_health` Task 구현
+  - [ ] Celery Beat 스케줄 설정
+  - [ ] `check_agent_health` Task 구현
+
+#### DEV3 (김영섭) - Chat Service + Tracing Service Backend
+
+- [ ] **Chat Service - Session/Message**
+  - [ ] Session CRUD API 완성
+  - [ ] Message 생성 API
+  - [ ] trace_id 자동 생성 로직
+  - [ ] 파일 업로드 API 기본 구현
+
+- [ ] **Tracing Service - Log Proxy**
+  - [ ] `POST /api/log-proxy/{trace_id}/chat/completions` 완성
+  - [ ] LLM Endpoint로 프록시 로직
+  - [ ] LogEntry DB 저장
+
+#### DEV4 (안준형) - Agent Service Backend
 
 - [ ] **Agent Service - CRUD API**
   - [ ] `GET /api/agents` - Agent 목록
@@ -154,40 +181,7 @@
   - [ ] `PATCH /api/agents/{id}` - Agent 수정
   - [ ] `DELETE /api/agents/{id}` - Agent 삭제
   - [ ] 소유자 검증 로직
-
-#### DEV2
-
-- [ ] **User Service - SSO 및 인증**
-  - [ ] SSO 콜백 처리 완성 (`/api/auth/callback`)
-  - [ ] JWT 발급 (`simplejwt`)
-  - [ ] API Key 생성 (`POST /api/keys`)
-  - [ ] 활성 API Key 조회 (`GET /api/keys/active`)
-
-- [ ] **Admin Service - LLM 관리**
-  - [ ] LLM CRUD API 완성
-  - [ ] LLM 헬스 체크 필드 추가 (`health_status`, `last_health_check`)
-
-#### DEV3
-
-- [ ] **Chat Service - Session/Message**
-  - [ ] Session CRUD API 완성
-  - [ ] Message 생성 API
-  - [ ] trace_id 자동 생성 로직
-
-- [ ] **Worker Service - Health Check**
-  - [ ] `check_llm_health` Task 구현
-  - [ ] Celery Beat 스케줄 설정
-
-#### DEV4
-
-- [ ] **Tracing Service - Log Proxy**
-  - [ ] `POST /api/log-proxy/{trace_id}/chat/completions` 완성
-  - [ ] LLM Endpoint로 프록시 로직
-  - [ ] LogEntry DB 저장
-
-- [ ] **Infra - API Gateway**
-  - [ ] Nginx 라우팅 설정 완성 (모든 서비스 연결)
-  - [ ] SSL 인증서 설정
+  - [ ] A2A 엔드포인트 기본 구조 구현
 
 #### Sprint 1 완료 조건
 
@@ -198,15 +192,48 @@
 
 ---
 
-### Sprint 2: Frontend Core + A2A (Week 3)
+### Sprint 2: Frontend Core + Backend 연동 (Week 3)
 
-#### DEV1 (주도) - 핵심 Sprint
+#### DEV1 (한승하) - Frontend Core 개발
+
+- [ ] **Frontend - Layout 및 인증**
+  - [ ] Sidebar 컴포넌트 (모드 전환)
+  - [ ] Header 컴포넌트 (로고, 프로필 드롭다운)
+  - [ ] Layout 컴포넌트 (SSO 콜백 처리)
+  - [ ] PendingApprovalPage 컴포넌트
+  - [ ] 공통 컴포넌트 (Button, Modal, Input, Card)
 
 - [ ] **Frontend - 메인 대시보드**
   - [ ] AgentCard 컴포넌트 (Gemini 스타일)
   - [ ] AddAgentModal 컴포넌트
-  - [ ] Dashboard 페이지 (운영/워크스페이스 모드 분기)
+  - [ ] Dashboard 페이지 (Hub/Workbench 모드 분기)
   - [ ] Agent Service API 연동 (`GET /api/agents`, `POST /api/agents`)
+
+- [ ] **User Service Backend 연동 테스트**
+  - [ ] SSO 로그인 플로우 테스트
+  - [ ] JWT 토큰 발급 확인
+  - [ ] Frontend 오류 수정
+
+#### DEV2 (이병주) - Admin Service Backend
+
+- [ ] **Admin Service - 통계 API**
+  - [ ] LogEntry 읽기 권한 설정 (Tracing Service와 협의)
+  - [ ] 통계 집계 로직 구현
+  - [ ] **Frontend 연동 테스트**: Admin 페이지에서 통계 표시 확인
+
+#### DEV3 (김영섭) - Chat + Tracing Service Backend
+
+- [ ] **Chat Service - 파일 업로드**
+  - [ ] `POST /api/chat/files` API
+  - [ ] S3 또는 로컬 스토리지 설정
+  - [ ] **Frontend 연동 테스트**: ChatInput에서 파일 업로드 확인
+
+- [ ] **Tracing Service - Multi-Agent 추적**
+  - [ ] agent_id 추론 로직 (Tool Call 분석)
+  - [ ] LogEntry에 agent_id 필드 저장
+  - [ ] **Frontend 연동 테스트**: LiveTrace에서 로그 표시 확인
+
+#### DEV4 (안준형) - Agent Service Backend
 
 - [ ] **Agent Service - A2A 프로토콜** ⭐
   - [ ] `POST /api/agents/a2a/register` 완성
@@ -216,27 +243,7 @@
   - [ ] `POST /api/agents/{id}/deploy` 완성
     - 운영 A2A 엔드포인트 검증
     - status → PRODUCTION 변경
-
-#### DEV2
-
-- [ ] **User Service - RBAC**
-  - [ ] User 관리 API (`GET /api/users`, `PATCH /api/users/{id}/role`)
-  - [ ] ADMIN 권한 검증 미들웨어
-
-- [ ] **Admin Service - 통계 API 준비**
-  - [ ] LogEntry 읽기 권한 설정 (Tracing Service와 협의)
-
-#### DEV3
-
-- [ ] **Chat Service - 파일 업로드**
-  - [ ] `POST /api/chat/files` API
-  - [ ] S3 또는 로컬 스토리지 설정
-
-#### DEV4
-
-- [ ] **Tracing Service - Multi-Agent 추적**
-  - [ ] agent_id 추론 로직 (Tool Call 분석)
-  - [ ] LogEntry에 agent_id 필드 저장
+  - [ ] **Frontend 연동 테스트**: Agent 등록 및 배포 플로우 확인
 
 #### Sprint 2 완료 조건
 
@@ -246,9 +253,60 @@
 
 ---
 
-### Sprint 3: Top-K 추천 + WebSocket + Tracing (Week 4-5)
+### Sprint 3: Frontend 고급 기능 + Backend 고도화 (Week 4-5)
 
-#### DEV1 (주도) - 핵심 Sprint
+#### DEV1 (한승하) - Frontend 고급 기능 개발
+
+- [ ] **Frontend - Agent Playground**
+  - [ ] AgentPlayground 컴포넌트
+  - [ ] PlaygroundSidebar (세션 목록, '새 대화' 버튼)
+  - [ ] ChatPlayground (메시지 목록, 입력창)
+  - [ ] TraceCapturePanel (Workbench 모드 전용)
+  - [ ] LiveTrace 컴포넌트 (실시간 로그 표시)
+
+- [ ] **Frontend - Flow 페이지**
+  - [ ] FlowPage 컴포넌트 (Claude 스타일 미니멀)
+  - [ ] Agent 선택 Dropdown
+  - [ ] 통합 실행 UI
+
+- [ ] **Frontend - Settings 페이지**
+  - [ ] SettingsLayout (탭 메뉴)
+  - [ ] GeneralSettings (테마, 언어)
+  - [ ] APIKeys 페이지
+  - [ ] Admin 페이지 (사용자 관리, 통계)
+
+- [ ] **전체 Backend 연동 테스트**
+  - [ ] 모든 페이지에서 Backend API 정상 동작 확인
+  - [ ] Frontend 오류 수정 및 UX 개선
+
+#### DEV2 (이병주) - Admin + Worker Service 고도화
+
+- [ ] **Admin Service - 통계 API 완성**
+  - [ ] `GET /api/admin/stats/llm-usage` 완성
+  - [ ] 날짜 범위 필터, 그룹화 (user, department, model)
+  - [ ] Agent 사용량 통계 API 추가
+  - [ ] **Frontend 연동 테스트**: 통계 페이지 동작 확인
+
+- [ ] **Worker Service - Agent Health Check**
+  - [ ] `check_agent_health` Task 완성 (A2A 엔드포인트 호출)
+  - [ ] 실패 시 status=DISABLED 변경
+  - [ ] 알림 발송 기능
+
+#### DEV3 (김영섭) - Chat + Tracing Service 고도화
+
+- [ ] **Chat Service - WebSocket 실시간 Trace** ⭐
+  - [ ] `WS /ws/trace/{trace_id}` 완성
+  - [ ] TokenAuthMiddleware (JWT 쿼리 파라미터 검증)
+  - [ ] TraceLogConsumer (Redis Pub/Sub 수신)
+  - [ ] 실시간 로그 브로드캐스트
+  - [ ] **Frontend 연동 테스트**: LiveTrace 실시간 동작 확인
+
+- [ ] **Tracing Service - 실시간 로그 전송**
+  - [ ] Redis Pub/Sub으로 Chat Service에 로그 전송
+  - [ ] Log Proxy 시 실시간 전송
+  - [ ] **Frontend 연동 테스트**: TraceCapturePanel 동작 확인
+
+#### DEV4 (안준형) - Agent Service 고도화
 
 - [ ] **Agent Service - Top-K Agent 추천** ⭐⭐
   - [ ] RAG 파이프라인 구축:
@@ -261,43 +319,7 @@
     - 활성 Agent 필터링 (status=PRODUCTION, health=healthy)
     - Top-K 반환
   - [ ] 임베딩 자동 업데이트 (Agent 생성/수정 시)
-
-- [ ] **Frontend - Top-K 추천 페이지**
-  - [ ] ProductionPage 컴포넌트
-  - [ ] 쿼리 입력 UI
-  - [ ] 추천 Agent 카드 표시 (similarity_score 포함)
-  - [ ] `/api/agents/recommend` API 연동
-
-- [ ] **Frontend - Agent Playground**
-  - [ ] AgentPlayground 컴포넌트
-  - [ ] PlaygroundSidebar (세션 목록, '새 대화' 버튼)
-  - [ ] ChatPlayground (메시지 목록, 입력창)
-  - [ ] TraceCapturePanel (개발 모드 전용)
-
-#### DEV3
-
-- [ ] **Chat Service - WebSocket 실시간 Trace** ⭐
-  - [ ] `WS /ws/trace/{trace_id}` 완성
-  - [ ] TokenAuthMiddleware (JWT 쿼리 파라미터 검증)
-  - [ ] TraceLogConsumer (Redis Pub/Sub 수신)
-  - [ ] 실시간 로그 브로드캐스트
-
-- [ ] **Worker Service - Agent Health Check**
-  - [ ] `check_agent_health` Task 완성 (A2A 엔드포인트 호출)
-  - [ ] 실패 시 status=DISABLED 변경
-  - [ ] 사내 메일 API 알림 발송
-
-#### DEV4
-
-- [ ] **Tracing Service - 실시간 로그 전송**
-  - [ ] Redis Pub/Sub으로 Chat Service에 로그 전송
-  - [ ] Log Proxy 시 실시간 전송
-
-#### DEV2
-
-- [ ] **Admin Service - 통계 API**
-  - [ ] `GET /api/admin/stats/llm-usage` 완성
-  - [ ] 날짜 범위 필터, 그룹화 (user, department, model)
+  - [ ] **Frontend 연동 테스트**: Hub 페이지 Top-K 추천 동작 확인
 
 #### Sprint 3 완료 조건
 

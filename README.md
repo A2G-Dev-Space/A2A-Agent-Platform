@@ -335,29 +335,25 @@ uv run celery -A app.worker beat --loglevel=info  # 별도 터미널
 
 | Developer | 담당 서비스 | 주요 책임 | 기술 |
 |-----------|------------|----------|------|
-| **DEV1** 🔥 (Senior, SPRINT Lead) | Frontend + Agent Service | UI/UX, A2A 프로토콜, Top-K 추천 | React, FastAPI, RAG |
-| **DEV2** | User Service + Admin Service | SSO, 인증, LLM 관리, 통계 | FastAPI, JWT |
-| **DEV3** | Chat Service + Worker Service | WebSocket, Celery, Health Check | FastAPI, Redis |
-| **DEV4** | Tracing Service + Infra | Log Proxy, Docker, CI/CD | FastAPI, Nginx |
+| **DEV1 (한승하)** 🔥 | Frontend 전체 + Infra + User Service | Frontend 모든 기능 개발, Docker/CI/CD, SSO/인증 | React, TypeScript, Docker, FastAPI |
+| **DEV2 (이병주)** | Admin Service + Worker Service | LLM 관리, 통계, Celery Tasks, Health Check | FastAPI, Celery, Redis |
+| **DEV3 (김영섭)** | Chat Service + Tracing Service | WebSocket, Session/Message, Log Proxy | FastAPI, WebSocket, Redis |
+| **DEV4 (안준형)** | Agent Service (agent subrepo) | A2A 프로토콜, Top-K 추천, Agent CRUD | FastAPI, RAG, LangChain |
 
-### 7.2 DEV1의 역할 (SPRINT Lead)
+### 7.2 개발 방식
 
-**DEV1**은 가장 능숙한 개발자로, **모든 SPRINT를 주도**합니다:
+**Frontend 개발**:
+- **DEV1 (한승하)**가 Frontend의 모든 기능을 개발하여 제공
+- 다른 개발자들은 Frontend 코드를 활용하여 Backend 연동 테스트 수행
 
-1. **Frontend 전체 개발**:
-   - Layout, 공통 컴포넌트, 상태 관리
-   - Agent Playground, Chat UI
-   - Top-K 추천 페이지
+**Backend 개발 및 테스트**:
+- **DEV1~DEV4 모두** 각자 담당한 Backend 서비스를 구현
+- 각 개발자는 자신의 Backend와 Frontend 간의 연동을 테스트
+- Frontend 기능에 이상이 없는지, 오류 동작은 없는지 확인
 
-2. **Agent Service 핵심 기능**:
-   - A2A 프로토콜 구현
-   - Top-K Agent 추천 시스템 (RAG)
-   - Agent CRUD API
-
-3. **SPRINT 리딩**:
-   - Sprint 계획 수립
-   - 팀원 코드 리뷰
-   - 기술적 의사결정
+**Repository 관리**:
+- **Agent subrepo**: DEV4 (안준형) 전담
+- **Infra repo**: DEV1 (한승하) 전담
 
 ---
 
@@ -367,35 +363,41 @@ uv run celery -A app.worker beat --loglevel=info  # 별도 터미널
 
 | Sprint | 기간 | 주요 목표 | 담당 |
 |--------|------|----------|------|
-| **Sprint 0** | Week 1 | Mock Services, Infra 구축, Repository 생성 | DEV4, DEV2 |
-| **Sprint 1** | Week 2 | User/Agent/Chat Service 기본 API 구현 | 전체 (DEV1 리드) |
-| **Sprint 2** | Week 3 | Frontend Core + A2A 프로토콜 구현 | DEV1 (주도), DEV2 |
-| **Sprint 3** | Week 4-5 | Top-K 추천 + WebSocket + Tracing | DEV1 (주도), DEV3, DEV4 |
+| **Sprint 0** | Week 1 | Mock Services, Infra 구축, Repository 생성 | DEV1 (Infra), 전체 (Repository) |
+| **Sprint 1** | Week 2 | User/Agent/Chat Service 기본 API 구현 | DEV1~DEV4 (각 Backend) |
+| **Sprint 2** | Week 3 | Frontend Core 개발 + Backend 연동 | DEV1 (Frontend), 전체 (테스트) |
+| **Sprint 3** | Week 4-5 | Frontend 고급 기능 + Backend 완성 | DEV1 (Frontend), 전체 (Backend) |
 | **Sprint 4** | Week 6 | 통합 테스트, 버그 수정, 사내망 배포 | 전체 |
 
 ### 8.2 Sprint 0 체크리스트 (Week 1) - 최우선
 
-**DEV4 (Infra Lead)**:
+**DEV1 (한승하) - Frontend + Infra**:
+- [ ] `agent-platform-frontend` 저장소 생성
+- [ ] React + Vite + TypeScript 프로젝트 초기화
 - [ ] `agent-platform-infra` 저장소 생성
 - [ ] Mock SSO 구현 (FastAPI)
 - [ ] `docker-compose.external.yml` 작성
 - [ ] Nginx 설정
-
-**DEV2 (Backend Lead)**:
 - [ ] `agent-platform-user-service` 저장소 생성
 - [ ] User 모델 정의
-- [ ] SSO 연동 준비
 
-**DEV1 (SPRINT Lead)**:
-- [ ] `agent-platform-frontend` 저장소 생성
-- [ ] React 프로젝트 초기화
-- [ ] `agent-platform-agent-service` 저장소 생성
-- [ ] Agent 모델 설계 (A2A 필드 포함)
+**DEV2 (이병주) - Admin + Worker**:
+- [ ] `agent-platform-admin-service` 저장소 생성
+- [ ] LLMModel 모델 정의
+- [ ] `agent-platform-worker-service` 저장소 생성
+- [ ] Celery 프로젝트 초기화
 
-**DEV3**:
+**DEV3 (김영섭) - Chat + Tracing**:
 - [ ] `agent-platform-chat-service` 저장소 생성
 - [ ] ChatSession/ChatMessage 모델 정의
-- [ ] `agent-platform-worker-service` 저장소 생성
+- [ ] `agent-platform-tracing-service` 저장소 생성
+- [ ] LogEntry 모델 정의
+
+**DEV4 (안준형) - Agent Service**:
+- [ ] `agent-platform-agent-service` 저장소 생성 (agent subrepo)
+- [ ] Agent 모델 설계 (A2A 필드 포함)
+- [ ] Agent CRUD 엔드포인트 스텁
+- [ ] Top-K 추천 엔드포인트 스텁
 
 ---
 

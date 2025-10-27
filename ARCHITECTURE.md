@@ -906,10 +906,24 @@ REDIS_HOST=redis.company.com
 
 | Developer | 담당 서비스 | 주요 작업 | 기술 스택 |
 |-----------|------------|----------|----------|
-| **DEV1** (능숙, SPRINT) | Frontend + Agent Service | UI/UX, A2A, Top-K 추천 | React, FastAPI, RAG |
-| **DEV2** | User Service + Admin Service | SSO, 인증, LLM 관리 | FastAPI, JWT |
-| **DEV3** | Chat Service + Worker Service | WebSocket, Celery | FastAPI, Redis |
-| **DEV4** | Tracing Service + Infra | Log Proxy, Docker, CI/CD | FastAPI, Nginx |
+| **DEV1 (한승하)** | Frontend 전체 + Infra + User Service | Frontend 모든 기능, Docker/CI/CD, SSO/인증 | React, TypeScript, Docker, FastAPI |
+| **DEV2 (이병주)** | Admin Service + Worker Service | LLM 관리, 통계, Celery Tasks | FastAPI, Celery, Redis |
+| **DEV3 (김영섭)** | Chat Service + Tracing Service | WebSocket, Session/Message, Log Proxy | FastAPI, WebSocket, Redis |
+| **DEV4 (안준형)** | Agent Service (agent subrepo) | A2A 프로토콜, Top-K 추천, Agent CRUD | FastAPI, RAG, LangChain |
+
+### 개발 방식
+
+**Frontend 개발**:
+- **DEV1 (한승하)**가 Frontend의 모든 기능을 개발하여 제공
+
+**Backend 개발 및 테스트**:
+- **DEV1~DEV4 모두** 각자 담당한 Backend 서비스를 구현
+- 각 개발자는 자신의 Backend와 Frontend 간의 연동을 테스트
+- Frontend 기능에 이상이 없는지, 오류 동작은 없는지 확인
+
+**Repository 관리**:
+- **Agent subrepo**: DEV4 (안준형) 전담
+- **Infra repo**: DEV1 (한승하) 전담
 
 ---
 
@@ -917,10 +931,10 @@ REDIS_HOST=redis.company.com
 
 | Sprint | 기간 | 주요 목표 | 담당 |
 |--------|------|----------|------|
-| **Sprint 0** | Week 1 | Mock Services, Infra 구축 | DEV4, DEV2 |
-| **Sprint 1** | Week 2 | User/Agent/Chat Service 기본 API | 전체 |
-| **Sprint 2** | Week 3 | Frontend Core + A2A 프로토콜 | DEV1, DEV2 |
-| **Sprint 3** | Week 4-5 | Top-K 추천 + WebSocket + Tracing | DEV1, DEV3, DEV4 |
+| **Sprint 0** | Week 1 | Mock Services, Infra 구축, Repository 생성 | DEV1 (Infra), 전체 (Repo) |
+| **Sprint 1** | Week 2 | User/Agent/Chat Service 기본 API | DEV1~DEV4 (각 Backend) |
+| **Sprint 2** | Week 3 | Frontend Core 개발 + Backend 연동 | DEV1 (Frontend), 전체 (테스트) |
+| **Sprint 3** | Week 4-5 | Frontend 완성 + Backend 고도화 | DEV1 (Frontend), 전체 (Backend) |
 | **Sprint 4** | Week 6 | 통합 테스트 + 배포 | 전체 |
 
 ---
