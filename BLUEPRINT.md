@@ -25,15 +25,15 @@
 
 ### 2.1. 디자인 레퍼런스
 
-**Gemini UI**: Google의 Gemini UI를 최우선 디자인 레퍼런스로 삼습니다.
+**Gemini UI + Claude UI**: Google의 Gemini UI와 Anthropic의 Claude UI를 레퍼런스로 삼습니다.
 
 **핵심 원칙**:
-- 간결함 (Simplicity)
+- 간결함 (Simplicity) - Claude의 미니멀리즘
 - 정보 중심적 레이아웃 (Information-centric)
 - 세련된 아이코노그래피 (Polished iconography)
 - 명확한 상호작용 (Clear interactions)
 
-**컴포넌트 라이브러리**: MUI (Material-UI) 또는 Radix UI를 사용하여 Gemini 스타일을 일관되게 구현합니다.
+**컴포넌트 라이브러리**: MUI (Material-UI) 또는 Radix UI를 사용하여 Gemini/Claude 스타일을 일관되게 구현합니다.
 
 ### 2.2. 색상 팔레트
 
@@ -41,16 +41,17 @@
 - **Tailwind CSS** slate 계열을 기반으로 Light/Dark 모드를 완벽하게 지원합니다.
 - `dark:` Variant를 사용하여 다크 모드 스타일을 정의합니다.
 
-#### 모드별 강조 색상
+#### 모드별 강조 색상 ⭐ 업데이트
 
-플랫폼의 현재 모드(운영/개발)를 시각적으로 명확히 구분하기 위해 `useWorkspaceStore`의 `activeMode` 상태와 연동된 동적 테마를 적용합니다.
+플랫폼의 현재 모드를 시각적으로 명확히 구분하기 위해 Sidebar의 활성 모드와 연동된 동적 테마를 적용합니다.
 
 | 모드 | 색상 계열 | 적용 예시 |
 |------|----------|----------|
-| **운영 모드** | 파스텔 블루 | `bg-sky-100`, `text-sky-700`, `border-sky-300` |
-| **개발 모드** | 파스텔 레드/핑크 | `bg-rose-100`, `text-rose-700`, `border-rose-300` |
+| **Workbench (워크벤치)** | 파스텔 퍼플/바이올렛 | `bg-purple-100`, `text-purple-700`, `border-purple-300` |
+| **Hub (허브)** | 파스텔 블루 | `bg-sky-100`, `text-sky-700`, `border-sky-300` |
+| **Flow (플로우)** | 파스텔 그린/틸 | `bg-teal-100`, `text-teal-700`, `border-teal-300` |
 
-**적용 요소**: 헤더, 활성 탭, 카드 하이라이트, 버튼, 활성 링크 등 주요 상호작용 요소
+**적용 요소**: Sidebar 활성 메뉴, 활성 탭, 카드 하이라이트, 버튼, 활성 링크 등 주요 상호작용 요소
 
 ### 2.3. 타이포그래피 (Typography)
 
@@ -88,37 +89,92 @@ body {
 
 ---
 
-## 3. 전체 레이아웃 (Overall Layout)
+## 3. 전체 레이아웃 (Overall Layout) ⭐ 업데이트
 
-플랫폼의 핵심 UI는 **헤더(Header)**와 **컨텐츠(Main Content)**로 구성된 2단 구조를 채택합니다.
+플랫폼의 핵심 UI는 **Sidebar**, **Header**, **Main Content**로 구성된 3영역 구조를 채택합니다.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│          WorkspaceHeader (상단 고정)                │
-│  [Logo] A2G Platform    [운영 ↔ 개발]    [Profile] │
-└─────────────────────────────────────────────────────┘
-│                                                     │
-│              Main Content Area                      │
-│           (react-router <Outlet>)                   │
-│                                                     │
-└─────────────────────────────────────────────────────┘
+┌────────┬──────────────────────────────────────────┐
+│        │          Header (상단 고정)              │
+│        │  [Logo] A2G Platform      [Profile]      │
+│ Side   ├──────────────────────────────────────────┤
+│ bar    │                                          │
+│        │         Main Content Area                │
+│ [🔧]   │       (react-router <Outlet>)            │
+│ [🏢]   │                                          │
+│ [⚡]   │                                          │
+│        │                                          │
+└────────┴──────────────────────────────────────────┘
 ```
 
-### 3.1. WorkspaceHeader (상단 헤더)
+### 3.1. Sidebar (좌측 고정) ⭐ 신규
+
+**Width**: `w-16` (64px) - 아이콘 전용 축소 모드
+
+**레이아웃**: `flex flex-col h-screen bg-gray-100 dark:bg-gray-900 border-r`
+
+#### 상단 영역: 모드 전환 메뉴
+```
+┌────────┐
+│  🔧    │  ← Workbench (워크벤치)
+│        │
+│  🏢    │  ← Hub (허브)
+│        │
+│  ⚡    │  ← Flow (플로우)
+│        │
+└────────┘
+```
+
+**구현**:
+```tsx
+<div className="flex flex-col gap-2 p-2">
+  <SidebarButton
+    icon={<Wrench />}
+    label="Workbench"
+    active={mode === 'workbench'}
+    color="purple"
+    onClick={() => navigate('/workbench')}
+  />
+  <SidebarButton
+    icon={<Building />}
+    label="Hub"
+    active={mode === 'hub'}
+    color="sky"
+    onClick={() => navigate('/hub')}
+  />
+  <SidebarButton
+    icon={<Zap />}
+    label="Flow"
+    active={mode === 'flow'}
+    color="teal"
+    onClick={() => navigate('/flow')}
+  />
+</div>
+```
+
+**활성 상태**:
+- 현재 모드는 배경색이 해당 모드 색상으로 변경됨
+- Workbench 활성: `bg-purple-200 dark:bg-purple-800`
+- Hub 활성: `bg-sky-200 dark:bg-sky-800`
+- Flow 활성: `bg-teal-200 dark:bg-teal-800`
+
+#### 하단 영역: 설정 버튼
+```
+┌────────┐
+│        │
+│   ⚙️   │  ← Settings
+│        │
+└────────┘
+```
+
+### 3.2. Header (상단 헤더) ⭐ 업데이트
 
 **레이아웃**: `flex justify-between items-center px-6 py-3 border-b`
 
 #### 좌측 영역
 - **A2G 플랫폼 로고** + **이름** ("A2G Platform")
-- 클릭 시 메인 대시보드 (`/`)로 이동
+- 클릭 시 현재 모드의 메인 대시보드로 이동
 - Hover 효과: `opacity-80`
-
-#### 중앙 영역
-- **모드 전환 토글**: 운영(Production) ↔ 워크스페이스(Workspace) 스위치
-- MUI Switch 또는 Radix Toggle 사용
-- 현재 모드에 따라 배경색 변경:
-  - 운영: `bg-sky-500`
-  - 개발: `bg-rose-500`
 
 #### 우측 영역
 - **사용자 프로필 드롭다운**:
@@ -130,7 +186,7 @@ body {
     │ syngha.han@samsung.com   │
     │ AI Platform Team         │
     ├──────────────────────────┤
-    │ 🔑 Key 생성              │
+    │ 🔑 API Keys              │
     │ ⚙️ 설정                  │
     ├──────────────────────────┤
     │ 🚪 로그아웃              │
@@ -140,13 +196,13 @@ body {
 
 ---
 
-## 4. 메인 대시보드 (/ 경로)
+## 4. 메인 대시보드 ⭐ 업데이트
 
-`activeMode`에 따라 뷰를 조건부 렌더링합니다 (role='PENDING' 사용자는 접근 불가).
+각 모드별로 독립적인 대시보드를 가집니다 (role='PENDING' 사용자는 접근 불가).
 
-### 4.1. 운영 모드 뷰 (AgentCardProduction)
+### 4.1. Hub 모드 뷰 (/hub) ⭐ 업데이트
 
-**타이틀**: "운영 에이전트" (파스텔 블루 계열 `text-sky-700`)
+**타이틀**: "Agent Hub" (파스텔 블루 계열 `text-sky-700`)
 
 **AI 랭킹 기반 정렬**:
 - 사용자 검색 쿼리(선택 사항)와 Agent의 임베딩 벡터를 비교
@@ -157,12 +213,12 @@ body {
 - Grid 레이아웃: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`
 - 카드 디자인: [4.3. AgentCard 컴포넌트](#43-agentcard-컴포넌트-디자인) 참조
 
-### 4.2. 워크스페이스 모드 뷰 (AgentCardWorkspace)
+### 4.2. Workbench 모드 뷰 (/workbench) ⭐ 업데이트
 
-**타이틀**: "내 에이전트" (파스텔 레드 계열 `text-rose-700`)
+**타이틀**: "My Workbench" (파스텔 퍼플 계열 `text-purple-700`)
 
 **'새 에이전트 만들기' (+) 카드**:
-- 점선 테두리 카드: `border-2 border-dashed border-rose-300`
+- 점선 테두리 카드: `border-2 border-dashed border-purple-300`
 - 중앙 정렬된 '+' 아이콘 및 "새 에이전트 만들기" 텍스트
 - 클릭 시 `AddAgentModal` 표시
 
@@ -279,26 +335,26 @@ body {
 
 ---
 
-## 5. Agent Playground (상세 페이지)
+## 5. Agent Playground (상세 페이지) ⭐ 업데이트
 
-### 5.1. URL 경로
+### 5.1. URL 경로 ⭐ 업데이트
 
-- **개발 모드**: `/workspace/:id`
-- **운영 모드**: `/production/:id`
+- **Workbench 모드**: `/workbench/:id`
+- **Hub 모드**: `/hub/:id`
 
 ### 5.2. 레이아웃 구조
 
-**2~3단 레이아웃**:
+**Workbench: 2~3단 레이아웃**:
 ```
 ┌──────────┬─────────────────────┬─────────────────┐
 │          │                     │                 │
 │ Sidebar  │  TraceCapturePanel  │ ChatPlayground  │
-│          │  (워크스페이스만)   │                 │
+│          │  (Workbench만)      │                 │
 │          │                     │                 │
 └──────────┴─────────────────────┴─────────────────┘
 ```
 
-**운영 모드**:
+**Hub: 2단 레이아웃**:
 ```
 ┌──────────┬─────────────────────────────────────────┐
 │          │                                         │
@@ -661,7 +717,57 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 </a>
 ```
 
-#### 5.5.2. ChatInput
+#### 5.5.2. 스트리밍 응답 구현 ⭐ 신규
+
+**모든 Chat 응답은 스트리밍으로 구현**:
+
+```tsx
+const ChatMessageList = () => {
+  const [streamingContent, setStreamingContent] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  useEffect(() => {
+    const eventSource = new EventSource(`/api/chat/stream/${messageId}`);
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === 'content') {
+        // 스트리밍 중인 텍스트를 실시간으로 추가
+        setStreamingContent(prev => prev + data.content);
+      } else if (data.type === 'done') {
+        // 스트리밍 완료
+        setIsStreaming(false);
+        eventSource.close();
+      }
+    };
+
+    return () => eventSource.close();
+  }, [messageId]);
+
+  return (
+    <div>
+      {/* 기존 메시지들 */}
+      {messages.map(msg => <ChatMessage key={msg.id} message={msg} />)}
+
+      {/* 스트리밍 중인 메시지 */}
+      {isStreaming && (
+        <div className="streaming-message">
+          <ReactMarkdown>{streamingContent}</ReactMarkdown>
+          <span className="animate-pulse">▊</span>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+**스트리밍 표시**:
+- 스트리밍 중에는 커서 애니메이션 표시 (`▊` 깜빡임)
+- 메시지가 생성되는 대로 실시간 렌더링
+- 완료 시 자동으로 메시지 목록에 추가
+
+#### 5.5.3. ChatInput ⭐ 업데이트
 
 **레이아웃**:
 ```
@@ -682,109 +788,158 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
    - 반환된 URL을 메시지에 첨부
 3. **이미지 업로드 버튼**: 이미지 파일만 선택 가능
 4. **전송 버튼**:
-   - `isWaitingForResponse` 시 비활성화
+   - `isStreaming` 시 비활성화 (스트리밍 중 전송 불가)
    - 아이콘 디자인: ➤ 또는 ✈️
 
 ---
 
-## 6. 통합 Playground (/unified) ⭐ 신규
+## 6. Flow - 통합 모드 (/flow) ⭐ 완전히 재설계
 
 ### 6.1. URL 경로
 
-`/unified`
+`/flow`
 
-### 6.2. 레이아웃 구조
+### 6.2. 디자인 컨셉
 
-**2단 레이아웃**:
+**Claude 초기화면과 유사한 미니멀 인터페이스**:
+- 중앙에 입력창과 전송 버튼만 표시
+- Agent 선택은 dropdown으로 펼쳐짐
+- 불필요한 UI 요소 최소화
+
+### 6.3. 레이아웃 구조 ⭐ 신규
+
+**단일 화면 레이아웃**:
 ```
-┌──────────────────────┬─────────────────────────────┐
-│                      │                             │
-│  Agent 선택 패널     │   ChatPlayground            │
-│                      │                             │
-│                      │                             │
-└──────────────────────┴─────────────────────────────┘
+┌────────┬─────────────────────────────────────────────┐
+│        │                                             │
+│        │         [Agent Flow 로고/제목]              │
+│ Side   │                                             │
+│ bar    │        ┌─────────────────────────┐         │
+│        │        │ Select Agents ▼         │         │
+│        │        └─────────────────────────┘         │
+│        │                                             │
+│        │        ┌───────────────────────────────┐   │
+│        │        │                               │   │
+│        │        │ What would you like to do?    │   │
+│        │        │                               │   │
+│        │        └───────────────────────────┬───┘   │
+│        │                                 [➤]       │
+│        │                                             │
+└────────┴─────────────────────────────────────────────┘
 ```
 
-### 6.3. Agent 선택 패널 (좌측)
+### 6.4. Agent 선택 Dropdown ⭐ 신규
 
-**Width**: `w-80` (320px)
+**위치**: 입력창 상단
 
-**구성**:
+**기본 상태** (Collapsed):
 ```
-┌────────────────────────────────────┐
-│ 🎯 통합 Playground                 │
-├────────────────────────────────────┤
-│                                    │
-│ [ ] 자동 Agent 선택 (AI 추천)     │
-│                                    │
-│ 또는 수동으로 선택:                │
-│                                    │
-│ Agent 선택 (복수 가능)             │
-│ ┌────────────────────────────────┐│
-│ │ [✓] Customer Data Agent       ││
-│ │ [ ] Analysis Agent            ││
-│ │ [✓] Report Generator Agent    ││
-│ │ [ ] Translation Agent         ││
-│ └────────────────────────────────┘│
-│                                    │
-│ 실행 모드                          │
-│ ( ) 순차 (Sequential)             │
-│ (●) 병렬 (Parallel)               │
-│ ( ) 하이브리드 (Auto)             │
-│                                    │
-│            [실행]                  │
-│                                    │
-├────────────────────────────────────┤
-│ 실행 중...                         │
-│ ✅ Customer Data Agent (완료)     │
-│ ⏳ Report Generator Agent (진행중)│
-└────────────────────────────────────┘
+┌─────────────────────────────┐
+│ Select Agents ▼             │
+└─────────────────────────────┘
+```
+
+**펼쳐진 상태** (Expanded):
+```
+┌─────────────────────────────────────────┐
+│ Select Agents ▲                         │
+├─────────────────────────────────────────┤
+│ [ ] Auto-select (AI recommends)         │
+├─────────────────────────────────────────┤
+│ Agent List (multi-select)               │
+│                                         │
+│ ┌─────────────────────────────────────┐│
+│ │ [✓] 📊 Customer Data Agent         ││
+│ │     Extract customer data           ││
+│ │     Status: PRODUCTION             ││
+│ │                                     ││
+│ │ [ ] 📈 Analysis Agent               ││
+│ │     Analyze data patterns           ││
+│ │     Status: PRODUCTION              ││
+│ │                                     ││
+│ │ [✓] 📝 Report Generator             ││
+│ │     Generate reports                ││
+│ │     Status: PRODUCTION              ││
+│ └─────────────────────────────────────┘│
+│                                         │
+│ Selected: 2 agents                      │
+│                          [Apply]        │
+└─────────────────────────────────────────┘
+```
+
+**Agent 카드 (Dropdown 내)**:
+- Radio button으로 다중 선택 가능
+- 각 Agent 카드에 표시:
+  - 아이콘/로고
+  - Agent 이름
+  - Description (1줄)
+  - Status (DEVELOPMENT/PRODUCTION)
+- LLM이 Agent card와 description을 보고 자동 선택 가능
+
+**Auto-select 옵션**:
+- 체크 시: Agent 목록 비활성화
+- LLM이 사용자 입력을 분석하여 적합한 Agent 자동 선택
+- 병렬/직렬 처리 방식도 LLM이 자동 결정
+
+### 6.5. 입력 영역
+
+**Claude 스타일**:
+```
+┌───────────────────────────────────────────┐
+│                                           │
+│  What would you like to do?               │
+│                                           │
+│  (예: Analyze customer data and           │
+│   generate a report)                      │
+│                                           │
+└───────────────────────────────────────┬───┘
+                                       [➤]
 ```
 
 **기능**:
-1. **자동 Agent 선택 체크박스**:
-   - 체크 시: Agent 선택 목록 비활성화
-   - AI가 사용자 요청을 분석하여 적합한 Agent 자동 선택
+- 자동 높이 조절 textarea
+- Placeholder: "What would you like to do?"
+- 전송 버튼: 화살표 아이콘 (➤)
+- Enter로 전송, Shift+Enter로 줄바꿈
 
-2. **수동 Agent 선택**:
-   - 공개된 Agent 목록 (status=PRODUCTION, visibility=ALL 또는 TEAM)
-   - 복수 선택 가능 (Checkbox)
+### 6.6. 실행 및 결과 표시
 
-3. **실행 모드 선택**:
-   - **순차 (Sequential)**: Agent를 순차 실행, 이전 결과를 다음 Agent에 전달
-   - **병렬 (Parallel)**: Agent를 동시 실행, 결과를 통합
-   - **하이브리드 (Auto)**: 자동 최적화된 실행 전략
+**실행 중**:
+```
+┌─────────────────────────────────────────┐
+│ 🔄 Running Flow...                      │
+│                                         │
+│ ✅ Customer Data Agent (completed)      │
+│ ⏳ Report Generator (in progress...)    │
+└─────────────────────────────────────────┘
+```
 
-4. **실행 버튼**: `POST /api/orchestrate` API 호출
+**결과 표시** (스트리밍):
+```
+┌─────────────────────────────────────────┐
+│ 📊 Customer Data Agent:                 │
+│                                         │
+│ Extracted 1,234 customer inquiries...   │
+│                                         │
+├─────────────────────────────────────────┤
+│ 📝 Report Generator:                    │
+│                                         │
+│ ## Customer Satisfaction Report         │
+│                                         │
+│ - Overall satisfaction: 87%             │
+│ - Main complaints: Delivery delay (32%) │
+│ ...▊                                    │
+└─────────────────────────────────────────┘
+```
 
-5. **실행 상태 표시**:
-   - 각 Agent의 실행 상태 실시간 표시
-   - ✅ 완료, ⏳ 진행 중, ❌ 실패
-
-### 6.4. ChatPlayground (우측)
-
-**동일한 ChatPlayground 컴포넌트 사용** (5.5 참조)
-
-**차이점**:
-- **응답 포맷**: 복수 Agent의 결과가 통합되어 표시됨
-- **예시**:
-  ```
-  📊 Customer Data Agent 결과:
-  고객 문의 데이터를 추출했습니다. 총 1,234건의 문의가 발견되었습니다.
-
-  📈 Report Generator Agent 결과:
-  ## 고객 만족도 분석 보고서
-
-  ### 요약
-  - 전체 만족도: 87%
-  - 주요 불만 사항: 배송 지연 (32%)
-
-  ...
-  ```
+**특징**:
+- 각 Agent 결과는 구분되어 표시
+- 스트리밍으로 실시간 렌더링
+- Agent 아이콘과 이름으로 출처 명확히 표시
 
 ---
 
-## 7. 설정 페이지 (/settings/*)
+## 7. 설정 페이지 (/settings/*) ⭐ 재구성
 
 ### 7.1. 레이아웃 구조
 
@@ -798,22 +953,29 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 └──────────────┴─────────────────────────────────┘
 ```
 
-### 7.2. 좌측 탭 메뉴 (SettingsLayout)
+### 7.2. 좌측 탭 메뉴 (SettingsLayout) ⭐ 업데이트
 
 **역할(role)에 따라 동적 표시**:
 
 ```
-┌────────────────────┐
-│ ⚙️ 일반             │  ← 모든 사용자
-│ 👤 사용자 관리      │  ← ADMIN만
-│ 🤖 LLM 모델 관리    │  ← ADMIN만
-│ 📊 사용량 통계      │  ← ADMIN만
-└────────────────────┘
+┌────────────────────────┐
+│ ⚙️ 일반 (General)       │  ← 모든 사용자
+│ 🔑 API Keys            │  ← 모든 사용자
+│                        │
+│ ─────────────────────  │
+│ 관리자 메뉴            │  ← ADMIN만 표시
+│ ─────────────────────  │
+│                        │
+│ 👤 사용자 관리         │  ← ADMIN만
+│ 📊 LLM 사용량 통계     │  ← ADMIN만
+│ 📈 Agent 사용량 통계   │  ← ADMIN만 ⭐ 신규
+│ 🤖 LLM 모델 관리       │  ← ADMIN만
+└────────────────────────┘
 ```
 
 ### 7.3. 우측 컨텐츠 (Outlet)
 
-#### 7.3.1. /settings/general (일반)
+#### 7.3.1. /settings/general (일반) - 모든 사용자
 
 **테마 설정**:
 ```
@@ -823,15 +985,34 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 └────────────────────────────────────┘
 ```
 
-**언어 설정**:
+**언어 설정** ⭐ 신규:
 ```
 ┌────────────────────────────────────┐
-│ 언어                               │
-│ [한국어 ▼]                         │
+│ 언어 (Language)                    │
+│ ( ) 한국어  (●) English            │
 └────────────────────────────────────┘
 ```
 
-#### 7.3.2. /settings/users (사용자 관리)
+#### 7.3.2. /settings/api-keys (API Keys) - 모든 사용자 ⭐ 신규
+
+**API Key 발급**:
+```
+┌──────────────────────────────────────┐
+│ [+ 새 API Key 생성]                  │
+└──────────────────────────────────────┘
+```
+
+**API Key 목록**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ Key                  │ 생성일     │ 마지막 사용  │ 액션 │
+├─────────────────────────────────────────────────────────┤
+│ a2g_***abc           │ 2025-10-20 │ 2025-10-27  │ [삭제]│
+│ a2g_***def           │ 2025-10-15 │ 2025-10-25  │ [삭제]│
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 7.3.3. /settings/admin/users (사용자 관리) - ADMIN만
 
 **필터**:
 ```
@@ -850,7 +1031,80 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 **정렬**: PENDING > ADMIN > USER 순, 가입일 순
 
-#### 7.3.3. /settings/models (LLM 모델 관리)
+#### 7.3.4. /settings/admin/llm-usage (LLM 사용량 통계) - ADMIN만 ⭐ 업데이트
+
+**필터**:
+```
+기간: [2025-10-01] ~ [2025-10-27]
+뷰: [개인별 ▼]  (개인별/부서별/Agent별)
+```
+
+**탭 구조**:
+```
+┌────────────────────────────────────────────────┐
+│ [개인별] [부서별] [Agent별]                     │
+├────────────────────────────────────────────────┤
+│                                                │
+│  개인별 LLM 사용량 통계                         │
+│                                                │
+│  ┌──────────────────────────────────────┐     │
+│  │  GPT-4: ████████ 45k tokens          │     │
+│  │  Claude-3: ███ 12k tokens            │     │
+│  │  Gemini: █████ 28k tokens            │     │
+│  └──────────────────────────────────────┘     │
+│                                                │
+│  ┌──────────────┬──────────┬──────────┬─────┐│
+│  │ 사용자       │ 모델     │ 토큰     │ 비용││
+│  ├──────────────┼──────────┼──────────┼─────┤│
+│  │ syngha.han   │ GPT-4    │ 45,000   │$2.50││
+│  │ test.user    │ Claude-3 │ 12,000   │$0.80││
+│  └──────────────┴──────────┴──────────┴─────┘│
+│                                                │
+│                          [Export CSV] [Export Excel]│
+└────────────────────────────────────────────────┘
+```
+
+#### 7.3.5. /settings/admin/agent-usage (Agent 사용량 통계) - ADMIN만 ⭐ 신규
+
+**필터**:
+```
+기간: [2025-10-01] ~ [2025-10-27]
+뷰: [개인별 ▼]  (개인별/부서별/Agent별)
+상태: [전체 ▼]  (전체/DEVELOPMENT/PRODUCTION)
+```
+
+**탭 구조**:
+```
+┌────────────────────────────────────────────────┐
+│ [개인별] [부서별] [Agent별]                     │
+├────────────────────────────────────────────────┤
+│                                                │
+│  Agent별 사용량 통계 (Input 횟수)               │
+│                                                │
+│  ┌──────────────────────────────────────┐     │
+│  │  Customer Agent: ████████ 1,234 calls│     │
+│  │  Analysis Agent: ███ 567 calls       │     │
+│  │  Report Gen: █████ 890 calls         │     │
+│  └──────────────────────────────────────┘     │
+│                                                │
+│  ┌────────────┬─────────┬────────┬──────────┐│
+│  │ Agent      │ 상태    │ 호출수 │ 평균응답││
+│  ├────────────┼─────────┼────────┼──────────┤│
+│  │ Customer   │ PROD    │ 1,234  │ 2.3s    ││
+│  │ Analysis   │ PROD    │ 567    │ 4.1s    ││
+│  │ Report Gen │ DEV     │ 890    │ 3.2s    ││
+│  └────────────┴─────────┴────────┴──────────┘│
+│                                                │
+│                          [Export CSV] [Export Excel]│
+└────────────────────────────────────────────────┘
+```
+
+**개발 중인 Agent도 포함**:
+- status=DEVELOPMENT인 Agent도 통계에 포함
+- Input 횟수: 사용자가 메시지를 전송한 횟수로 count
+- 평균 응답 시간도 함께 표시
+
+#### 7.3.6. /settings/admin/llm-models (LLM 모델 관리) - ADMIN만
 
 **LLM 모델 목록**:
 ```
@@ -875,33 +1129,6 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 - 🟢 Healthy
 - 🔴 Unhealthy
 - ⚪️ Unknown
-
-#### 7.3.4. /settings/stats-usage (LLM 사용량 통계)
-
-**필터**:
-```
-기간: [2025-10-01] ~ [2025-10-27]
-그룹: [사용자별 ▼]
-```
-
-**누적 막대 차트**:
-```
-┌────────────────────────────────────────┐
-│  GPT-4: ████████ 45k tokens            │
-│  Claude-3: ███ 12k tokens              │
-│  Gemini: █████ 28k tokens              │
-└────────────────────────────────────────┘
-```
-
-**테이블**:
-```
-┌──────────────┬──────────┬──────────┬──────────┐
-│ 사용자       │ 모델     │ 토큰     │ 비용($)  │
-├──────────────┼──────────┼──────────┼──────────┤
-│ syngha.han   │ GPT-4    │ 45,000   │ $2.50    │
-│ test.user    │ Claude-3 │ 12,000   │ $0.80    │
-└──────────────┴──────────┴──────────┴──────────┘
-```
 
 ---
 
@@ -1037,17 +1264,20 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 ---
 
-## 10. 핵심 차이점 정리
+## 10. 핵심 차이점 정리 ⭐ 업데이트
 
-| 항목 | 개인 공간 | 운영 공간 | 통합 Playground |
+| 항목 | Workbench (워크벤치) | Hub (허브) | Flow (플로우) |
 |------|----------|----------|-----------------|
-| **목적** | Agent 개발/디버깅 | Agent 사용 | 복수 Agent 조합 |
-| **Trace** | ✅ Live Trace | ❌ 없음 | ⚠️ 선택적 (논의 필요) |
+| **목적** | Agent 개발/디버깅 | Agent 탐색 및 사용 | 복수 Agent 조합 실행 |
+| **Trace** | ✅ Live Trace | ❌ 없음 | ❌ 없음 |
 | **History** | Chat + Trace | Chat만 | Chat만 |
 | **WebSocket** | ✅ 자동 재연결 | ❌ 없음 | ❌ 없음 |
 | **Agent 수** | 1개 | 1개 | **복수** |
-| **공개 범위** | 본인만 | 전체/팀 | 전체/팀 (공개된 것만) |
-| **URL** | `/workspace/:id` | `/production/:id` | `/unified` |
+| **공개 범위** | 본인만 (DEVELOPMENT) | 전체/팀 (PRODUCTION) | 전체/팀 (PRODUCTION) |
+| **URL** | `/workbench/:id` | `/hub/:id` | `/flow` |
+| **UI 스타일** | 3단 레이아웃 | 2단 레이아웃 | Claude 스타일 미니멀 |
+| **색상 테마** | 퍼플/바이올렛 | 블루 | 그린/틸 |
+| **Streaming** | ✅ 지원 | ✅ 지원 | ✅ 지원 |
 
 ---
 

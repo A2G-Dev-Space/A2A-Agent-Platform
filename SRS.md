@@ -20,20 +20,23 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 
 플랫폼은 다음 세 가지 모드를 제공합니다:
 
-1. **개인 공간 (Development Mode)**: Agent 개발 및 디버깅
+1. **Workbench (워크벤치)**: Agent 개발 및 디버깅
    - Session별 Chat History + Tracing History
    - Live Trace (WebSocket 실시간 로그)
    - History 재생 (WebSocket 자동 재연결)
+   - 개발자의 개인 작업 공간
 
-2. **운영 공간 (Production Mode)**: 공개된 Agent 사용
+2. **Hub (허브)**: 공개된 Agent 탐색 및 사용
    - 공개 범위 설정 (전체 공개/팀 공개)
    - Trace 없는 Chat Playground
    - Chat History만 제공
+   - Agent들이 모인 중심 공간
 
-3. **통합 Playground (Unified Playground)**: 복수 Agent 조합 실행 ⭐ 신규
+3. **Flow (플로우)**: 복수 Agent 조합 실행 ⭐ 신규
    - 수동 Agent 선택: 사용자가 복수 Agent 선택
    - 자동 Agent 선택: AI Orchestration으로 적합한 Agent 자동 선택
    - 순차/병렬 실행 전략
+   - Claude 스타일의 미니멀한 인터페이스
 
 ---
 
@@ -131,23 +134,34 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 ### 3.2. UI 및 테마
 
 #### REQ-UI-01: 모드별 색상 테마
-- 플랫폼 UI는 헤더의 모드 토글 상태에 따라 전체 색상 테마가 변경되어야 한다.
-  - 운영 모드: 파스텔 블루 계열
-  - 개발 모드: 파스텔 레드 계열
+- 플랫폼 UI는 Sidebar의 모드 선택 상태에 따라 전체 색상 테마가 변경되어야 한다.
+  - Workbench (워크벤치): 파스텔 퍼플/바이올렛 계열
+  - Hub (허브): 파스텔 블루 계열
+  - Flow (플로우): 파스텔 그린/틸 계열
+- 각 모드는 시각적으로 명확히 구분되어야 한다.
 
 #### REQ-UI-02: 라이트/다크 모드
 - 플랫폼은 라이트/다크 모드를 완벽하게 지원해야 한다.
-- 사용자는 /settings/general에서 테마를 변경할 수 있어야 한다.
+- 사용자는 Settings의 "일반" 탭에서 테마를 변경할 수 있어야 한다.
+- 테마 변경은 모든 사용자 공통 설정이다.
 
-#### REQ-UI-03: 다국어 지원
+#### REQ-UI-03: 다국어 지원 (영어/한국어)
 - 플랫폼의 모든 UI 텍스트는 한국어/영어를 지원해야 한다.
-- 사용자는 /settings/general에서 언어를 변경할 수 있어야 한다.
+- 사용자는 Settings의 "일반" 탭에서 언어를 변경할 수 있어야 한다.
+- 언어 변경은 모든 사용자 공통 설정이다.
+- 기본 언어는 브라우저 설정을 따른다 (fallback: 한국어).
 
-#### REQ-UI-04: 브랜딩
+#### REQ-UI-04: 모드 전환 내비게이션
+- Sidebar 상단에 Workbench / Hub / Flow 모드 전환 메뉴가 표시되어야 한다.
+- 각 모드는 아이콘과 텍스트로 표시되어야 한다.
+- 현재 활성 모드는 강조 표시되어야 한다.
+- 모드 전환 시 해당 모드의 메인 화면으로 이동해야 한다.
+
+#### REQ-UI-05: 브랜딩
 - 플랫폼 헤더 좌측 상단 및 브라우저 탭에 A2G 로고와 제목이 표시되어야 한다.
-- 로고 클릭 시 메인 대시보드(/)로 이동해야 한다.
+- 로고 클릭 시 현재 모드의 메인 대시보드로 이동해야 한다.
 
-#### REQ-UI-05: 승인 대기 페이지
+#### REQ-UI-06: 승인 대기 페이지
 - role이 PENDING인 사용자는 로그인 시 승인 대기 페이지만 표시되어야 한다.
 - 페이지에는 사용자 정보, 안내 메시지, 로그아웃 버튼이 표시되어야 한다.
 
@@ -228,21 +242,21 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 
 ---
 
-### 3.5. 개인 공간 (Development Mode)
+### 3.5. Workbench (워크벤치 - 개발 모드)
 
-#### REQ-DEV-01: Agent Endpoint 설정
-- Agent Playground(워크스페이스)는 Framework별 Endpoint 설정 UI를 제공해야 한다:
+#### REQ-WORKBENCH-01: Agent Endpoint 설정
+- Agent Playground(Workbench)는 Framework별 Endpoint 설정 UI를 제공해야 한다:
   - **Agno**: Base URL 입력 + Agent/Team 선택 드롭다운
   - **ADK/Langchain**: A2A Endpoint URL 입력
   - **Custom**: Endpoint URL 입력
 
-#### REQ-DEV-02: Trace Endpoint 생성
+#### REQ-WORKBENCH-02: Trace Endpoint 생성
 - '새 대화' 시작 시, 시스템은 고유한 Trace ID(UUID)를 생성해야 한다.
 - TraceCapturePanel에 다음 정보를 표시해야 한다:
   - **Trace Endpoint**: `/api/log-proxy/{trace_id}/chat/completions`
   - **Platform API Key**: 사용자의 활성 API Key
 
-#### REQ-DEV-03: Live Trace (실시간)
+#### REQ-WORKBENCH-03: Live Trace (실시간)
 - **WebSocket**을 통해 실시간 LLM 호출 로그를 수신하고 표시해야 한다.
 - 로그는 **시간순서대로** 표시되어야 한다.
 - 로그 항목은 다음 정보를 포함해야 한다:
@@ -252,12 +266,12 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
   - Latency (ms), Tokens Used
   - Timestamp (ISO 8601)
 
-#### REQ-DEV-04: Trace Log Reset
+#### REQ-WORKBENCH-04: Trace Log Reset
 - 사용자는 Live Trace 로그를 **초기화(Reset)**할 수 있어야 한다.
 - Reset 버튼 클릭 시 **현재 세션의 모든 로그를 UI에서 제거**해야 한다.
 - DB에 저장된 로그는 유지되어야 한다 (History 재생 시 복구 가능).
 
-#### REQ-DEV-05: Agent 전환 감지 (Tool 기반)
+#### REQ-WORKBENCH-05: Agent 전환 감지 (Tool 기반)
 - 시스템은 특정 Tool 사용 시 Agent 전환을 감지하고 **별도 UI**로 표시해야 한다:
   - **ADK**: `transfer_to_agent` tool 사용 시 Agent 전환으로 인식
   - **Agno**: `delegate_task_to_members` tool 사용 시 Agent 전환으로 인식
@@ -268,68 +282,75 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
   - `tool_name`: "transfer_to_agent" 또는 "delegate_task_to_members"
   - `tool_input`: Tool 입력 파라미터 (전환 사유 등)
 
-#### REQ-DEV-06: Trace History 재생
+#### REQ-WORKBENCH-06: Trace History 재생
 - 사용자가 과거 Session을 클릭하면:
   - Chat History를 로드해야 한다.
   - Trace History를 로드해야 한다 (시간순서대로).
   - WebSocket을 자동 재연결해야 한다 (이미 저장된 로그 표시).
 
-#### REQ-DEV-07: 개발 가이드 표시
+#### REQ-WORKBENCH-07: 개발 가이드 표시
 - TraceCapturePanel은 Framework별 개발 가이드를 표시해야 한다:
   - Agno: CORS 설정 가이드
   - ADK/Langchain: A2A 연동 가이드
   - 환경 변수 설정 예시
 
-#### REQ-DEV-08: LLM 모델 목록 표시
+#### REQ-WORKBENCH-08: LLM 모델 목록 표시
 - TraceCapturePanel은 현재 활성화/Healthy 상태인 LLM 모델 목록을 표시해야 한다.
 
 ---
 
-### 3.6. 운영 공간 (Production Mode)
+### 3.6. Hub (허브 - 운영 모드)
 
-#### REQ-PROD-01: AI 랭킹 기반 Agent 정렬
-- 운영 모드 대시보드는 **Top-K RAG 기반 AI 랭킹**에 따라 Agent를 정렬해야 한다.
+#### REQ-HUB-01: AI 랭킹 기반 Agent 정렬
+- Hub 대시보드는 **Top-K RAG 기반 AI 랭킹**에 따라 Agent를 정렬해야 한다.
 - 사용자의 검색 쿼리(선택 사항)와 Agent의 임베딩 벡터를 비교하여 유사도 점수를 계산해야 한다.
 
-#### REQ-PROD-02: Agent 카드 표시
-- 운영 모드 대시보드는 status=PRODUCTION인 Agent 카드를 표시해야 한다.
+#### REQ-HUB-02: Agent 카드 표시
+- Hub 대시보드는 status=PRODUCTION인 Agent 카드를 표시해야 한다.
 - 카드에는 다음 정보가 포함되어야 한다:
   - 로고, 제목, 설명, 기능 태그
   - 생성자 ID, 팀(부서)명
   - 헬스 상태 (🟢/🔴/⚪️)
 
-#### REQ-PROD-03: Trace 없는 Chat Playground
-- 운영 모드 Agent Playground는 TraceCapturePanel 없이 ChatPlayground만 표시해야 한다.
+#### REQ-HUB-03: Trace 없는 Chat Playground
+- Hub Agent Playground는 TraceCapturePanel 없이 ChatPlayground만 표시해야 한다.
 - Chat History는 저장되어야 한다.
 
-#### REQ-PROD-04: 공개 범위 필터링
+#### REQ-HUB-04: 공개 범위 필터링
 - 사용자는 visibility 설정에 따라 접근 가능한 Agent만 볼 수 있어야 한다:
   - **ALL**: 모든 사용자가 접근 가능
   - **TEAM**: 같은 부서/팀 사용자만 접근 가능
 
 ---
 
-### 3.7. 통합 Playground (Unified Playground) ⭐ 신규
+### 3.7. Flow (플로우 - 통합 모드) ⭐ 신규
 
-#### REQ-UNIFIED-01: 복수 Agent 선택
-- 사용자는 공개된 Agent 중 복수 개를 선택할 수 있어야 한다.
-- 선택된 Agent는 순차 또는 병렬로 실행되어야 한다.
+#### REQ-FLOW-01: 미니멀 인터페이스
+- Flow는 Claude 초기화면과 유사한 미니멀한 인터페이스를 제공해야 한다.
+- 중앙에 입력창과 전송 버튼(화살표)만 표시되어야 한다.
+- Agent 선택은 dropdown으로 펼쳐지는 형태여야 한다.
 
-#### REQ-UNIFIED-02: 자동 Agent 선택 (AI Orchestration)
-- 사용자가 Agent를 선택하지 않으면, 시스템이 사용자 요청을 분석하여 적합한 Agent를 자동 선택해야 한다.
+#### REQ-FLOW-02: Agent 다중 선택 (Radio Button)
+- Dropdown에서 Agent 목록이 표시되어야 한다.
+- 각 Agent는 카드 형태로 표시되며, radio button으로 다중 선택 가능해야 한다.
+- LLM이 Agent card와 사용자가 작성한 description을 보고 자동으로 선택할 수 있어야 한다.
+- 선택된 Agent만 활성화(enable)되어야 한다.
+
+#### REQ-FLOW-03: 자동 Agent 선택 및 실행 전략
+- LLM이 사용자 요청을 분석하여 적합한 Agent를 자동 선택해야 한다.
 - Agent 선택 알고리즘은 **RAG + LLM 분석**을 사용해야 한다.
-
-#### REQ-UNIFIED-03: 실행 전략 선택
-- 사용자는 다음 실행 모드를 선택할 수 있어야 한다:
+- LLM이 Agent들을 병렬/직렬 처리 방식을 자동으로 결정해야 한다.
+- 실행 전략:
   - **Sequential (순차)**: Agent를 순차적으로 실행, 이전 결과를 다음 Agent에 전달
   - **Parallel (병렬)**: Agent를 동시에 실행, 결과를 통합
-  - **Hybrid (하이브리드)**: 자동 최적화된 실행 전략
+  - **Auto**: LLM이 자동으로 최적 전략 선택
 
-#### REQ-UNIFIED-04: 결과 통합
+#### REQ-FLOW-04: 결과 통합
 - 복수 Agent의 실행 결과를 하나의 응답으로 통합하여 반환해야 한다.
+- 각 Agent의 응답은 구분되어 표시되어야 한다.
 
-#### REQ-UNIFIED-05: Orchestration Service
-- 시스템은 Unified Playground를 위한 독립적인 Orchestration Service를 제공해야 한다.
+#### REQ-FLOW-05: Orchestration Service
+- 시스템은 Flow를 위한 독립적인 Orchestration Service를 제공해야 한다.
 - Orchestration Service는 다음 API를 제공해야 한다:
   - `POST /api/orchestrate`: 복수 Agent 실행 요청
 
@@ -353,7 +374,7 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 - 시스템은 사용자별 + Agent별 Chat Session을 관리해야 한다.
 - Session은 다음 정보를 포함해야 한다:
   - `id`, `agent_id`, `user_id`, `trace_id`, `title`, `mode`, `created_at`
-- `mode` 필드는 다음 값을 가질 수 있다: DEVELOPMENT, PRODUCTION, UNIFIED
+- `mode` 필드는 다음 값을 가질 수 있다: WORKBENCH, HUB, FLOW
 
 #### REQ-CHAT-02: Message 관리
 - 시스템은 Session별 Chat Message를 저장해야 한다.
@@ -383,45 +404,111 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 - ChatMessageList는 코드 블록에 Syntax Highlighting을 적용해야 한다.
 - 코드 블록에는 '복사' 버튼이 표시되어야 한다.
 
+#### REQ-CHAT-07: 스트리밍 응답 ⭐ 신규
+- 모든 Chat 응답은 스트리밍(Streaming) 방식으로 구현되어야 한다.
+- LLM의 응답이 생성되는 대로 실시간으로 화면에 표시되어야 한다.
+- Server-Sent Events (SSE) 또는 WebSocket을 사용하여 구현해야 한다.
+- 스트리밍 중에는 "생성 중..." 표시가 나타나야 한다.
+
 ---
 
-### 3.9. LLM 관리 (Admin)
+### 3.9. Settings (설정) ⭐ 재구성
 
-#### REQ-LLM-01: LLM 모델 등록
-- 관리자는 /settings/models에서 LLM 모델을 등록할 수 있어야 한다.
+Settings는 계층적 탭 구조로 구성되며, 사용자 역할에 따라 접근 가능한 탭이 달라진다.
+
+#### REQ-SETTINGS-01: Settings 구조
+Settings는 다음과 같은 탭 구조를 가져야 한다:
+
+**1. 일반 (General)** - 모든 사용자 공통
+- 테마 변경 (라이트/다크 모드)
+- 언어 변경 (한국어/영어)
+
+**2. API Keys** - 모든 사용자 공통
+- API Key 발급
+- API Key 관리 (목록, 삭제)
+
+**3. 관리자 메뉴** - ADMIN 역할만 접근 가능
+- **사용자 관리**
+- **LLM 사용량 통계**
+- **Agent 사용량 통계**
+
+#### REQ-SETTINGS-02: 일반 설정 (모든 사용자)
+- 경로: `/settings/general`
+- 테마 설정:
+  - 라이트 모드
+  - 다크 모드
+  - 시스템 기본값
+- 언어 설정:
+  - 한국어
+  - English
+  - 브라우저 기본값
+
+#### REQ-SETTINGS-03: API Keys 관리 (모든 사용자)
+- 경로: `/settings/api-keys`
+- 사용자는 개인 API Key를 생성/삭제할 수 있어야 한다.
+- API Key는 Agent 개발 시 Trace Endpoint 인증에 사용된다.
+- API Key는 `a2g_` 접두사를 가진 32자 랜덤 문자열이어야 한다.
+- API Key 목록에는 다음 정보가 표시되어야 한다:
+  - Key (마스킹: `a2g_***abc`)
+  - 생성일
+  - 마지막 사용일
+  - 상태 (활성/비활성)
+  - 삭제 버튼
+
+#### REQ-SETTINGS-04: 사용자 관리 (관리자만)
+- 경로: `/settings/admin/users`
+- 관리자는 모든 사용자 목록을 조회할 수 있어야 한다.
+- 목록은 PENDING > ADMIN > USER 순, 가입일 순으로 정렬되어야 한다.
+- 관리자는 사용자의 role을 변경(승인/강등)할 수 있어야 한다.
+- PENDING 사용자에게는 '승인'/'거절' 버튼이 표시되어야 한다.
+- 관리자는 사용자를 삭제할 수 있어야 한다 (본인 제외).
+- 부서별 필터링 기능을 제공해야 한다.
+
+#### REQ-SETTINGS-05: LLM 사용량 통계 (관리자만) ⭐ 신규
+- 경로: `/settings/admin/llm-usage`
+- 관리자는 LLM별 토큰 사용량을 다양한 관점에서 조회할 수 있어야 한다.
+- 통계 뷰:
+  1. **개인별 통계**: 사용자별 LLM 토큰 사용량
+  2. **부서별 통계**: 부서별 LLM 토큰 사용량
+  3. **Agent별 통계**: Agent별 LLM 토큰 사용량
+- 각 뷰에서 다음 정보를 제공해야 한다:
+  - 기간 필터 (일/주/월/연도/사용자 정의)
+  - LLM 모델별 사용량 (GPT-4, Claude-3, Gemini 등)
+  - 토큰 수
+  - 예상 비용 (USD)
+  - 시각화: 막대 차트, 선 차트, 파이 차트
+- 데이터 내보내기 (CSV, Excel) 기능을 제공해야 한다.
+
+#### REQ-SETTINGS-06: Agent 사용량 통계 (관리자만) ⭐ 신규
+- 경로: `/settings/admin/agent-usage`
+- 관리자는 Agent별 사용량을 input 횟수로 count하여 조회할 수 있어야 한다.
+- 통계 뷰:
+  1. **개인별 Agent 사용**: 사용자별 Agent 호출 횟수
+  2. **부서별 Agent 사용**: 부서별 Agent 호출 횟수
+  3. **Agent별 통계**: 각 Agent의 총 호출 횟수
+- 개발 중인 Agent(status=DEVELOPMENT)도 통계에 포함되어야 한다.
+- 각 뷰에서 다음 정보를 제공해야 한다:
+  - 기간 필터 (일/주/월/연도/사용자 정의)
+  - Agent 이름, 상태 (DEVELOPMENT/PRODUCTION)
+  - Input 횟수 (메시지 전송 횟수)
+  - 평균 응답 시간
+  - 시각화: 막대 차트, 선 차트
+- 데이터 내보내기 (CSV, Excel) 기능을 제공해야 한다.
+
+#### REQ-SETTINGS-07: LLM 모델 관리 (관리자만)
+- 경로: `/settings/admin/llm-models`
+- 관리자는 LLM 모델을 등록/수정/삭제할 수 있어야 한다.
 - 등록 시 다음 정보를 입력받아야 한다:
   - Name, Endpoint, API Key, is_active
-
-#### REQ-LLM-02: LLM 모델 헬스 체크
 - 시스템(Celery)은 주기적으로 활성 LLM의 헬스 체크를 수행해야 한다.
 - 헬스 체크는 `/chat/completions` 테스트 요청을 통해 수행되어야 한다.
 - 헬스 상태는 UI에 표시되어야 한다 (🟢/🔴/⚪️).
-
-#### REQ-LLM-03: LLM 모델 활성/비활성
 - 관리자는 LLM 모델의 활성/비활성 상태를 토글할 수 있어야 한다.
 - 비활성 LLM은 사용자에게 표시되지 않아야 한다.
 
 ---
 
-### 3.10. 사용자 관리 (Admin)
-
-#### REQ-USER-01: 사용자 목록 조회
-- 관리자는 /settings/users에서 모든 사용자 목록을 조회할 수 있어야 한다.
-- 목록은 PENDING > ADMIN > USER 순, 가입일 순으로 정렬되어야 한다.
-
-#### REQ-USER-02: 사용자 역할 변경
-- 관리자는 사용자의 role을 변경(승인/강등)할 수 있어야 한다.
-- PENDING 사용자에게는 '승인'/'거절' 버튼이 표시되어야 한다.
-
-#### REQ-USER-03: 사용자 삭제
-- 관리자는 사용자를 삭제할 수 있어야 한다 (본인 제외).
-
-#### REQ-USER-04: 부서별 필터링
-- 관리자는 사용자 목록을 부서별로 필터링할 수 있어야 한다.
-
----
-
-### 3.11. Tracing 및 Log Proxy
+### 3.10. Tracing 및 Log Proxy
 
 #### REQ-TRACE-01: Log Proxy
 - Tracing Service는 `/api/log-proxy/{trace_id}/chat/completions` API를 제공해야 한다.
@@ -445,7 +532,7 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 
 ---
 
-### 3.12. Agent Lifecycle 자동화
+### 3.11. Agent Lifecycle 자동화
 
 #### REQ-LIFECYCLE-01: 비활성 운영 Agent 정리
 - 시스템(Celery)은 1달 이상 사용되지 않은 운영 Agent(status=PRODUCTION)를 자동으로 DISABLED 상태로 변경해야 한다.
@@ -455,17 +542,6 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 
 #### REQ-LIFECYCLE-03: 헬스 체크 실패 알림
 - Agent 헬스 체크 실패 시, 시스템은 사내 메일 API를 통해 원 개발자에게 알림을 발송해야 한다.
-
----
-
-### 3.13. 통계 및 모니터링 (Admin)
-
-#### REQ-STATS-01: LLM 사용량 통계
-- 관리자는 /settings/stats-usage에서 사용자별 또는 팀/부서별 LLM 모델 토큰 사용량을 조회할 수 있어야 한다.
-- 기간별 그래프와 테이블로 표시되어야 한다.
-
-#### REQ-STATS-02: Agent 사용량 통계
-- 관리자는 /settings/stats-agents에서 팀/부서별 Agent 토큰 사용량을 조회할 수 있어야 한다 (차후 과제).
 
 ---
 
