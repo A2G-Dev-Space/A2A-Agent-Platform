@@ -1,7 +1,3 @@
-<h1 align="center">🚀 A2G Agent Platform</h1>
-<p align="center">
-<strong>Phase 2: 기술 아키텍처 및 개발 온보딩 가이드</strong>
-</p>
 1. 🎯 프로젝트 비전 및 핵심 목표
 A2G Agent Platform은 개발자들이 LLM 기반 에이전트를 **쉽게 개발(IDE), 테스트(Playground), 배포(Vending Machine), 모니터링(Stats)**할 수 있도록 지원하는 차세대 통합 에이전트 운영 플랫폼입니다.
 본 프로젝트(Phase 2)의 핵심 목표는 다음과 같습니다.
