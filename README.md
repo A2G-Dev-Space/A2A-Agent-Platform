@@ -1,195 +1,435 @@
-## 1. 🎯 프로젝트 비전 및 핵심 목표
+# 🤖 A2G Agent Platform - Microservice Architecture
 
-A2G Agent Platform은 개발자들이 LLM 기반 에이전트를 **쉽게 개발(IDE)**, **테스트(Playground)**, **배포(Vending Machine)**, **모니터링(Stats)**, **사용(Use)** 할 수 있도록 지원하는 차세대 통합 에이전트 운영 플랫폼입니다.
-본 프로젝트(Phase 2)의 핵심 목표는 다음과 같습니다.
- * (REQ 0) 확장 가능한 아키텍처: 기존 모놀리식 구조에서 탈피하여, 고성능/고가용성을 위한 **마이크로서비스 아키텍처(MSA)**를 구축합니다.
- * (REQ 4) 최고의 UI/UX: Google Gemini 수준의 세련되고 직관적인 UI를 제공하여 사용자 경험을 극대화합니다.
- * (REQ 2) 개방형 생태계 (A2A): A2A(Agent-to-Agent) 프로토콜 및 SDK를 지원하여, Agno, Langchain(LangGraph), ADK 등 다양한 외부 프레임워크와의 원활한 연동을 보장합니다.
- * (REQ 1) 지능형 플랫폼: 단순한 도구 모음을 넘어, 사용자의 요구에 맞는 에이전트를 추천(AI Ranking)하고, 리소스(Lifecycle)를 자동 관리하는 지능형 플랫폼을 지향합니다.
- * (REQ 3, 7, 10) 강력한 디버깅 경험:** 실시간 멀티 에이전트 로그 추적, 대화형 채팅 히스토리, 리치 미디어(파일/이미지)를 지원하는 통합 Workbench를 제공합니다.
-
-## 2. 🏛️ 목표 아키텍처 (Microservice Structure) - (REQ 0)
-
-Phase 2 아키텍처는 기능적 책임을 명확히 분리한 마이크로서비스들로 구성됩니다. 모든 서비스는 API Gateway를 통해 통신하며 독립적으로 배포/확장됩니다.
-(개략적인 아키텍처 다이어그램 삽입 위치)
-
-| 서비스 ID | 서비스명 | 주요 기술 | 핵심 책임 (분할된 기능) |
-|---|---|---|---|
-| 1 | api-gateway | Nginx / Kong | 단일 진입점: SSL 종료, 요청 라우팅, 전역 인증(JWT 검증), 속도 제한 |
-| 2 | frontend | React / Vite | 사용자 인터페이스: (REQ 4) Gemini 기반 UI, (REQ 1) 모드별 테마, (REQ 3) 리치 플레이그라운드 |
-| 3 | user-service | Go (Gin) / FastAPI | 인증/인가: SSO 연동, JWT 발급/검증, 역할(RBAC) 관리, API Key CRUD |
-| 4 | agent-service | FastAPI (Python) | 에이전트 관리: (REQ 5) 에이전트 CRUD (메타데이터/디자인 포함), (REQ 2) A2A 등록 API, (REQ 1) AI 랭킹 API |
-| 5 | chat-service | FastAPI (Python) | 실시간 통신: (REQ 7) WebSocket 연결/인증/그룹 관리, (REQ 6, 8) Chat History (세션/메시지) CRUD API, (REQ 3) 파일 업/다운로드 |
-| 6 | tracing-service | Go (Fiber) / Rust | 로그 프록시: (고성능) /api/log-proxy/ 운영, LLM 호출 검증/로깅(DB 저장), chat-service로 로그 전송 (gRPC/PubSub) |
-| 7 | admin-service | Django / FastAPI | 플랫폼 관리: (Django Admin) 사용자 역할 부여, LLM 모델 등록. (FastAPI) LLM 통계, 에이전트 통계 API 제공 |
-| 8 | worker-service | Celery (Python) | 비동기 작업: (REQ 12) LLM/Agent 헬스 체크, (REQ 10, 11) 비활성 에이전트 정리, (REQ 12) 실패 알림 (사내 메일 연동) |
-| 9 | database | PostgreSQL | 데이터 영속성: 모든 서비스의 공용 데이터베이스 |
-| 10 | message-broker | Redis | 메시지 큐: Celery 브로커, 서비스 간 Pub/Sub 통신 |
-
-## 3. 🛠️ 핵심 기술 스택 (Technology Stack)
-
-| 구분 | 기술 스택 | 상세 설명 |
-|---|---|---|
-| Frontend | React 19+ (Vite), TypeScript | (REQ 4) 성능과 안정성을 갖춘 최신 프론트엔드 환경. |
-|  | Zustand | 간결하고 강력한 전역 상태 관리. |
-|  | Tailwind CSS + MUI (Base UI) | (REQ 4) Gemini 스타일의 세련된 UI를 위한 유틸리티 및 컴포넌트 라이브러리. |
-|  | React Router DOM | SPA 라우팅 및 중첩/동적 레이아웃 관리. |
-|  | Recharts | 관리자용 통계 대시보드 시각화. |
-|  | React Markdown | (REQ 3) 채팅창 Markdown, 코드 블록 렌더링. |
-|  | Socket.IO Client (또는 useWebSocket) | (REQ 7) 실시간 Trace Log 수신. |
-| API Gateway | Nginx (초기) / Kong (확장) | (REQ 0) 마이크로서비스 진입점, 라우팅, SSL 종료, 인증 처리. |
-| Backend Services | Go (Gin / Fiber) | (REQ 0) user-service, tracing-service 등 고성능/저지연이 필수적인 서비스. |
-|  | FastAPI (Python) | (REQ 0) agent-service, chat-service 등 Python 생태계(AI/ML) 연동 및 빠른 API 개발이 필요한 서비스. |
-|  | Django (Python) | (REQ 0) admin-service의 핵심. 강력한 Admin UI를 즉시 제공. |
-|  | Celery & Redis | (REQ 0) worker-service의 핵심. 비동기/주기적 작업 실행. |
-| Database & Infra | PostgreSQL, Redis | 데이터 영속성 및 고성능 메시지 브로커/캐시. |
-|  | Docker & Compose | 개발 및 배포 환경 표준화. |
-| Inter-Service | gRPC (선호) / REST API | (REQ 0) 서비스 간 고효율 내부 통신 프로토콜. |
-
-## 4. 📂 프로젝트 구조 (Monorepo) - (REQ 0)
-
-Phase 2는 서비스 간의 연동 및 버전 관리를 용이하게 하기 위해 Monorepo 구조를 지향합니다.
-
-```text
-/ (Project Root: agent-platform)
-├── services/                 # (신규) 백엔드 마이크로서비스
-│   ├── user-service/         # (Go/Gin) 인증, 유저, API Key
-│   ├── agent-service/        # (FastAPI) 에이전트 CRUD, 랭킹, A2A
-│   ├── chat-service/         # (FastAPI) 채팅 세션/메시지, WebSocket
-│   ├── tracing-service/      # (Go/Fiber) 로그 프록시, 로그 저장/전송
-│   ├── admin-service/        # (Django) 관리자 UI, 통계 API
-│   └── worker-service/       # (Celery) 백그라운드 작업 (헬스체크, 정리)
-│
-├── frontend/                 # 프론트엔드 (React/Vite)
-│   ├── public/               # (REQ 2, 4) 로고, Favicon, 다국어 파일
-│   ├── src/
-│   │   ├── api/              # 백엔드 서비스 API 호출 함수
-│   │   ├── assets/           # (REQ 4) UI 디자인용 이미지, 아이콘
-│   │   ├── components/       # 재사용 UI (디자인 시스템 기반)
-│   │   │   ├── common/       # (Button, Modal, Input...)
-│   │   │   ├── layout/       # (Header, Sidebar...)
-│   │   │   ├── agent/        # (AgentCard, AddAgentModal...)
-│   │   │   ├── chat/         # (ChatMessageList, ChatInput...)
-│   │   │   └── trace/        # (LiveTrace, TraceLogItem...)
-│   │   ├── hooks/            # (useActiveApiKey, useTraceLogSocket...)
-│   │   ├── pages/            # 라우팅 단위 페이지
-│   │   │   ├── AgentPlayground/  # 플레이그라운드 (하위 컴포넌트 분리)
-│   │   │   ├── Settings/       # 설정 (하위 탭 컴포넌트 분리)
-│   │   │   └── ...
-│   │   ├── services/         # (REQ 7.7) 프레임워크별 로직 (전략 패턴)
-│   │   │   ├── agent-frameworks/
-│   │   │   │   ├── framework.interface.ts
-│   │   │   │   ├── framework.registry.ts
-│   │   │   │   ├── agno.service.tsx
-│   │   │   │   ├── custom.service.tsx
-│   │   │   │   └── (adk.service.tsx, langgraph.service.tsx ...)
-│   │   │   └── agnoApiService.ts
-│   │   ├── store/            # Zustand 스토어 (auth, workspace, framework)
-│   │   ├── styles/           # 전역 CSS, Tailwind 설정
-│   │   ├── types/            # (agent.ts, chat.ts, trace.ts...)
-│   │   ├── utils/            # 공통 유틸리티 함수
-│   │   ├── App.tsx           # 메인 라우팅/테마 적용
-│   │   └── main.tsx          # 애플리케이션 시작점
-│   └── vite.config.ts
-│
-├── infra/                    # 인프라 설정 (IaC)
-│   ├── docker-compose/       # (신규) 서비스별/환경별 Docker Compose
-│   ├── nginx/                # API Gateway 설정
-│   └── certs/                # 로컬 개발용 SSL 인증서
-│
-├── sdks/                     # (신규) A2A 프로토콜 SDK (REQ 2)
-│   ├── python-sdk/
-│   └── js-sdk/
-│
-├── docs/                     # 공통 문서 (본 README.md, SRS.md 등)
-│
-└── package.json              # (Monorepo 루트 - Lerna/Nx/Turborepo 관리)
-```
-
-## 5. 🌐 외부 개발 환경 (External Development Setup) - **중요**
-
-### 5.1 하이브리드 개발 전략
-
-본 프로젝트는 **8명의 개발자가 사외망에서 병렬 개발**하고, **사내망에서 통합 테스트**하는 하이브리드 전략을 채택합니다.
-
-**핵심 원칙**:
-- **Mock Services**: 사외망에서 사내 DB/Redis/SSO를 대체하는 Mock 서비스를 Docker Compose로 실행
-- **API-First Development**: 명확한 API 계약(OpenAPI)을 기반으로 각 팀이 독립적으로 개발
-- **환경 변수 기반 전환**: `.env.external` (사외망) ↔ `.env.internal` (사내망) 파일만 교체하면 코드 수정 없이 전환
-- **서비스 독립성**: 각 마이크로서비스는 독립적으로 실행 및 테스트 가능
-
-### 5.2 Mock Services 구성
-
-| 서비스 | 목적 | 기술 | 포트 |
-|--------|------|------|------|
-| **Mock SSO** | 사내 SSO 시뮬레이션 | FastAPI | 9999 |
-| **PostgreSQL** | 로컬 개발 DB | PostgreSQL 15 | 5432 |
-| **Redis** | 메시지 브로커/캐시 | Redis 7 | 6379 |
-
-### 5.3 빠른 시작 (Quick Start)
-
-```bash
-# 1. 저장소 클론
-git clone https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
-cd Agent-Platform-Development
-
-# 2. Mock Services 실행 (최우선)
-docker-compose -f infra/docker-compose/docker-compose.external.yml up -d
-
-# 3. 환경 변수 설정
-cp services/user-service/.env.external.example services/user-service/.env
-# (각 서비스 동일하게 설정)
-
-# 4. 데이터베이스 마이그레이션
-cd services/admin-service  # (Django)
-python manage.py migrate
-python manage.py createsuperuser
-
-# 5. 서비스별 개발 서버 실행
-# Frontend
-cd frontend && npm install && npm run dev  # http://localhost:9060
-
-# User Service
-cd services/user-service && uv run uvicorn main:app --reload --port 8001
-
-# Agent Service
-cd services/agent-service && uv run uvicorn main:app --reload --port 8002
-
-# ... (나머지 서비스 동일)
-```
-
-### 5.4 개발자별 작업 분할
-
-| Developer | 담당 모듈 | 기술 스택 |
-|-----------|----------|----------|
-| **Dev #1, #2** | Frontend (UI/UX, Playground) | React, TypeScript, WebSocket |
-| **Dev #3** | User Service + **Mock SSO** | FastAPI, JWT, SSO |
-| **Dev #4** | Admin Service (LLM/통계) | Django, DRF |
-| **Dev #5** | Agent Service (CRUD, AI 랭킹) | FastAPI, RAG |
-| **Dev #6** | Chat Service (WebSocket) | FastAPI, Channels |
-| **Dev #7** | Tracing Service (로그 프록시) | Go/Rust, gRPC |
-| **Dev #8** | Worker Service + Infra | Celery, Docker, CI/CD |
-
-### 5.5 상세 문서 링크
-
-- **[DEV_ENVIRONMENT.md](./DEV_ENVIRONMENT.md)**: 외부 개발 환경 상세 가이드 ⭐
-- **[MOCK_SERVICES.md](./MOCK_SERVICES.md)**: Mock SSO/DB/Redis 구현 가이드
-- **[API_CONTRACTS.md](./API_CONTRACTS.md)**: 서비스 간 API 계약 명세
-- **[TEAM_ASSIGNMENT.md](./TEAM_ASSIGNMENT.md)**: 8명 개발자 작업 분할 계획 ⭐
+**Version**: 2.0
+**Development Period**: 6 Weeks (Sprint 0~4)
+**Team**: 4 Developers (DEV1: Senior, SPRINT Lead)
+**Architecture**: Microservice (Multi-Repository)
+**Backend**: Python (FastAPI, Celery)
+**Frontend**: React 19 + TypeScript
 
 ---
 
-## 6. 🤝 개발 및 협업 가이드
- * Git 브랜칭: main (안정, 배포), develop (개발 통합), feature/{TASK-ID} (기능 개발) 플로우를 사용합니다.
- * 커밋/PR: 모든 커밋은 type(scope): message (예: feat(agent-service): A2A 등록 API 구현) 형식을 따릅니다. PR은 반드시 1명 이상의 리뷰어 승인을 받아야 develop에 머지됩니다.
- * 코드 품질: 모든 커밋은 lint-staged를 통해 Pre-commit Hook이 실행되어, 각 서비스/앱에 정의된 린트(ESLint, Flake8) 및 포맷터(Prettier, Black)를 통과해야 합니다.
- * 상태 관리 (Frontend): 전역 상태는 Zustand를 사용합니다. 서버 상태(API 데이터)는 react-query (TanStack Query) 도입을 적극 권장합니다.
- * **일일 스탠드업**: 매일 오전 10시, API 인터페이스 변경 사항 공유
- * **주간 API Review**: 매주 금요일 오후 3시, Backend 팀 API 스펙 검토
+## 📋 목차
 
-## 7. 📞 Contact Point (REQ 3)
- * 책임 개발자: 한승하 (syngha.han@samsung.com)
- * 문의 채널: Slack #a2g-dev (일반), #a2g-frontend, #a2g-backend
- * 버그 리포트 / 기능 제안: GitHub Issues ([링크](https://github.com/A2G-Dev-Space/Agent-Platform-Development/issues))
-<!-- end list -->
+1. [프로젝트 비전](#1-프로젝트-비전)
+2. [핵심 기능](#2-핵심-기능)
+3. [Microservice Architecture](#3-microservice-architecture)
+4. [Multi-Repository 구조](#4-multi-repository-구조)
+5. [기술 스택](#5-기술-스택)
+6. [빠른 시작](#6-빠른-시작)
+7. [4명 팀 구성](#7-4명-팀-구성)
+8. [6주 개발 일정](#8-6주-개발-일정)
+9. [문서 가이드](#9-문서-가이드)
+10. [Contact](#10-contact)
 
+---
+
+## 1. 프로젝트 비전
+
+**A2G Agent Platform**은 개발자들이 **LLM 기반 에이전트를 쉽게 개발, 테스트, 배포, 모니터링할 수 있는 통합 플랫폼**입니다.
+
+### 🎯 핵심 목표
+
+- **A2A 프로토콜 통합**: Agno, ADK, Langchain-agent 등 다양한 프레임워크를 표준 인터페이스로 통합
+- **지능형 Agent 추천**: 사용자 쿼리를 분석하여 가장 적합한 Top-K Agent 자동 추천
+- **실시간 디버깅**: Multi-Agent Trace, WebSocket 기반 실시간 로그 추적
+- **Microservice Architecture**: 독립적인 배포 및 확장 가능한 고가용성 시스템
+- **외부 개발 환경**: 사외망에서도 완전한 기능 개발 가능 (Mock Services 제공)
+
+---
+
+## 2. 핵심 기능
+
+### 2.1 A2A (Agent-to-Agent) 프로토콜 ⭐ 신규
+
+다양한 Agent 프레임워크를 하나의 표준 인터페이스로 통합합니다.
+
+**지원 프레임워크**:
+- **Agno**: Samsung 사내 Agent 프레임워크
+- **ADK (Agent Development Kit)**: 범용 Agent 개발 도구
+- **Langchain-agent**: LangChain 기반 Agent
+- **Custom**: 사용자 정의 Agent
+
+**예시**:
+```bash
+# Agno Agent 등록
+POST /api/agents/a2a/register
+{
+  "name": "Customer Support Agent",
+  "framework": "Agno",
+  "a2a_endpoint": "http://agno-server:9080/a2a/invoke",
+  "capabilities": ["customer support", "Q&A", "ticket management"]
+}
+
+# 운영 전환
+POST /api/agents/{id}/deploy
+```
+
+### 2.2 Top-K Agent 추천 시스템 ⭐ 신규
+
+**운영 페이지**에서 사용자 쿼리를 입력하면, AI가 **가장 적합한 Agent Top-K개**를 추천합니다.
+
+**동작 원리**:
+1. 사용자 쿼리: "고객 문의를 처리할 에이전트가 필요해"
+2. LLM이 쿼리를 분석하여 임베딩 벡터 생성
+3. 등록된 Agent의 capabilities와 유사도 계산 (RAG)
+4. 활성 상태(status=PRODUCTION)이고 헬스한 Agent만 필터링
+5. Top-K개 반환 (유사도 순)
+
+**결과**:
+```json
+{
+  "recommendations": [
+    {
+      "agent": { "name": "Customer Support Agent", ... },
+      "similarity_score": 0.94,
+      "match_reasons": ["customer support", "Q&A"]
+    }
+  ]
+}
+```
+
+### 2.3 실시간 Multi-Agent Tracing
+
+**개발 모드**에서 Agent의 LLM 호출을 실시간으로 추적합니다.
+
+- **Live Trace**: WebSocket 기반 실시간 로그 표시
+- **Multi-Agent 추적**: 여러 Agent가 협업하는 경우 각 Agent별 로그 색상 구분
+- **상세 메트릭**: LLM 모델, 프롬프트, 응답, 레이턴시 등
+
+### 2.4 Google Gemini 스타일 UI
+
+- **모드별 테마**: 운영 모드(파스텔 블루), 개발 모드(파스텔 레드)
+- **라이트/다크 모드**: 완벽한 테마 지원
+- **리치 미디어**: Markdown, 코드 블록, 파일/이미지 업로드
+
+---
+
+## 3. Microservice Architecture
+
+### 3.1 서비스 구성
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  API Gateway (Nginx)                    │
+│                  https://localhost:9050                 │
+└──────────┬────────────┬────────────┬────────────────────┘
+           │            │            │
+    ┌──────▼──────┐ ┌──▼──────┐ ┌──▼──────┐
+    │   User      │ │  Agent  │ │  Chat   │
+    │  Service    │ │ Service │ │ Service │
+    │   :8001     │ │  :8002  │ │  :8003  │
+    │             │ │         │ │         │
+    │ - SSO       │ │ - A2A   │ │ - WS    │
+    │ - Auth      │ │ - Top-K │ │ - Msg   │
+    └─────────────┘ └─────────┘ └─────────┘
+
+    ┌───────────┐ ┌──────────┐ ┌──────────┐
+    │  Tracing  │ │  Admin   │ │  Worker  │
+    │  Service  │ │ Service  │ │ Service  │
+    │   :8004   │ │  :8005   │ │ (Celery) │
+    └───────────┘ └──────────┘ └──────────┘
+
+    ┌─────────────────────────────────────────┐
+    │  PostgreSQL + Redis + Mock SSO          │
+    └─────────────────────────────────────────┘
+```
+
+### 3.2 서비스 책임
+
+| 서비스 | 기술 | 포트 | 책임 |
+|--------|------|------|------|
+| **Frontend** | React + TypeScript | 9060 | UI/UX, SPA |
+| **User Service** | FastAPI (Python) | 8001 | SSO, 인증, RBAC, API Key |
+| **Agent Service** ⭐ | FastAPI (Python) | 8002 | A2A 프로토콜, Top-K 추천, Agent CRUD |
+| **Chat Service** | FastAPI (Python) | 8003 | Session, Message, WebSocket |
+| **Tracing Service** | FastAPI (Python) | 8004 | Log Proxy, Trace, Multi-Agent |
+| **Admin Service** | FastAPI (Python) | 8005 | LLM 관리, 통계 |
+| **Worker Service** | Celery (Python) | - | Health Check, Cleanup, Notify |
+
+**중요**: 모든 Backend 서비스는 **Python (FastAPI/Celery)**로 통일합니다.
+
+---
+
+## 4. Multi-Repository 구조
+
+### 4.1 Repository 목록
+
+기존 Mono-repo를 폐기하고, **각 서비스를 독립 Repository**로 분리합니다.
+
+```
+GitHub Organization: A2G-Dev-Space
+
+├── agent-platform-frontend/
+│   └── React SPA
+│
+├── agent-platform-user-service/
+│   └── FastAPI (SSO, Auth, API Key)
+│
+├── agent-platform-agent-service/
+│   └── FastAPI (A2A, Top-K, RAG)
+│
+├── agent-platform-chat-service/
+│   └── FastAPI (Session, Message, WebSocket)
+│
+├── agent-platform-tracing-service/
+│   └── FastAPI (Log Proxy, Trace)
+│
+├── agent-platform-admin-service/
+│   └── FastAPI (LLM, Stats)
+│
+├── agent-platform-worker-service/
+│   └── Celery (Health, Cleanup)
+│
+└── agent-platform-infra/
+    ├── docker-compose/
+    ├── mock-sso/
+    ├── nginx/
+    └── certs/
+```
+
+### 4.2 Repository 클론
+
+```bash
+# 1. Infra 저장소 (최우선)
+git clone https://github.com/A2G-Dev-Space/agent-platform-infra.git
+cd agent-platform-infra
+docker-compose -f docker-compose/docker-compose.external.yml up -d
+
+# 2. Frontend
+git clone https://github.com/A2G-Dev-Space/agent-platform-frontend.git
+
+# 3. Backend Services
+git clone https://github.com/A2G-Dev-Space/agent-platform-user-service.git
+git clone https://github.com/A2G-Dev-Space/agent-platform-agent-service.git
+git clone https://github.com/A2G-Dev-Space/agent-platform-chat-service.git
+git clone https://github.com/A2G-Dev-Space/agent-platform-tracing-service.git
+git clone https://github.com/A2G-Dev-Space/agent-platform-admin-service.git
+git clone https://github.com/A2G-Dev-Space/agent-platform-worker-service.git
+```
+
+---
+
+## 5. 기술 스택
+
+### 5.1 Frontend
+
+| 기술 | 용도 |
+|------|------|
+| **React 19** | UI 프레임워크 |
+| **TypeScript** | 타입 안정성 |
+| **Vite** | 빌드 도구 |
+| **Zustand** | 전역 상태 관리 |
+| **Tailwind CSS** | 유틸리티 CSS |
+| **MUI (Material-UI)** | Gemini 스타일 컴포넌트 |
+| **Socket.IO Client** | WebSocket 실시간 통신 |
+| **React Markdown** | Markdown 렌더링 |
+
+### 5.2 Backend (All Python)
+
+| 기술 | 용도 |
+|------|------|
+| **FastAPI** | RESTful API, WebSocket |
+| **Celery** | 비동기 작업 (Worker Service) |
+| **PostgreSQL** | 데이터베이스 |
+| **Redis** | Celery Broker, Pub/Sub, Cache |
+| **LangChain** | RAG (Top-K 추천) |
+| **FAISS / Pinecone** | Vector DB (임베딩 검색) |
+| **OpenAI Embeddings** | 쿼리/Agent 임베딩 |
+
+### 5.3 Infrastructure
+
+| 기술 | 용도 |
+|------|------|
+| **Nginx** | API Gateway, SSL, 라우팅 |
+| **Docker** | 컨테이너화 |
+| **Docker Compose** | Multi-container 관리 |
+| **GitHub Actions** | CI/CD |
+
+---
+
+## 6. 빠른 시작
+
+### 6.1 사전 준비
+
+- Docker Desktop
+- Python 3.11+
+- Node.js 18+
+- Git
+
+### 6.2 Mock Services 실행 (최우선)
+
+```bash
+# 1. Infra 저장소 클론
+git clone https://github.com/A2G-Dev-Space/agent-platform-infra.git
+cd agent-platform-infra
+
+# 2. Mock Services 실행
+docker-compose -f docker-compose/docker-compose.external.yml up -d
+
+# 확인
+docker ps
+# 출력: mock-sso, postgres, redis 컨테이너 실행 중
+```
+
+### 6.3 서비스별 실행
+
+**Frontend**:
+```bash
+cd agent-platform-frontend
+npm install
+npm run dev
+# http://localhost:9060
+```
+
+**User Service**:
+```bash
+cd agent-platform-user-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
+
+**Agent Service**:
+```bash
+cd agent-platform-agent-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8002
+```
+
+**Chat Service**:
+```bash
+cd agent-platform-chat-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8003
+```
+
+**Tracing Service**:
+```bash
+cd agent-platform-tracing-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8004
+```
+
+**Admin Service**:
+```bash
+cd agent-platform-admin-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8005
+```
+
+**Worker Service**:
+```bash
+cd agent-platform-worker-service
+pip install -r requirements.txt
+celery -A app.worker worker --loglevel=info
+celery -A app.worker beat --loglevel=info  # 별도 터미널
+```
+
+---
+
+## 7. 4명 팀 구성
+
+### 7.1 역할 분담
+
+| Developer | 담당 서비스 | 주요 책임 | 기술 |
+|-----------|------------|----------|------|
+| **DEV1** 🔥 (Senior, SPRINT Lead) | Frontend + Agent Service | UI/UX, A2A 프로토콜, Top-K 추천 | React, FastAPI, RAG |
+| **DEV2** | User Service + Admin Service | SSO, 인증, LLM 관리, 통계 | FastAPI, JWT |
+| **DEV3** | Chat Service + Worker Service | WebSocket, Celery, Health Check | FastAPI, Redis |
+| **DEV4** | Tracing Service + Infra | Log Proxy, Docker, CI/CD | FastAPI, Nginx |
+
+### 7.2 DEV1의 역할 (SPRINT Lead)
+
+**DEV1**은 가장 능숙한 개발자로, **모든 SPRINT를 주도**합니다:
+
+1. **Frontend 전체 개발**:
+   - Layout, 공통 컴포넌트, 상태 관리
+   - Agent Playground, Chat UI
+   - Top-K 추천 페이지
+
+2. **Agent Service 핵심 기능**:
+   - A2A 프로토콜 구현
+   - Top-K Agent 추천 시스템 (RAG)
+   - Agent CRUD API
+
+3. **SPRINT 리딩**:
+   - Sprint 계획 수립
+   - 팀원 코드 리뷰
+   - 기술적 의사결정
+
+---
+
+## 8. 6주 개발 일정
+
+### 8.1 Sprint 계획
+
+| Sprint | 기간 | 주요 목표 | 담당 |
+|--------|------|----------|------|
+| **Sprint 0** | Week 1 | Mock Services, Infra 구축, Repository 생성 | DEV4, DEV2 |
+| **Sprint 1** | Week 2 | User/Agent/Chat Service 기본 API 구현 | 전체 (DEV1 리드) |
+| **Sprint 2** | Week 3 | Frontend Core + A2A 프로토콜 구현 | DEV1 (주도), DEV2 |
+| **Sprint 3** | Week 4-5 | Top-K 추천 + WebSocket + Tracing | DEV1 (주도), DEV3, DEV4 |
+| **Sprint 4** | Week 6 | 통합 테스트, 버그 수정, 사내망 배포 | 전체 |
+
+### 8.2 Sprint 0 체크리스트 (Week 1) - 최우선
+
+**DEV4 (Infra Lead)**:
+- [ ] `agent-platform-infra` 저장소 생성
+- [ ] Mock SSO 구현 (FastAPI)
+- [ ] `docker-compose.external.yml` 작성
+- [ ] Nginx 설정
+
+**DEV2 (Backend Lead)**:
+- [ ] `agent-platform-user-service` 저장소 생성
+- [ ] User 모델 정의
+- [ ] SSO 연동 준비
+
+**DEV1 (SPRINT Lead)**:
+- [ ] `agent-platform-frontend` 저장소 생성
+- [ ] React 프로젝트 초기화
+- [ ] `agent-platform-agent-service` 저장소 생성
+- [ ] Agent 모델 설계 (A2A 필드 포함)
+
+**DEV3**:
+- [ ] `agent-platform-chat-service` 저장소 생성
+- [ ] ChatSession/ChatMessage 모델 정의
+- [ ] `agent-platform-worker-service` 저장소 생성
+
+---
+
+## 9. 문서 가이드
+
+### 9.1 필수 문서 (읽는 순서)
+
+1. **[ARCHITECTURE.md](./ARCHITECTURE.md)** ⭐ - 전체 Microservice 구조 및 도식도
+2. **[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)** - 개발 가이드 (팀 분담, 체크리스트 포함)
+3. **[DEV_ENVIRONMENT.md](./DEV_ENVIRONMENT.md)** - 외부 개발 환경 설정
+4. **[API_CONTRACTS.md](./API_CONTRACTS.md)** - 서비스 간 API 계약서
+5. **[MOCK_SERVICES.md](./MOCK_SERVICES.md)** - Mock SSO/DB/Redis 구현
+
+### 9.2 상세 스펙 문서
+
+- **[SRS.md](./SRS.md)** - 요구사항 명세서
+- **[BLUEPRINT.md](./BLUEPRINT.md)** - UI/UX 설계 명세서
+- **[SSO_GUIDE.md](./SSO_GUIDE.md)** - SSO 연동 가이드
+
+---
+
+## 10. Contact
+
+**책임 개발자**: 한승하 (syngha.han@samsung.com)
+**Slack 채널**: #a2g-dev (일반 문의), #a2g-frontend, #a2g-backend
+**GitHub Issues**: [https://github.com/A2G-Dev-Space/agent-platform-infra/issues](https://github.com/A2G-Dev-Space/agent-platform-infra/issues)
+
+---
+
+## 🚀 Quick Links
+
+- [ARCHITECTURE.md - Microservice 구조 및 도식도](./ARCHITECTURE.md)
+- [DEVELOPMENT_GUIDE.md - 개발 가이드 (4명 팀 분담)](./DEVELOPMENT_GUIDE.md)
+- [API_CONTRACTS.md - API 계약서](./API_CONTRACTS.md)
+- [DEV_ENVIRONMENT.md - 외부 개발 환경](./DEV_ENVIRONMENT.md)
+
+---
+
+**Generated with** 🤖 Claude Code
