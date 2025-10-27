@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock SSO Login</title>
+    <style>
+        body {
+            font-family: 'Pretendard', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .user-card {
+            border: 2px solid #e0e0e0;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .user-card:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+        }
+        .user-card h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+        }
+        .user-card p {
+            margin: 4px 0;
+            color: #666;
+            font-size: 13px;
+        }
+    </style>
+    <script>
+        function selectUser(username) {
+            document.getElementById('selected-user').value = username;
+            document.getElementById('login-form').submit();
+        }
+    </script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>🔐 Mock SSO</h1>
+        <p class="subtitle">개발용 인증 서비스 - 사용자를 선택하세요</p>
+
+        <form id="login-form" method="POST" action="/mock-sso/authenticate">
+            <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+            <input type="hidden" id="selected-user" name="username" value="">
+
+            {% for user_id, user in users.items() %}
+            <div class="user-card" onclick="selectUser('{{ user_id }}')">
+                <h3>{{ user.username }} ({{ user.username_en }})</h3>
+                <p><strong>ID:</strong> {{ user.loginid }}</p>
+                <p><strong>Email:</strong> {{ user.mail }}</p>
+                <p><strong>부서:</strong> {{ user.deptname }}</p>
+            </div>
+            {% endfor %}
+        </form>
+    </div>
+</body>
+</html>

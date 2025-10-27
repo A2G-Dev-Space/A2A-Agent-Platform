@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Mock SSO Service
+  mock-sso:
+    build:
+      context: ../mock-sso
+      dockerfile: Dockerfile
+    container_name: a2g_mock_sso
+    ports:
+      - "9999:9999"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - a2g_external_network
+
+  # PostgreSQL (로컬 개발용)
+  postgres:
+    image: postgres:15-alpine
+    container_name: a2g_postgres_external
+    environment:
+      POSTGRES_DB: agent_dev_platform_local
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_external:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d agent_dev_platform_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - a2g_external_network
+
+  # Redis (로컬 개발용)
+  redis:
+    image: redis:7-alpine
+    container_name: a2g_redis_external
+    command: redis-server --requirepass dev_redis_password --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_external:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - a2g_external_network
+
+volumes:
+  postgres_data_external:
+    driver: local
+  redis_data_external:
+    driver: local
+
+networks:
+  a2g_external_network:
+    name: a2g_external_network

@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Nginx API Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: a2g_nginx_internal
+    ports:
+      - "9050:443"  # 외부 9050 → 내부 443 (SSL)
+    volumes:
+      - ../nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../certs/production.crt:/etc/nginx/certs/localhost.crt:ro
+      - ../certs/production.key:/etc/nginx/certs/localhost.key:ro
+    depends_on:
+      - user-service
+      - agent-service
+      - chat-service
+      - tracing-service
+      - admin-service
+    networks:
+      - a2g_internal_network
+
+  # User Service (백엔드 서비스는 별도 repository에서 빌드)
+  user-service:
+    image: a2g/user-service:latest
+    container_name: a2g_user_service
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../services/user-service/.env.internal
+    networks:
+      - a2g_internal_network
+
+  # Agent Service
+  agent-service:
+    image: a2g/agent-service:latest
+    container_name: a2g_agent_service
+    ports:
+      - "8002:8002"
+    env_file:
+      - ../services/agent-service/.env.internal
+    networks:
+      - a2g_internal_network
+
+  # Chat Service
+  chat-service:
+    image: a2g/chat-service:latest
+    container_name: a2g_chat_service
+    ports:
+      - "8003:8003"
+    env_file:
+      - ../services/chat-service/.env.internal
+    networks:
+      - a2g_internal_network
+
+  # Tracing Service
+  tracing-service:
+    image: a2g/tracing-service:latest
+    container_name: a2g_tracing_service
+    ports:
+      - "8004:8004"
+    env_file:
+      - ../services/tracing-service/.env.internal
+    networks:
+      - a2g_internal_network
+
+  # Admin Service
+  admin-service:
+    image: a2g/admin-service:latest
+    container_name: a2g_admin_service
+    ports:
+      - "8005:8005"
+    env_file:
+      - ../services/admin-service/.env.internal
+    networks:
+      - a2g_internal_network
+
+networks:
+  a2g_internal_network:
+    name: a2g_internal_network
+
+# Note: 사내망에서는 외부 PostgreSQL/Redis 사용
+# DB_HOST=a2g-db.company.com
+# REDIS_HOST=redis.company.com
