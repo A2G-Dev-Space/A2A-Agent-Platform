@@ -11,7 +11,7 @@
 ### 1.1 목적
 
 이 문서는 A2G Platform의 각 마이크로서비스가 제공하는 **API 계약(Contract)**을 명확히 정의하여:
-- **8명의 개발자가 독립적으로 개발**할 수 있도록 합니다.
+- **4명의 개발자가 독립적으로 개발**할 수 있도록 합니다.
 - **서비스 간 의존성을 최소화**하고, Mock 데이터로 개발을 진행할 수 있습니다.
 - **통합 테스트 시 API 호환성**을 보장합니다.
 
@@ -53,7 +53,7 @@
 
 **책임**: 사용자 인증, 권한 관리, API Key 관리
 **Base URL**: `http://localhost:8001` (개발), `https://a2g.company.com/api/users` (운영)
-**개발 담당**: Developer #3, #4
+**개발 담당**: DEV2 (Backend Lead)
 
 ### 2.1 Authentication APIs
 
@@ -198,7 +198,7 @@ Authorization: Bearer <token>
 
 **책임**: 에이전트 CRUD, A2A 프로토콜, AI 랭킹
 **Base URL**: `http://localhost:8002` (개발), `https://a2g.company.com/api/agents` (운영)
-**개발 담당**: Developer #5
+**개발 담당**: DEV1 (SPRINT Lead)
 
 ### 3.1 Agent CRUD APIs
 
@@ -225,6 +225,7 @@ Authorization: Bearer <token>
       "description": "고객 문의 처리 에이전트",
       "framework": "Agno",
       "status": "PRODUCTION",
+      "visibility": "TEAM",
       "skill_kr": "고객지원, 챗봇",
       "skill_en": "Customer Support, Chatbot",
       "logo_url": "https://cdn.example.com/logo.png",
@@ -359,7 +360,7 @@ Content-Type: application/json
 
 **책임**: 채팅 세션/메시지 관리, WebSocket 실시간 통신
 **Base URL**: `http://localhost:8003` (개발), `https://a2g.company.com/api/chat` (운영)
-**개발 담당**: Developer #6
+**개발 담당**: DEV3 (Frontend + Chat Service)
 
 ### 4.1 Chat Session APIs
 
@@ -383,6 +384,7 @@ Content-Type: application/json
   "agent_id": 1,
   "title": "New Conversation",
   "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+  "mode": "DEVELOPMENT",
   "created_at": "2025-10-27T10:30:00Z"
 }
 ```
@@ -460,6 +462,7 @@ Content-Type: application/json
   "session_id": 123,
   "role": "user",
   "content": "What is AI?",
+  "content_type": "text",
   "attachments": []
 }
 ```
@@ -524,7 +527,7 @@ wss://a2g.company.com/ws/trace/{trace_id}/?token=<JWT_TOKEN>
 
 **책임**: LLM 호출 로그 프록시, Trace 데이터 저장/조회
 **Base URL**: `http://localhost:8004` (개발), `https://a2g.company.com/api/tracing` (운영)
-**개발 담당**: Developer #7
+**개발 담당**: DEV1 (SPRINT Lead)
 
 ### 5.1 Log Proxy API
 
@@ -577,8 +580,176 @@ Authorization: Bearer <token>
       "completion": "AI stands for Artificial Intelligence...",
       "latency_ms": 1234,
       "timestamp": "2025-10-27T10:33:00Z"
+    },
+    {
+      "id": 102,
+      "log_type": "AGENT_TRANSFER",
+      "from_agent_id": "main-agent",
+      "to_agent_id": "analysis-agent",
+      "tool_name": "transfer_to_agent",
+      "transfer_reason": "데이터 분석 필요",
+      "timestamp": "2025-10-27T10:33:05Z"
+    },
+    {
+      "id": 103,
+      "log_type": "TOOL",
+      "agent_id": "analysis-agent",
+      "tool_name": "search_db",
+      "tool_input": {"query": "customer data"},
+      "tool_output": "[...]",
+      "timestamp": "2025-10-27T10:33:06Z"
     }
   ]
+}
+```
+
+---
+
+### 5.3 Agent 전환 감지 (Tool 기반) ⭐ 신규
+
+Tracing Service는 Tool 호출 로그를 분석하여 Agent 전환을 자동으로 감지하고 `AGENT_TRANSFER` 타입의 로그를 생성합니다.
+
+#### 5.3.1 Agent 전환 감지 로직
+
+**Framework별 감지 조건**:
+
+**1) ADK (Agent Development Kit)**:
+```python
+def detect_agent_transfer_adk(tool_log: dict) -> dict | None:
+    """
+    ADK의 transfer_to_agent tool 사용 시 Agent 전환 감지
+    """
+    if tool_log.get("tool_name") == "transfer_to_agent":
+        tool_input = tool_log.get("tool_input", {})
+
+        return {
+            "log_type": "AGENT_TRANSFER",
+            "from_agent_id": tool_log.get("agent_id"),
+            "to_agent_id": tool_input.get("target_agent"),  # ADK에서 제공
+            "tool_name": "transfer_to_agent",
+            "transfer_reason": tool_input.get("reason", "No reason provided"),
+            "timestamp": tool_log.get("timestamp")
+        }
+    return None
+```
+
+**ADK Tool Input 예시**:
+```json
+{
+  "tool_name": "transfer_to_agent",
+  "tool_input": {
+    "target_agent": "analysis-agent",
+    "reason": "사용자 요청이 데이터 분석을 필요로 합니다",
+    "context": {
+      "user_query": "고객 만족도 분석해줘"
+    }
+  }
+}
+```
+
+**2) Agno Framework**:
+```python
+def detect_agent_transfer_agno(tool_log: dict) -> dict | None:
+    """
+    Agno의 delegate_task_to_members tool 사용 시 Agent 전환 감지
+    """
+    if tool_log.get("tool_name") == "delegate_task_to_members":
+        tool_input = tool_log.get("tool_input", {})
+
+        return {
+            "log_type": "AGENT_TRANSFER",
+            "from_agent_id": tool_log.get("agent_id"),
+            "to_agent_id": tool_input.get("member_id"),  # Agno에서 제공
+            "tool_name": "delegate_task_to_members",
+            "transfer_reason": tool_input.get("task_description", "Task delegation"),
+            "timestamp": tool_log.get("timestamp")
+        }
+    return None
+```
+
+**Agno Tool Input 예시**:
+```json
+{
+  "tool_name": "delegate_task_to_members",
+  "tool_input": {
+    "member_id": "data-analyst",
+    "task_description": "고객 데이터 분석 수행",
+    "priority": "high",
+    "context": {
+      "data_source": "customer_feedback"
+    }
+  }
+}
+```
+
+---
+
+#### 5.3.2 Agent 전환 로그 생성 프로세스
+
+**Tracing Service 내부 로직**:
+
+1. **Tool 로그 수신**:
+   - LLM이 Tool을 호출하면, Tracing Service가 Tool 호출 로그를 기록
+
+2. **Agent 전환 감지**:
+   ```python
+   def process_tool_log(tool_log: dict, framework: str):
+       # 일반 Tool 로그 저장
+       save_log(tool_log)
+
+       # Agent 전환 감지
+       transfer_log = None
+       if framework == "ADK":
+           transfer_log = detect_agent_transfer_adk(tool_log)
+       elif framework == "Agno":
+           transfer_log = detect_agent_transfer_agno(tool_log)
+
+       # Agent 전환 로그가 감지되면 별도로 저장
+       if transfer_log:
+           save_log(transfer_log)
+           # WebSocket으로 실시간 전송
+           publish_to_websocket(transfer_log)
+   ```
+
+3. **WebSocket으로 실시간 전송**:
+   - Tool 로그와 Agent Transfer 로그를 모두 WebSocket으로 전송
+   - Frontend는 `log_type`에 따라 다른 UI로 렌더링
+
+---
+
+#### 5.3.3 Agent 전환 로그 포맷
+
+**LogEntry (AGENT_TRANSFER)**:
+```json
+{
+  "id": 102,
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+  "log_type": "AGENT_TRANSFER",
+  "from_agent_id": "main-agent",
+  "to_agent_id": "analysis-agent",
+  "tool_name": "transfer_to_agent",
+  "tool_input": {
+    "target_agent": "analysis-agent",
+    "reason": "데이터 분석 필요"
+  },
+  "transfer_reason": "데이터 분석 필요",
+  "timestamp": "2025-10-27T10:33:05Z"
+}
+```
+
+**WebSocket 메시지 포맷**:
+```json
+{
+  "type": "agent_transfer",
+  "data": {
+    "id": 102,
+    "log_type": "AGENT_TRANSFER",
+    "from_agent_id": "main-agent",
+    "to_agent_id": "analysis-agent",
+    "tool_name": "transfer_to_agent",
+    "transfer_reason": "데이터 분석 필요",
+    "timestamp": "2025-10-27T10:33:05Z"
+  }
 }
 ```
 
@@ -588,7 +759,7 @@ Authorization: Bearer <token>
 
 **책임**: LLM 모델 관리, 사용자 통계, Django Admin
 **Base URL**: `http://localhost:8005` (개발), `https://a2g.company.com/api/admin` (운영)
-**개발 담당**: Developer #4
+**개발 담당**: DEV2 (Backend Lead)
 
 ### 6.1 LLM Model Management
 
@@ -709,7 +880,7 @@ Authorization: Bearer <token>
 
 **책임**: 비동기 작업 (헬스 체크, 정리 작업, 알림)
 **실행 방식**: Celery Beat + Worker
-**개발 담당**: Developer #8
+**개발 담당**: DEV4 (Infra Lead)
 
 ### 7.1 주기적 작업 (Celery Beat)
 
@@ -750,9 +921,500 @@ Authorization: Bearer <token>
 
 ---
 
-## 8. 🔄 서비스 간 통신 패턴
+## 8. 🎯 Orchestration Service API (신규 - 통합 Playground)
 
-### 8.1 Frontend → Backend
+**책임**: 복수 Agent 조합 실행, AI 기반 Agent 자동 선택
+**Base URL**: `http://localhost:8006` (개발), `https://a2g.company.com/api/orchestrate` (운영)
+**개발 담당**: DEV1 (SPRINT Lead)
+
+### 8.1 Orchestration APIs
+
+#### 8.1.1 복수 Agent 실행 (수동 선택)
+
+```http
+POST /api/orchestrate/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "query": "고객 만족도 분석 보고서 만들어줘",
+  "agent_ids": [1, 2, 3],
+  "execution_mode": "sequential",
+  "session_id": 123
+}
+```
+
+**쿼리 파라미터**:
+- `query` (required): 사용자 요청
+- `agent_ids` (optional): 수동으로 선택한 Agent ID 목록 (없을 경우 자동 선택)
+- `execution_mode` (required): `sequential` | `parallel` | `hybrid`
+- `session_id` (required): Chat Session ID
+
+**응답**:
+```json
+{
+  "orchestration_id": "orch_abc123",
+  "status": "in_progress",
+  "agents": [
+    {
+      "agent_id": 1,
+      "agent_name": "Customer Data Agent",
+      "status": "completed",
+      "result": "고객 문의 데이터를 추출했습니다. 총 1,234건의 문의가 발견되었습니다.",
+      "latency_ms": 2500
+    },
+    {
+      "agent_id": 2,
+      "agent_name": "Analysis Agent",
+      "status": "in_progress",
+      "result": null,
+      "latency_ms": null
+    },
+    {
+      "agent_id": 3,
+      "agent_name": "Report Generator Agent",
+      "status": "pending",
+      "result": null,
+      "latency_ms": null
+    }
+  ],
+  "created_at": "2025-10-27T10:30:00Z"
+}
+```
+
+---
+
+#### 8.1.2 복수 Agent 실행 (자동 선택)
+
+```http
+POST /api/orchestrate/auto/
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "query": "고객 문의 데이터를 분석해서 보고서 만들어줘",
+  "session_id": 123
+}
+```
+
+**동작**:
+1. 사용자 `query`를 임베딩으로 변환
+2. Agent 목록에서 Top-K RAG 기반 유사도 검색
+3. LLM을 사용하여 적합한 Agent 선택 및 실행 전략 결정
+4. 선택된 Agent들을 순차/병렬 실행
+
+**응답**:
+```json
+{
+  "orchestration_id": "orch_xyz789",
+  "status": "completed",
+  "selected_agents": [
+    {
+      "agent_id": 1,
+      "agent_name": "Customer Data Agent",
+      "similarity_score": 0.92,
+      "reason": "고객 데이터 추출 기능이 요청과 일치"
+    },
+    {
+      "agent_id": 2,
+      "agent_name": "Analysis Agent",
+      "similarity_score": 0.88,
+      "reason": "데이터 분석 전문 Agent"
+    },
+    {
+      "agent_id": 3,
+      "agent_name": "Report Generator Agent",
+      "similarity_score": 0.85,
+      "reason": "보고서 생성 전문 Agent"
+    }
+  ],
+  "execution_mode": "sequential",
+  "final_result": "## 고객 만족도 분석 보고서\n\n### 요약\n- 전체 만족도: 87%\n...",
+  "total_latency_ms": 8500,
+  "created_at": "2025-10-27T10:30:00Z"
+}
+```
+
+---
+
+#### 8.1.3 Orchestration 상태 조회
+
+```http
+GET /api/orchestrate/{orchestration_id}/
+Authorization: Bearer <token>
+```
+
+**응답**: 위와 동일한 포맷
+
+---
+
+### 8.2 Agent 선택 알고리즘
+
+**자동 선택 프로세스**:
+
+1. **임베딩 생성**:
+   ```python
+   from openai import OpenAI
+
+   client = OpenAI()
+   query_embedding = client.embeddings.create(
+       input=user_query,
+       model="text-embedding-ada-002"
+   ).data[0].embedding
+   ```
+
+2. **Top-K RAG 검색**:
+   ```python
+   # FAISS 또는 Pinecone을 사용한 유사도 검색
+   import faiss
+
+   index = faiss.IndexFlatL2(1536)  # OpenAI embedding dimension
+   top_k_agents = index.search(query_embedding, k=5)
+   ```
+
+3. **LLM 기반 Agent 선택**:
+   ```python
+   prompt = f"""
+   사용자 요청: {user_query}
+
+   사용 가능한 Agent:
+   {agent_list}
+
+   다음 작업을 수행하세요:
+   1. 사용자 요청에 가장 적합한 Agent 3-5개를 선택하세요.
+   2. 실행 순서를 결정하세요 (순차/병렬).
+   3. 각 Agent의 역할을 설명하세요.
+
+   JSON 형식으로 응답하세요.
+   """
+
+   response = llm.chat.completions.create(
+       model="gpt-4",
+       messages=[{"role": "user", "content": prompt}]
+   )
+   ```
+
+4. **실행 전략 결정**:
+   - **Sequential**: Agent들이 순차적으로 실행되어야 할 때 (이전 결과가 다음 Agent에 필요)
+   - **Parallel**: Agent들이 독립적으로 실행 가능할 때
+   - **Hybrid**: 일부는 병렬, 일부는 순차 실행
+
+---
+
+## 9. 🔌 Framework별 Agent 실행 API
+
+### 9.1 Agno Framework
+
+**Endpoint**: Agent가 제공하는 REST API
+
+#### 9.1.1 Agent 목록 조회
+
+```http
+GET {agno_base_url}/agents
+```
+
+**응답**:
+```json
+{
+  "agents": [
+    {
+      "id": "main-agent",
+      "name": "Main Agent",
+      "description": "Main customer support agent"
+    },
+    {
+      "id": "analysis-agent",
+      "name": "Analysis Agent",
+      "description": "Data analysis agent"
+    }
+  ]
+}
+```
+
+---
+
+#### 9.1.2 Agent 실행
+
+```http
+POST {agno_base_url}/agents/{agent_id}/runs
+Content-Type: multipart/form-data
+
+prompt=안녕하세요
+```
+
+**응답**: SSE (Server-Sent Events) 스트리밍
+
+```
+data: {"type": "chunk", "content": "안녕하세요"}
+data: {"type": "chunk", "content": "! 무엇을"}
+data: {"type": "chunk", "content": " 도와드릴까요?"}
+data: {"type": "done"}
+```
+
+---
+
+#### 9.1.3 Team 목록 조회
+
+```http
+GET {agno_base_url}/teams
+```
+
+**응답**:
+```json
+{
+  "teams": [
+    {
+      "id": "support-team",
+      "name": "Customer Support Team",
+      "agents": ["main-agent", "escalation-agent"]
+    }
+  ]
+}
+```
+
+---
+
+#### 9.1.4 Team 실행
+
+```http
+POST {agno_base_url}/teams/{team_id}/runs
+Content-Type: multipart/form-data
+
+prompt=고객 문의 처리해주세요
+```
+
+**응답**: SSE 스트리밍 (Agent 실행과 동일)
+
+---
+
+### 9.2 Langchain (LangGraph) Framework - A2A 프로토콜
+
+**Endpoint**: Agent가 제공하는 JSON-RPC 2.0 Endpoint
+
+#### 9.2.1 Agent Card 조회
+
+```http
+GET {a2a_endpoint}/.well-known/agent-card.json
+```
+
+**응답**:
+```json
+{
+  "name": "My Langchain Agent",
+  "description": "Q&A and summarization agent",
+  "skills": ["qa", "summarization"],
+  "input_modes": ["text"],
+  "output_modes": ["text", "markdown"],
+  "rpc_endpoint": "/rpc"
+}
+```
+
+---
+
+#### 9.2.2 동기 메시지 전송 (message/send)
+
+```http
+POST {a2a_endpoint}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "content": "What is AI?"
+    }
+  },
+  "id": 1
+}
+```
+
+**응답**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "message": {
+      "role": "assistant",
+      "content": "AI stands for Artificial Intelligence..."
+    }
+  },
+  "id": 1
+}
+```
+
+---
+
+#### 9.2.3 스트리밍 메시지 전송 (message/stream)
+
+```http
+POST {a2a_endpoint}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/stream",
+  "params": {
+    "message": {
+      "role": "user",
+      "content": "Explain quantum computing"
+    }
+  },
+  "id": 2
+}
+```
+
+**응답**: SSE 스트리밍
+
+```
+data: {"jsonrpc": "2.0", "result": {"chunk": "Quantum"}, "id": 2}
+data: {"jsonrpc": "2.0", "result": {"chunk": " computing"}, "id": 2}
+data: {"jsonrpc": "2.0", "result": {"chunk": " is..."}, "id": 2}
+data: {"jsonrpc": "2.0", "result": {"done": true}, "id": 2}
+```
+
+---
+
+#### 9.2.4 작업 상태 조회 (tasks/get)
+
+```http
+POST {a2a_endpoint}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "tasks/get",
+  "params": {
+    "task_id": "task_abc123"
+  },
+  "id": 3
+}
+```
+
+**응답**:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "task_id": "task_abc123",
+    "status": "completed",
+    "result": "..."
+  },
+  "id": 3
+}
+```
+
+---
+
+### 9.3 ADK (Agent Development Kit) Framework - A2A 프로토콜
+
+**Endpoint**: ADK가 제공하는 A2A Endpoint
+
+#### 9.3.1 Agent Card 조회
+
+```http
+GET {a2a_endpoint}/.well-known/agent-card.json
+```
+
+**응답**:
+```json
+{
+  "name": "My ADK Agent",
+  "description": "Customer support agent built with ADK",
+  "skills": ["customer_support", "faq"],
+  "input_modes": ["text"],
+  "output_modes": ["text"],
+  "rpc_endpoint": "/"
+}
+```
+
+---
+
+#### 9.3.2 메시지 전송
+
+ADK Agent는 Langchain과 동일한 JSON-RPC 2.0 프로토콜을 사용합니다.
+
+**동기 메시지**:
+```http
+POST {a2a_endpoint}/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "content": "Help me with my order"
+    }
+  },
+  "id": 1
+}
+```
+
+**스트리밍 메시지**:
+```http
+POST {a2a_endpoint}/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "method": "message/stream",
+  "params": {
+    "message": {
+      "role": "user",
+      "content": "Track my order #12345"
+    }
+  },
+  "id": 2
+}
+```
+
+**응답**: Langchain과 동일한 포맷
+
+---
+
+### 9.4 Custom Framework
+
+**Endpoint**: 사용자가 정의한 HTTP Endpoint
+
+Custom Framework는 표준화된 API가 없으므로, Platform은 다음과 같은 간단한 규칙을 따릅니다:
+
+#### 9.4.1 메시지 전송
+
+```http
+POST {custom_endpoint}
+Content-Type: application/json
+
+{
+  "message": "사용자 메시지",
+  "context": {
+    "session_id": 123,
+    "user_id": 456
+  }
+}
+```
+
+**응답**:
+```json
+{
+  "response": "Agent 응답"
+}
+```
+
+또는 SSE 스트리밍:
+```
+data: {"chunk": "응답"}
+data: {"chunk": " 텍스트"}
+data: {"done": true}
+```
+
+---
+
+## 10. 🔄 서비스 간 통신 패턴
+
+### 10.1 Frontend → Backend
 
 **패턴**: REST API (Axios)
 **인증**: `Authorization: Bearer <JWT_TOKEN>`
@@ -775,7 +1437,7 @@ export const fetchAgents = async () => {
 
 ---
 
-### 8.2 Tracing Service → Chat Service (실시간 로그)
+### 10.2 Tracing Service → Chat Service (실시간 로그)
 
 **패턴**: gRPC 또는 Redis Pub/Sub
 
@@ -807,7 +1469,7 @@ for message in pubsub.listen():
 
 ---
 
-### 8.3 Worker Service → Other Services
+### 10.3 Worker Service → Other Services
 
 **패턴**: HTTP REST API (requests/httpx)
 
@@ -831,7 +1493,7 @@ def check_all_llm_health():
 
 ---
 
-## 9. 🧪 Contract Testing 가이드
+## 11. 🧪 Contract Testing 가이드
 
 ### 9.1 Pact (Consumer-Driven Contracts)
 
@@ -892,7 +1554,7 @@ newman run agent-service.postman_collection.json \
 
 ---
 
-## 10. 📚 OpenAPI 스펙 생성
+## 12. 📚 OpenAPI 스펙 생성
 
 각 서비스는 자동으로 OpenAPI 스펙을 생성해야 합니다.
 
@@ -930,7 +1592,7 @@ REST_FRAMEWORK = {
 
 ---
 
-## 11. ⚠️ 주의사항
+## 13. ⚠️ 주의사항
 
 1. **API 변경 시 사전 공지**: API 스펙 변경 시 Slack/Email로 팀에 알립니다.
 2. **하위 호환성 유지**: 기존 클라이언트가 동작하도록 Deprecation 정책을 사용합니다.
@@ -939,7 +1601,7 @@ REST_FRAMEWORK = {
 
 ---
 
-## 12. 📞 문의
+## 14. 📞 문의
 
 - **API 변경 제안**: GitHub Issues에 `[API Contract]` 태그로 등록
 - **계약 테스트 실패**: Slack #a2g-dev 채널에 문의
@@ -947,4 +1609,4 @@ REST_FRAMEWORK = {
 
 ---
 
-**다음 단계**: [TEAM_ASSIGNMENT.md](./TEAM_ASSIGNMENT.md)에서 개발자별 작업 분할 계획 확인
+**다음 단계**: [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)에서 개발자별 작업 분할 계획 확인
