@@ -242,27 +242,45 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
   - **Trace Endpoint**: `/api/log-proxy/{trace_id}/chat/completions`
   - **Platform API Key**: 사용자의 활성 API Key
 
-#### REQ-DEV-03: Live Trace
-- WebSocket을 통해 실시간 LLM 호출 로그를 수신하고 표시해야 한다.
+#### REQ-DEV-03: Live Trace (실시간)
+- **WebSocket**을 통해 실시간 LLM 호출 로그를 수신하고 표시해야 한다.
+- 로그는 **시간순서대로** 표시되어야 한다.
 - 로그 항목은 다음 정보를 포함해야 한다:
-  - Log Type (LLM, Tool)
+  - Log Type (LLM, Tool, Agent Transfer)
   - Agent ID (Multi-Agent 추적)
   - Model, Prompt, Completion
   - Latency (ms), Tokens Used
+  - Timestamp (ISO 8601)
 
-#### REQ-DEV-04: Trace History 재생
+#### REQ-DEV-04: Trace Log Reset
+- 사용자는 Live Trace 로그를 **초기화(Reset)**할 수 있어야 한다.
+- Reset 버튼 클릭 시 **현재 세션의 모든 로그를 UI에서 제거**해야 한다.
+- DB에 저장된 로그는 유지되어야 한다 (History 재생 시 복구 가능).
+
+#### REQ-DEV-05: Agent 전환 감지 (Tool 기반)
+- 시스템은 특정 Tool 사용 시 Agent 전환을 감지하고 **별도 UI**로 표시해야 한다:
+  - **ADK**: `transfer_to_agent` tool 사용 시 Agent 전환으로 인식
+  - **Agno**: `delegate_task_to_members` tool 사용 시 Agent 전환으로 인식
+- Agent 전환 로그는 다음 정보를 포함해야 한다:
+  - `log_type`: "AGENT_TRANSFER"
+  - `from_agent_id`: 이전 Agent ID
+  - `to_agent_id`: 다음 Agent ID
+  - `tool_name`: "transfer_to_agent" 또는 "delegate_task_to_members"
+  - `tool_input`: Tool 입력 파라미터 (전환 사유 등)
+
+#### REQ-DEV-06: Trace History 재생
 - 사용자가 과거 Session을 클릭하면:
   - Chat History를 로드해야 한다.
-  - Trace History를 로드해야 한다.
+  - Trace History를 로드해야 한다 (시간순서대로).
   - WebSocket을 자동 재연결해야 한다 (이미 저장된 로그 표시).
 
-#### REQ-DEV-05: 개발 가이드 표시
+#### REQ-DEV-07: 개발 가이드 표시
 - TraceCapturePanel은 Framework별 개발 가이드를 표시해야 한다:
   - Agno: CORS 설정 가이드
   - ADK/Langchain: A2A 연동 가이드
   - 환경 변수 설정 예시
 
-#### REQ-DEV-06: LLM 모델 목록 표시
+#### REQ-DEV-08: LLM 모델 목록 표시
 - TraceCapturePanel은 현재 활성화/Healthy 상태인 LLM 모델 목록을 표시해야 한다.
 
 ---
@@ -515,6 +533,12 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 #### NFR-DEV-03: API-First 개발
 - 명확한 API 계약(OpenAPI Spec)을 기반으로 각 서비스가 독립적으로 개발되어야 한다.
 
+#### NFR-DEV-04: Sub-repository 구조
+- 플랫폼은 **Main Repository**와 **7개의 Sub-repositories**로 구성되어야 한다.
+- Git Submodules를 사용하여 Main Repository에 Sub-repositories를 포함해야 한다.
+- 각 Sub-repository는 독립적으로 개발/배포 가능해야 한다.
+- **상세 내용**: [GIT_SUBMODULES.md](./GIT_SUBMODULES.md) 참조
+
 ### 4.7. 다국어 및 접근성 (I18N & Accessibility)
 
 #### NFR-I18N-01: 다국어 지원
@@ -621,24 +645,34 @@ A2G Platform은 다음 두 가지 핵심 목표를 달성합니다:
 {
   "id": int,
   "trace_id": str,
-  "log_type": str,  # "LLM" | "TOOL"
+  "log_type": str,  # "LLM" | "TOOL" | "AGENT_TRANSFER"
   "agent_id": str | None,  # Multi-Agent 추적용
 
   # LLM 호출 정보
-  "model": str,
-  "prompt": str,
-  "completion": str,
-  "latency_ms": int,
-  "tokens_used": int,
+  "model": str | None,
+  "prompt": str | None,
+  "completion": str | None,
+  "latency_ms": int | None,
+  "tokens_used": int | None,
 
   # Tool 호출 정보
   "tool_name": str | None,
   "tool_input": Dict | None,
   "tool_output": str | None,
 
+  # Agent 전환 정보 (log_type="AGENT_TRANSFER")
+  "from_agent_id": str | None,
+  "to_agent_id": str | None,
+  "transfer_reason": str | None,
+
   "timestamp": datetime
 }
 ```
+
+**Note**: `log_type`에 따라 필드가 다르게 사용됩니다:
+- **LLM**: `model`, `prompt`, `completion`, `latency_ms`, `tokens_used` 필수
+- **TOOL**: `tool_name`, `tool_input`, `tool_output` 필수
+- **AGENT_TRANSFER**: `from_agent_id`, `to_agent_id`, `transfer_reason` 필수
 
 ---
 

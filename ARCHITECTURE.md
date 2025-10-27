@@ -288,80 +288,229 @@ GET    /api/admin/stats/llm-usage      - LLM 사용량 통계
 
 ---
 
-## 3. Multi-Repository 구조
+## 3. Sub-Repository 구조 (Git Submodules)
 
-### 3.1 Repository 목록
+### 3.1 Main Repository + Sub-repositories
 
-기존 Mono-repo 구조를 폐기하고, 각 서비스를 독립 Repository로 분리합니다.
+기존 Mono-repo 구조를 폐기하고, **Main Repository**에 **7개의 Sub-repositories**를 Git Submodules로 포함합니다.
 
 ```
-GitHub Organization: A2G-Dev-Space
-├── agent-platform-frontend/
+Agent-Platform-Development (Main Repository)
+├── .gitmodules                          # Submodule 설정 파일
+├── docker-compose.yml                   # 전체 플랫폼 실행
+├── nginx.conf                           # API Gateway 설정
+├── .env.external                        # 사외망 환경 변수
+├── .env.internal                        # 사내망 환경 변수
+├── README.md
+├── docs/                                # 문서 (Main Repo에 포함)
+│   ├── ARCHITECTURE.md
+│   ├── SRS.md
+│   ├── BLUEPRINT.md
+│   ├── API_CONTRACTS.md
+│   ├── GLOSSARY.md
+│   ├── GIT_SUBMODULES.md
+│   ├── DEVELOPMENT_GUIDE.md
+│   ├── DEV_ENVIRONMENT.md
+│   └── MOCK_SERVICES.md
+│
+├── frontend/                            # Frontend (Main Repo에 포함)
 │   ├── src/
 │   ├── public/
 │   ├── package.json
 │   └── README.md
 │
-├── agent-platform-user-service/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── routers/
-│   │   └── services/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── README.md
-│
-├── agent-platform-agent-service/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── a2a/              # A2A 프로토콜
-│   │   ├── recommender/      # Top-K 추천
-│   │   └── routers/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── README.md
-│
-├── agent-platform-chat-service/
-├── agent-platform-tracing-service/
-├── agent-platform-admin-service/
-├── agent-platform-worker-service/
-│
-└── agent-platform-infra/
-    ├── docker-compose/
-    │   ├── docker-compose.external.yml
-    │   └── docker-compose.internal.yml
-    ├── mock-sso/
-    ├── nginx/
-    ├── certs/
-    └── README.md
+└── services/                            # Submodules 디렉토리
+    ├── user-service/                    ⭐ Submodule
+    │   ├── app/
+    │   │   ├── main.py
+    │   │   ├── models.py
+    │   │   ├── routers/
+    │   │   └── services/
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    ├── agent-service/                   ⭐ Submodule
+    │   ├── app/
+    │   │   ├── main.py
+    │   │   ├── models.py
+    │   │   ├── a2a/              # A2A 프로토콜
+    │   │   ├── recommender/      # Top-K 추천
+    │   │   └── routers/
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    ├── chat-service/                    ⭐ Submodule
+    │   ├── app/
+    │   │   ├── main.py
+    │   │   ├── models.py
+    │   │   ├── websocket/        # WebSocket 처리
+    │   │   └── routers/
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    ├── tracing-service/                 ⭐ Submodule
+    │   ├── app/
+    │   │   ├── main.py
+    │   │   ├── log_proxy.py      # LLM 프록시
+    │   │   ├── agent_transfer.py # Agent 전환 감지
+    │   │   └── routers/
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    ├── admin-service/                   ⭐ Submodule
+    │   ├── app/
+    │   │   ├── main.py
+    │   │   ├── models.py
+    │   │   ├── stats/            # 사용량 통계
+    │   │   └── routers/
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    ├── worker-service/                  ⭐ Submodule
+    │   ├── tasks/
+    │   │   ├── health_check.py
+    │   │   ├── cleanup.py
+    │   │   └── notify.py
+    │   ├── celery_app.py
+    │   ├── requirements.txt
+    │   ├── Dockerfile
+    │   └── README.md
+    │
+    └── infra-service/                   ⭐ Submodule
+        ├── mock_sso/
+        │   ├── main.py           # Mock SSO FastAPI
+        │   └── templates/
+        ├── docker-compose/
+        ├── nginx/
+        └── README.md
 ```
 
-### 3.2 Repository 클론 및 실행
+### 3.2 .gitmodules 파일
+
+Main Repository에 자동 생성되는 `.gitmodules` 파일:
+
+```ini
+[submodule "services/user-service"]
+	path = services/user-service
+	url = https://github.com/A2G-Dev-Space/user-service.git
+	branch = main
+[submodule "services/agent-service"]
+	path = services/agent-service
+	url = https://github.com/A2G-Dev-Space/agent-service.git
+	branch = main
+[submodule "services/chat-service"]
+	path = services/chat-service
+	url = https://github.com/A2G-Dev-Space/chat-service.git
+	branch = main
+[submodule "services/tracing-service"]
+	path = services/tracing-service
+	url = https://github.com/A2G-Dev-Space/tracing-service.git
+	branch = main
+[submodule "services/admin-service"]
+	path = services/admin-service
+	url = https://github.com/A2G-Dev-Space/admin-service.git
+	branch = main
+[submodule "services/worker-service"]
+	path = services/worker-service
+	url = https://github.com/A2G-Dev-Space/worker-service.git
+	branch = main
+[submodule "services/infra-service"]
+	path = services/infra-service
+	url = https://github.com/A2G-Dev-Space/infra-service.git
+	branch = main
+```
+
+### 3.3 Main Repository 클론 (Submodules 포함)
+
+**방법 1: 처음부터 Submodules 포함**:
+```bash
+git clone --recursive https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
+cd Agent-Platform-Development
+
+# 전체 플랫폼 실행
+docker-compose up --build
+```
+
+**방법 2: Clone 후 Submodules 초기화**:
+```bash
+git clone https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
+cd Agent-Platform-Development
+
+# Submodules 초기화
+git submodule update --init --recursive
+
+# 전체 플랫폼 실행
+docker-compose up --build
+```
+
+### 3.4 Sub-repository에서 독립 개발
+
+**DEV2가 user-service를 개발하는 경우**:
 
 ```bash
-# 1. Infra 저장소 클론 (최우선)
-git clone https://github.com/A2G-Dev-Space/agent-platform-infra.git
-cd agent-platform-infra
+# Option 1: Sub-repository 직접 clone
+git clone https://github.com/A2G-Dev-Space/user-service.git
+cd user-service
 
-# 2. Mock Services 실행
-docker-compose -f docker-compose/docker-compose.external.yml up -d
+# 개발
+git checkout -b feature/sso-integration
+# ... 코드 작성
+git add .
+git commit -m "feat: Implement SSO callback handler"
+git push origin feature/sso-integration
 
-# 3. 각 서비스 저장소 클론
-cd ..
-git clone https://github.com/A2G-Dev-Space/agent-platform-frontend.git
-git clone https://github.com/A2G-Dev-Space/agent-platform-user-service.git
-git clone https://github.com/A2G-Dev-Space/agent-platform-agent-service.git
-git clone https://github.com/A2G-Dev-Space/agent-platform-chat-service.git
-# ... (나머지 서비스)
-
-# 4. 각 서비스 실행
-cd agent-platform-frontend && npm install && npm run dev &
-cd agent-platform-user-service && uvicorn app.main:app --reload --port 8001 &
-cd agent-platform-agent-service && uvicorn app.main:app --reload --port 8002 &
-# ...
+# Option 2: Main Repository에서 작업
+cd Agent-Platform-Development/services/user-service
+git checkout -b feature/sso-integration
+# ... 코드 작성
+git add .
+git commit -m "feat: Implement SSO callback handler"
+git push origin feature/sso-integration
 ```
+
+### 3.5 Main Repository에 Submodule 업데이트 반영
+
+Submodule에서 변경사항이 Merge되면, Main Repository에 반영:
+
+```bash
+cd Agent-Platform-Development
+
+# 모든 Submodules 최신 버전으로 업데이트
+git submodule update --remote --merge
+
+# 특정 Submodule만 업데이트
+cd services/user-service
+git pull origin main
+cd ../..
+
+# Main Repository에 반영
+git add services/user-service
+git commit -m "Update user-service: SSO integration"
+git push origin main
+```
+
+### 3.6 왜 Git Submodules인가?
+
+| 비교 항목 | Mono-repo | Multi-repo (독립) | **Sub-repo (Submodules)** ⭐ |
+|----------|-----------|-------------------|---------------------------|
+| **독립 개발** | ❌ | ✅ | ✅ |
+| **통합 실행** | ✅ | ❌ | ✅ |
+| **버전 관리** | 어려움 | 쉬움 | 쉬움 |
+| **CI/CD** | 단일 | 서비스별 | 양쪽 모두 |
+| **Clone 편의성** | 쉬움 | 복잡 | 쉬움 (`--recursive`) |
+
+**Sub-repository의 장점**:
+1. **독립 개발**: 각 서비스를 독립 Repository로 개발
+2. **통합 실행**: Main Repository에서 `docker-compose up` 한 번으로 전체 플랫폼 실행
+3. **버전 추적**: Main Repository가 각 Submodule의 특정 Commit Hash를 참조
+4. **CI/CD 양립**: 각 Sub-repo에 독립 CI + Main Repo에 통합 CI
+
+**상세 내용**: [GIT_SUBMODULES.md](./GIT_SUBMODULES.md) 참조
 
 ---
 

@@ -580,8 +580,176 @@ Authorization: Bearer <token>
       "completion": "AI stands for Artificial Intelligence...",
       "latency_ms": 1234,
       "timestamp": "2025-10-27T10:33:00Z"
+    },
+    {
+      "id": 102,
+      "log_type": "AGENT_TRANSFER",
+      "from_agent_id": "main-agent",
+      "to_agent_id": "analysis-agent",
+      "tool_name": "transfer_to_agent",
+      "transfer_reason": "데이터 분석 필요",
+      "timestamp": "2025-10-27T10:33:05Z"
+    },
+    {
+      "id": 103,
+      "log_type": "TOOL",
+      "agent_id": "analysis-agent",
+      "tool_name": "search_db",
+      "tool_input": {"query": "customer data"},
+      "tool_output": "[...]",
+      "timestamp": "2025-10-27T10:33:06Z"
     }
   ]
+}
+```
+
+---
+
+### 5.3 Agent 전환 감지 (Tool 기반) ⭐ 신규
+
+Tracing Service는 Tool 호출 로그를 분석하여 Agent 전환을 자동으로 감지하고 `AGENT_TRANSFER` 타입의 로그를 생성합니다.
+
+#### 5.3.1 Agent 전환 감지 로직
+
+**Framework별 감지 조건**:
+
+**1) ADK (Agent Development Kit)**:
+```python
+def detect_agent_transfer_adk(tool_log: dict) -> dict | None:
+    """
+    ADK의 transfer_to_agent tool 사용 시 Agent 전환 감지
+    """
+    if tool_log.get("tool_name") == "transfer_to_agent":
+        tool_input = tool_log.get("tool_input", {})
+
+        return {
+            "log_type": "AGENT_TRANSFER",
+            "from_agent_id": tool_log.get("agent_id"),
+            "to_agent_id": tool_input.get("target_agent"),  # ADK에서 제공
+            "tool_name": "transfer_to_agent",
+            "transfer_reason": tool_input.get("reason", "No reason provided"),
+            "timestamp": tool_log.get("timestamp")
+        }
+    return None
+```
+
+**ADK Tool Input 예시**:
+```json
+{
+  "tool_name": "transfer_to_agent",
+  "tool_input": {
+    "target_agent": "analysis-agent",
+    "reason": "사용자 요청이 데이터 분석을 필요로 합니다",
+    "context": {
+      "user_query": "고객 만족도 분석해줘"
+    }
+  }
+}
+```
+
+**2) Agno Framework**:
+```python
+def detect_agent_transfer_agno(tool_log: dict) -> dict | None:
+    """
+    Agno의 delegate_task_to_members tool 사용 시 Agent 전환 감지
+    """
+    if tool_log.get("tool_name") == "delegate_task_to_members":
+        tool_input = tool_log.get("tool_input", {})
+
+        return {
+            "log_type": "AGENT_TRANSFER",
+            "from_agent_id": tool_log.get("agent_id"),
+            "to_agent_id": tool_input.get("member_id"),  # Agno에서 제공
+            "tool_name": "delegate_task_to_members",
+            "transfer_reason": tool_input.get("task_description", "Task delegation"),
+            "timestamp": tool_log.get("timestamp")
+        }
+    return None
+```
+
+**Agno Tool Input 예시**:
+```json
+{
+  "tool_name": "delegate_task_to_members",
+  "tool_input": {
+    "member_id": "data-analyst",
+    "task_description": "고객 데이터 분석 수행",
+    "priority": "high",
+    "context": {
+      "data_source": "customer_feedback"
+    }
+  }
+}
+```
+
+---
+
+#### 5.3.2 Agent 전환 로그 생성 프로세스
+
+**Tracing Service 내부 로직**:
+
+1. **Tool 로그 수신**:
+   - LLM이 Tool을 호출하면, Tracing Service가 Tool 호출 로그를 기록
+
+2. **Agent 전환 감지**:
+   ```python
+   def process_tool_log(tool_log: dict, framework: str):
+       # 일반 Tool 로그 저장
+       save_log(tool_log)
+
+       # Agent 전환 감지
+       transfer_log = None
+       if framework == "ADK":
+           transfer_log = detect_agent_transfer_adk(tool_log)
+       elif framework == "Agno":
+           transfer_log = detect_agent_transfer_agno(tool_log)
+
+       # Agent 전환 로그가 감지되면 별도로 저장
+       if transfer_log:
+           save_log(transfer_log)
+           # WebSocket으로 실시간 전송
+           publish_to_websocket(transfer_log)
+   ```
+
+3. **WebSocket으로 실시간 전송**:
+   - Tool 로그와 Agent Transfer 로그를 모두 WebSocket으로 전송
+   - Frontend는 `log_type`에 따라 다른 UI로 렌더링
+
+---
+
+#### 5.3.3 Agent 전환 로그 포맷
+
+**LogEntry (AGENT_TRANSFER)**:
+```json
+{
+  "id": 102,
+  "trace_id": "550e8400-e29b-41d4-a716-446655440000",
+  "log_type": "AGENT_TRANSFER",
+  "from_agent_id": "main-agent",
+  "to_agent_id": "analysis-agent",
+  "tool_name": "transfer_to_agent",
+  "tool_input": {
+    "target_agent": "analysis-agent",
+    "reason": "데이터 분석 필요"
+  },
+  "transfer_reason": "데이터 분석 필요",
+  "timestamp": "2025-10-27T10:33:05Z"
+}
+```
+
+**WebSocket 메시지 포맷**:
+```json
+{
+  "type": "agent_transfer",
+  "data": {
+    "id": 102,
+    "log_type": "AGENT_TRANSFER",
+    "from_agent_id": "main-agent",
+    "to_agent_id": "analysis-agent",
+    "tool_name": "transfer_to_agent",
+    "transfer_reason": "데이터 분석 필요",
+    "timestamp": "2025-10-27T10:33:05Z"
+  }
 }
 ```
 

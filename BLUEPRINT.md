@@ -431,38 +431,152 @@ body {
 
 ```
 ┌────────────────────────────────────┐
-│ 📊 Live Trace       [🗑️] [🔄]     │
+│ 📊 Live Trace    [Reset] [🔄]     │
 ├────────────────────────────────────┤
 │                                    │
-│ 🟦 LLM Call                        │
+│ 🟦 LLM Call           10:30:01    │
 │    main-agent | gpt-4 | 850ms     │
 │    Input: "안녕하세요"             │
 │    Output: "안녕하세요! 무엇을..." │
 │                                    │
-│ 🟩 Tool Call                       │
+│ ⚡ Agent Transfer     10:30:05    │
+│  ┌──────────────────────────────┐ │
+│  │ 🔄 main-agent                │ │
+│  │      ↓                       │ │
+│  │ 🤖 analysis-agent            │ │
+│  │                              │ │
+│  │ Reason: 데이터 분석 필요     │ │
+│  │ Tool: transfer_to_agent      │ │
+│  └──────────────────────────────┘ │
+│                                    │
+│ 🟩 Tool Call          10:30:06    │
 │    analysis-agent | search_db     │
 │    Input: {"query": "..."}        │
 │    Output: [...]                   │
 │                                    │
-│ 🟦 LLM Call                        │
+│ 🟦 LLM Call           10:30:08    │
 │    analysis-agent | gpt-4 | 1.2s │
 │    ...                             │
 │                                    │
 └────────────────────────────────────┘
 ```
 
-**TraceLogItem 컴포넌트**:
-- **로그 타입별 색상**:
-  - LLM: 파란색 (`bg-blue-50 border-blue-300`)
-  - Tool: 초록색 (`bg-green-50 border-green-300`)
+**TraceLogItem 컴포넌트 - 로그 타입별 렌더링**:
+
+**1) LLM Call** (`log_type="LLM"`):
+- 배경색: 파란색 (`bg-blue-50 border-blue-300`)
+- 구조:
+  ```tsx
+  <div className="bg-blue-50 border-l-4 border-blue-300 p-3">
+    <div className="flex justify-between items-center">
+      <span className="font-bold">🟦 LLM Call</span>
+      <span className="text-sm text-gray-500">10:30:01</span>
+    </div>
+    <div className="text-sm">
+      <span className="font-semibold">{agent_id}</span> | {model} | {latency_ms}ms
+    </div>
+    <details>
+      <summary>Input</summary>
+      <pre className="bg-white p-2 rounded">{prompt}</pre>
+    </details>
+    <details>
+      <summary>Output</summary>
+      <pre className="bg-white p-2 rounded">{completion}</pre>
+    </details>
+  </div>
+  ```
+
+**2) Tool Call** (`log_type="TOOL"`):
+- 배경색: 초록색 (`bg-green-50 border-green-300`)
+- 구조:
+  ```tsx
+  <div className="bg-green-50 border-l-4 border-green-300 p-3">
+    <div className="flex justify-between items-center">
+      <span className="font-bold">🟩 Tool Call</span>
+      <span className="text-sm text-gray-500">10:30:06</span>
+    </div>
+    <div className="text-sm">
+      <span className="font-semibold">{agent_id}</span> | {tool_name}
+    </div>
+    <details>
+      <summary>Input</summary>
+      <pre className="bg-white p-2 rounded">{JSON.stringify(tool_input, null, 2)}</pre>
+    </details>
+    <details>
+      <summary>Output</summary>
+      <pre className="bg-white p-2 rounded">{tool_output}</pre>
+    </details>
+  </div>
+  ```
+
+**3) Agent Transfer** (`log_type="AGENT_TRANSFER"`) ⭐ 신규:
+- 배경색: 주황색 (`bg-orange-50 border-orange-300`)
+- **별도의 강조된 UI** 적용:
+  ```tsx
+  <div className="bg-orange-50 border-l-4 border-orange-300 p-3">
+    <div className="flex justify-between items-center">
+      <span className="font-bold">⚡ Agent Transfer</span>
+      <span className="text-sm text-gray-500">10:30:05</span>
+    </div>
+    <div className="bg-white border border-orange-200 rounded-lg p-4 mt-2">
+      <div className="flex flex-col items-center space-y-2">
+        <div className="flex items-center space-x-2">
+          <span className="text-lg">🔄</span>
+          <span className="font-semibold text-blue-600">{from_agent_id}</span>
+        </div>
+        <div className="text-2xl text-orange-500">↓</div>
+        <div className="flex items-center space-x-2">
+          <span className="text-lg">🤖</span>
+          <span className="font-semibold text-green-600">{to_agent_id}</span>
+        </div>
+      </div>
+      <div className="mt-3 text-sm text-gray-700">
+        <div>
+          <strong>Reason:</strong> {transfer_reason}
+        </div>
+        <div>
+          <strong>Tool:</strong> <code className="bg-gray-100 px-2 py-1 rounded">{tool_name}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+  ```
+
+**Framework별 Agent 전환 Tool 감지**:
+- **ADK**: `tool_name === "transfer_to_agent"` → Agent Transfer로 인식
+- **Agno**: `tool_name === "delegate_task_to_members"` → Agent Transfer로 인식
+
+**공통 스타일**:
 - **Agent ID 태그**: 우상단에 Agent ID 표시 (`bg-gray-800 text-white px-2 py-1 rounded`)
 - **Multi-Agent 배경색 구분**: Agent ID별로 배경색 미세 조정
+- **Timestamp**: 모든 로그에 시간 표시 (HH:MM:SS)
+- **시간순서 정렬**: 오래된 로그가 위, 새로운 로그가 아래
 
 **버튼**:
-- **로그 지우기** (🗑️): DB에서 영구 삭제
+- **Reset**: UI에서 현재 세션의 모든 로그 제거 (DB는 유지)
+  ```tsx
+  const handleReset = () => {
+    setTraceLogs([]);  // UI 상태만 초기화
+    // DB에 저장된 로그는 유지됨
+  };
+  ```
 - **재연결** (🔄): WebSocket 재연결
 
 **스크롤**: `overflow-y-auto max-h-96`
+
+**WebSocket 실시간 수신**:
+```tsx
+useEffect(() => {
+  const ws = new WebSocket(`wss://a2g.company.com/ws/trace/${traceId}/?token=${token}`);
+
+  ws.onmessage = (event) => {
+    const log = JSON.parse(event.data);
+    setTraceLogs((prev) => [...prev, log]);  // 시간순서대로 추가
+  };
+
+  return () => ws.close();
+}, [traceId]);
+```
 
 ### 5.5. ChatPlayground (우측)
 
