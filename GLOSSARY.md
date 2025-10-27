@@ -57,11 +57,11 @@
 
 ---
 
-## 🎨 3가지 모드
+## 🎨 3가지 모드 ⭐ 업데이트
 
-### 1. 개인 공간 (Development Mode)
+### 1. Workbench (워크벤치 - 개발 모드)
 
-**별칭**: 개발 모드, 워크스페이스, 디버깅 Space
+**이전 이름**: 개인 공간, Development Mode, 워크스페이스
 
 **목적**: Agent 개발 및 디버깅
 
@@ -79,41 +79,52 @@
 - **Healthy LLM**: Platform에 등록된 활성 LLM
 
 **UI 구성**:
-- 좌측: Session 목록 (새 대화 버튼)
-- 중앙: **TraceCapturePanel** (설정 + Live Trace)
-- 우측: **ChatPlayground** (메시지 입출력)
+- 좌측 Sidebar: 모드 전환 메뉴 (Workbench 활성)
+- 좌측 패널: Session 목록 (새 대화 버튼)
+- 중앙 패널: **TraceCapturePanel** (설정 + Live Trace)
+- 우측 패널: **ChatPlayground** (메시지 입출력, 스트리밍)
+
+**색상 테마**: 퍼플/바이올렛 계열
+
+**URL**: `/workbench/:id`
 
 ---
 
-### 2. 운영 공간 (Production Mode)
+### 2. Hub (허브 - 운영 모드)
 
-**별칭**: 운영 모드, 공개 공간, Production Playground
+**이전 이름**: 운영 공간, Production Mode, 공개 공간
 
-**목적**: 공개된 Agent를 사용자에게 제공
+**목적**: 공개된 Agent를 탐색하고 사용
 
 **운영 전환 프로세스**:
-1. 개발자가 Agent 개발 완료
+1. 개발자가 Agent 개발 완료 (Workbench)
 2. **공개 범위 선택**:
    - **전체 공개** (All): 모든 사용자
    - **팀 공개** (Team): 같은 부서/팀만
 3. Platform이 Agent 상태를 `PRODUCTION`으로 변경
-4. 공개 대상 사용자에게 Agent 카드 표시
+4. 공개 대상 사용자에게 Agent 카드 표시 (Hub)
 
 **주요 기능**:
-- **Agent 카드 목록**: 공개된 Agent들의 정보 카드
+- **Agent 카드 목록**: 공개된 Agent들의 정보 카드 (AI 랭킹 정렬)
 - **Trace 없는 Playground**: 디버깅 정보 없이 순수 Chat만 제공
 - **Chat History**: Session별 대화 기록 저장
 
-**차이점** (vs 개인 공간):
+**차이점** (vs Workbench):
 - ❌ TraceCapturePanel 없음
 - ❌ Live Trace 없음
-- ✅ Chat만 제공
+- ✅ Chat만 제공 (스트리밍)
+
+**색상 테마**: 블루 계열
+
+**URL**: `/hub/:id`
 
 ---
 
-### 3. 통합 Playground (Unified Playground) ⭐ 신규
+### 3. Flow (플로우 - 통합 모드) ⭐ 신규
 
-**별칭**: Multi-Agent Playground, Orchestration Mode
+**이전 이름**: 통합 Playground, Unified Playground
+
+**별칭**: Multi-Agent Mode, Orchestration Mode
 
 **목적**: 여러 Agent를 조합하여 복잡한 작업 수행
 
@@ -146,7 +157,17 @@
 **기술 구현**:
 - **Orchestration Service** (신규 서비스)
 - Agent 선택 알고리즘: RAG + LLM 분석
-- 실행 전략: Sequential / Parallel / Hybrid
+- 실행 전략: Sequential / Parallel / Auto
+
+**UI 구성** ⭐ 신규:
+- Claude 스타일 미니멀 인터페이스
+- 중앙에 입력창과 전송 버튼만 표시
+- Agent 선택은 dropdown으로 펼쳐짐
+- 각 Agent 결과는 구분되어 스트리밍 표시
+
+**색상 테마**: 그린/틸 계열
+
+**URL**: `/flow`
 
 ---
 
