@@ -231,6 +231,7 @@ git clone https://github.com/A2G-Dev-Space/agent-platform-worker-service.git
 |------|------|
 | **FastAPI** | RESTful API, WebSocket |
 | **Celery** | 비동기 작업 (Worker Service) |
+| **uv** | Python 패키지 관리자 (빠른 의존성 설치 및 관리) |
 | **PostgreSQL** | 데이터베이스 |
 | **Redis** | Celery Broker, Pub/Sub, Cache |
 | **LangChain** | RAG (Top-K 추천) |
@@ -254,6 +255,7 @@ git clone https://github.com/A2G-Dev-Space/agent-platform-worker-service.git
 
 - Docker Desktop
 - Python 3.11+
+- **uv** (Python 패키지 관리자) - [설치 가이드](https://github.com/astral-sh/uv)
 - Node.js 18+
 - Git
 
@@ -285,44 +287,44 @@ npm run dev
 **User Service**:
 ```bash
 cd agent-platform-user-service
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8001
+uv sync  # 의존성 설치
+uv run uvicorn app.main:app --reload --port 8001
 ```
 
 **Agent Service**:
 ```bash
 cd agent-platform-agent-service
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8002
+uv sync  # 의존성 설치
+uv run uvicorn app.main:app --reload --port 8002
 ```
 
 **Chat Service**:
 ```bash
 cd agent-platform-chat-service
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8003
+uv sync  # 의존성 설치
+uv run uvicorn app.main:app --reload --port 8003
 ```
 
 **Tracing Service**:
 ```bash
 cd agent-platform-tracing-service
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8004
+uv sync  # 의존성 설치
+uv run uvicorn app.main:app --reload --port 8004
 ```
 
 **Admin Service**:
 ```bash
 cd agent-platform-admin-service
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8005
+uv sync  # 의존성 설치
+uv run uvicorn app.main:app --reload --port 8005
 ```
 
 **Worker Service**:
 ```bash
 cd agent-platform-worker-service
-pip install -r requirements.txt
-celery -A app.worker worker --loglevel=info
-celery -A app.worker beat --loglevel=info  # 별도 터미널
+uv sync  # 의존성 설치
+uv run celery -A app.worker worker --loglevel=info
+uv run celery -A app.worker beat --loglevel=info  # 별도 터미널
 ```
 
 ---
