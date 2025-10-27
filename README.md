@@ -1,14 +1,18 @@
-1. 🎯 프로젝트 비전 및 핵심 목표
-A2G Agent Platform은 개발자들이 LLM 기반 에이전트를 **쉽게 개발(IDE), 테스트(Playground), 배포(Vending Machine), 모니터링(Stats)**할 수 있도록 지원하는 차세대 통합 에이전트 운영 플랫폼입니다.
+## 1. 🎯 프로젝트 비전 및 핵심 목표
+
+A2G Agent Platform은 개발자들이 LLM 기반 에이전트를 **쉽게 개발(IDE)**, **테스트(Playground)**, **배포(Vending Machine)**, **모니터링(Stats)**, **사용(Use)** 할 수 있도록 지원하는 차세대 통합 에이전트 운영 플랫폼입니다.
 본 프로젝트(Phase 2)의 핵심 목표는 다음과 같습니다.
  * (REQ 0) 확장 가능한 아키텍처: 기존 모놀리식 구조에서 탈피하여, 고성능/고가용성을 위한 **마이크로서비스 아키텍처(MSA)**를 구축합니다.
  * (REQ 4) 최고의 UI/UX: Google Gemini 수준의 세련되고 직관적인 UI를 제공하여 사용자 경험을 극대화합니다.
  * (REQ 2) 개방형 생태계 (A2A): A2A(Agent-to-Agent) 프로토콜 및 SDK를 지원하여, Agno, Langchain(LangGraph), ADK 등 다양한 외부 프레임워크와의 원활한 연동을 보장합니다.
  * (REQ 1) 지능형 플랫폼: 단순한 도구 모음을 넘어, 사용자의 요구에 맞는 에이전트를 추천(AI Ranking)하고, 리소스(Lifecycle)를 자동 관리하는 지능형 플랫폼을 지향합니다.
  * (REQ 3, 7, 10) 강력한 디버깅 경험:** 실시간 멀티 에이전트 로그 추적, 대화형 채팅 히스토리, 리치 미디어(파일/이미지)를 지원하는 통합 Workbench를 제공합니다.
-2. 🏛️ 목표 아키텍처 (Microservice Structure) - (REQ 0)
+
+## 2. 🏛️ 목표 아키텍처 (Microservice Structure) - (REQ 0)
+
 Phase 2 아키텍처는 기능적 책임을 명확히 분리한 마이크로서비스들로 구성됩니다. 모든 서비스는 API Gateway를 통해 통신하며 독립적으로 배포/확장됩니다.
 (개략적인 아키텍처 다이어그램 삽입 위치)
+
 | 서비스 ID | 서비스명 | 주요 기술 | 핵심 책임 (분할된 기능) |
 |---|---|---|---|
 | 1 | api-gateway | Nginx / Kong | 단일 진입점: SSL 종료, 요청 라우팅, 전역 인증(JWT 검증), 속도 제한 |
@@ -21,7 +25,9 @@ Phase 2 아키텍처는 기능적 책임을 명확히 분리한 마이크로서�
 | 8 | worker-service | Celery (Python) | 비동기 작업: (REQ 12) LLM/Agent 헬스 체크, (REQ 10, 11) 비활성 에이전트 정리, (REQ 12) 실패 알림 (사내 메일 연동) |
 | 9 | database | PostgreSQL | 데이터 영속성: 모든 서비스의 공용 데이터베이스 |
 | 10 | message-broker | Redis | 메시지 큐: Celery 브로커, 서비스 간 Pub/Sub 통신 |
-3. 🛠️ 핵심 기술 스택 (Technology Stack)
+
+## 3. 🛠️ 핵심 기술 스택 (Technology Stack)
+
 | 구분 | 기술 스택 | 상세 설명 |
 |---|---|---|
 | Frontend | React 19+ (Vite), TypeScript | (REQ 4) 성능과 안정성을 갖춘 최신 프론트엔드 환경. |
@@ -39,8 +45,12 @@ Phase 2 아키텍처는 기능적 책임을 명확히 분리한 마이크로서�
 | Database & Infra | PostgreSQL, Redis | 데이터 영속성 및 고성능 메시지 브로커/캐시. |
 |  | Docker & Compose | 개발 및 배포 환경 표준화. |
 | Inter-Service | gRPC (선호) / REST API | (REQ 0) 서비스 간 고효율 내부 통신 프로토콜. |
-4. 📂 프로젝트 구조 (Monorepo) - (REQ 0)
+
+## 4. 📂 프로젝트 구조 (Monorepo) - (REQ 0)
+
 Phase 2는 서비스 간의 연동 및 버전 관리를 용이하게 하기 위해 Monorepo 구조를 지향합니다.
+
+```text
 / (Project Root: agent-platform)
 ├── services/                 # (신규) 백엔드 마이크로서비스
 │   ├── user-service/         # (Go/Gin) 인증, 유저, API Key
@@ -94,8 +104,9 @@ Phase 2는 서비스 간의 연동 및 버전 관리를 용이하게 하기 위�
 ├── docs/                     # 공통 문서 (본 README.md, SRS.md 등)
 │
 └── package.json              # (Monorepo 루트 - Lerna/Nx/Turborepo 관리)
+```
 
-5. 🤝 개발 및 협업 가이드
+## 5. 🤝 개발 및 협업 가이드
  * Git 브랜칭: main (안정, 배포), develop (개발 통합), feature/{JIRA-TICKET} (기능 개발) 플로우를 사용합니다.
  * 커밋/PR: 모든 커밋은 type(scope): message (예: feat(agent-service): A2A 등록 API 구현) 형식을 따릅니다. PR은 반드시 1명 이상의 리뷰어 승인을 받아야 develop에 머지됩니다.
  * 코드 품질: 모든 커밋은 lint-staged를 통해 Pre-commit Hook이 실행되어, 각 서비스/앱에 정의된 린트(ESLint, Flake8) 및 포맷터(Prettier, Black)를 통과해야 합니다.
@@ -104,3 +115,5 @@ Phase 2는 서비스 간의 연동 및 버전 관리를 용이하게 하기 위�
  * 책임 개발자: 한승하 (syngha.han@samsung.com)
  * 문의 채널 (임시): (A2G 플랫폼 개발팀 사내 메신저 채널)
  * 버그 리포트 / 기능 제안: (프로젝트 Jira 또는 Git Issues 링크)
+<!-- end list -->
+
