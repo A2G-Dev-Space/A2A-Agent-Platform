@@ -344,7 +344,72 @@
 
 ## 4. 개발 워크플로우
 
-### 4.1 일일 루틴
+### 4.1 Python 의존성 관리 (중요)
+
+**모든 Python 프로젝트는 `uv`를 사용하여 의존성을 관리합니다.**
+
+#### 4.1.1 uv 설치
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 설치 확인
+uv --version
+```
+
+#### 4.1.2 프로젝트 초기화
+
+```bash
+# 새 프로젝트 시작 시
+cd agent-platform-user-service
+uv init  # pyproject.toml 생성
+
+# 의존성 설치
+uv sync  # pyproject.toml 또는 requirements.txt 기반으로 설치
+```
+
+#### 4.1.3 패키지 추가/제거
+
+```bash
+# 패키지 추가
+uv add fastapi uvicorn sqlalchemy
+
+# 개발 의존성 추가
+uv add --dev pytest black ruff
+
+# 패키지 제거
+uv remove package-name
+
+# 의존성 동기화 (lockfile 기반)
+uv sync
+```
+
+#### 4.1.4 애플리케이션 실행
+
+```bash
+# uv run으로 실행 (가상환경 자동 활성화)
+uv run uvicorn app.main:app --reload --port 8001
+uv run celery -A app.worker worker --loglevel=info
+uv run python manage.py migrate
+
+# 또는 가상환경 활성화 후 실행
+source .venv/bin/activate  # Linux/macOS
+.venv\Scripts\activate     # Windows
+python -m uvicorn app.main:app --reload
+```
+
+#### 4.1.5 uv 사용 이유
+
+- **속도**: pip보다 10-100배 빠른 패키지 설치
+- **일관성**: lockfile을 통한 정확한 의존성 재현
+- **간편함**: 가상환경 자동 관리
+- **호환성**: pip/requirements.txt와 호환
+
+### 4.2 일일 루틴
 
 **09:00 - 10:00**: 개인 작업 시작
 **10:00 - 10:15**: Daily Standup (DEV1 주도)
@@ -357,7 +422,7 @@
 **13:00 - 18:00**: 집중 개발
 **17:30 - 18:00**: 코드 리뷰 (DEV1)
 
-### 4.2 주간 루틴
+### 4.3 주간 루틴
 
 **월요일 09:00**: Sprint Planning (Sprint 시작 주)
 **금요일 15:00**: Sprint Review & Retrospective (Sprint 종료 주)
