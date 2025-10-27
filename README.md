@@ -407,11 +407,22 @@ celery -A app.worker beat --loglevel=info  # 별도 터미널
 4. **[API_CONTRACTS.md](./API_CONTRACTS.md)** - 서비스 간 API 계약서
 5. **[MOCK_SERVICES.md](./MOCK_SERVICES.md)** - Mock SSO/DB/Redis 구현
 
-### 9.2 상세 스펙 문서
+### 9.2 기술 가이드
+
+- **[FRONTEND_SETUP_GUIDE.md](./FRONTEND_SETUP_GUIDE.md)** ✨ NEW - Tailwind v4, React Compiler, Dark Theme 설정
+- **[SSO_AUTHENTICATION_GUIDE.md](./SSO_AUTHENTICATION_GUIDE.md)** ✨ NEW - FastAPI 기반 SSO 인증 구현
+- **[DATABASE_STRATEGY.md](./DATABASE_STRATEGY.md)** ✨ NEW - DB 분리 전략 및 Alembic 버전 관리
+
+### 9.3 상세 스펙 문서
 
 - **[SRS.md](./SRS.md)** - 요구사항 명세서
 - **[BLUEPRINT.md](./BLUEPRINT.md)** - UI/UX 설계 명세서
-- **[SSO_GUIDE.md](./SSO_GUIDE.md)** - SSO 연동 가이드
+- **[GLOSSARY.md](./GLOSSARY.md)** - 용어집
+- **[GIT_SUBMODULES.md](./GIT_SUBMODULES.md)** - Git Submodules 가이드
+
+### 9.4 Legacy 문서
+
+- **[reference/SSO_GUIDE_LEGACY_DJANGO.md](./reference/SSO_GUIDE_LEGACY_DJANGO.md)** - Django 기반 SSO 가이드 (참고용)
 
 ---
 
@@ -425,10 +436,16 @@ celery -A app.worker beat --loglevel=info  # 별도 터미널
 
 ## 🚀 Quick Links
 
+### 핵심 문서
 - [ARCHITECTURE.md - Microservice 구조 및 도식도](./ARCHITECTURE.md)
 - [DEVELOPMENT_GUIDE.md - 개발 가이드 (4명 팀 분담)](./DEVELOPMENT_GUIDE.md)
 - [API_CONTRACTS.md - API 계약서](./API_CONTRACTS.md)
 - [DEV_ENVIRONMENT.md - 외부 개발 환경](./DEV_ENVIRONMENT.md)
+
+### 신규 기술 가이드 ✨
+- [FRONTEND_SETUP_GUIDE.md - Tailwind v4 & React Compiler](./FRONTEND_SETUP_GUIDE.md)
+- [SSO_AUTHENTICATION_GUIDE.md - FastAPI SSO 인증](./SSO_AUTHENTICATION_GUIDE.md)
+- [DATABASE_STRATEGY.md - DB 분리 & 버전 관리](./DATABASE_STRATEGY.md)
 
 ---
 

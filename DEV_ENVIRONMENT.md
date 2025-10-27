@@ -206,9 +206,24 @@ cp frontend/.env.external.example frontend/.env
 
 **Step 3**: 데이터베이스 초기화
 ```bash
-cd services/user-service  # (또는 admin-service - Django가 있는 곳)
-uv run python manage.py migrate
-uv run python manage.py createsuperuser  # 개발용 관리자 계정 생성
+# 모든 스키마 생성 스크립트 실행
+python scripts/create_schemas.py
+
+# 각 서비스의 Alembic 마이그레이션 실행
+cd services/user-service
+alembic upgrade head
+
+cd ../agent-service
+alembic upgrade head
+
+cd ../chat-service
+alembic upgrade head
+
+cd ../tracing-service
+alembic upgrade head
+
+cd ../admin-service
+alembic upgrade head
 ```
 
 ### 4.4 서비스별 개발 서버 실행
@@ -388,15 +403,24 @@ pytest tests/contract/test_agent_api.py
 
 ### 7.2 DB Migration 충돌
 
-**증상**: `django.db.utils.OperationalError: relation "xxx" already exists`
-**원인**: 다른 개발자가 이미 동일한 마이그레이션을 생성함
+**증상**: Alembic에서 `Multiple head revisions are present` 오류 발생
+**원인**: 다른 개발자가 동시에 마이그레이션을 생성하여 충돌
 **해결**:
 ```bash
-# 최신 develop 브랜치 pull 후 migration 재생성
+# 최신 develop 브랜치 pull
 git pull origin develop
-cd services/admin-service
-uv run python manage.py makemigrations --merge
-uv run python manage.py migrate
+
+# 충돌하는 서비스로 이동
+cd services/user-service
+
+# 헤드 확인
+alembic heads
+
+# 병합 마이그레이션 생성
+alembic merge <head1> <head2> -m "Merge conflicting migrations"
+
+# 마이그레이션 실행
+alembic upgrade head
 ```
 
 ### 7.3 Redis 연결 실패 (Celery)
