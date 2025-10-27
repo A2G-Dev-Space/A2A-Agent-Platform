@@ -9,8 +9,10 @@
 이 문서는 우리의 최종 목표인 Phase 2 아키텍처를 정의하는 "설계도" 역할을 합니다.
  * 신규 입사자: 먼저 부록 A: Phase 1 레거시 가이드 (현재 코드베이스)를 읽고 현재 코드베이스의 구조와 환경 설정을 파악하십시오.
  * 모든 개발자: 이 문서의 1~7 섹션을 기준으로 모든 신규 기능 개발 및 리팩토링을 진행합니다.
-1. 🏛️ Phase 2: 목표 아키텍처 (Microservice) - (REQ 0)
-Phase 2의 목표는 기존 backend 서비스를 기능별로 분리된 고성능 마이크로서비스로 전환하는 것입니다. 각 서비스는 독립적으로 배포 및 확장되며, API Gateway를 통해 통신합니다.
+<!-- end list -->
+ * 🏛️ Phase 2: 목표 아키텍처 (Microservice) - (REQ 0)
+   Phase 2의 목표는 기존 backend 서비스를 기능별로 분리된 고성능 마이크로서비스로 전환하는 것입니다. 각 서비스는 독립적으로 배포 및 확장되며, API Gateway를 통해 통신합니다.
+<!-- end list -->
  * api-gateway (Nginx 또는 Kong)
    * 역할: 모든 외부 요청(HTTP, WebSocket)의 단일 진입점.
    * 기술: Nginx (현재) 또는 Kong/Tyk (향후 확장).
@@ -59,35 +61,39 @@ Phase 2의 목표는 기존 backend 서비스를 기능별로 분리된 고성�
      * (REQ 12) 헬스 체크 실패 시 사내 API 연동을 통한 메일 알림.
  * database (PostgreSQL) / message-broker (Redis)
    * 역할: 공유 인프라. (기존과 동일)
-2. 🎯 Phase 2: 핵심 요구사항 및 목표 (New Requirements)
+<!-- end list -->
+ * 🎯 Phase 2: 핵심 요구사항 및 목표 (New Requirements)
+<!-- end list -->
  * (REQ 0) 아키텍처 재구축 (최우선): 모놀리식 백엔드를 기능별 마이크로서비스(MSA)로 분리하여 서비스 안정성, 확장성, 유지보수성을 확보한다.
  * (REQ 4) UI/UX 혁신 (Gemini): Google Gemini 수준의 세련되고 직관적인 UI/UX를 제공한다. (MUI 등 컴포넌트 라이브러리 도입)
  * (REQ 2) A2A 프로토콜 연동: ADK, Langchain Agents 사용자가 SDK를 통해 플랫폼에 에이전트를 프로그래매틱하게 등록할 수 있는 A2A 표준 API를 제공한다.
  * (REQ 1) 지능형 에이전트 랭킹: 운영 모드 진입 시, 사용자의 과거 사용 이력이나 현재 요구사항(미입력)을 기반으로 Agent Description을 분석하여 가장 적합한 에이전트를 추천/정렬한다.
  * (REQ 3) 리치 플레이그라운드: 채팅창에서 Markdown 렌더링, 코드 블록(복사 기능 포함), 이미지/영상/파일 첨부 및 다운로드를 지원한다.
- * (REQ 6, 7, 8) 강력한 디버깅 및 히스토리: 개발/운영 모드 모두 '새 대화' 기능을 지원하고, 사용자별/세션별 채팅 히스토리를 저장/복구한다.
+ * (REQ 6, 7, 8) 강력한 디버깅 및 히스토리: 개발/운영 모드 모두 '새 대화' 기능을 지원하고, 사용자별/세션별 채팅 히스토리_를 저장/복구한다.
  * (REQ 10, 11, 12) 자동화된 에이전트 라이프사이클: 1달 이상 미사용 에이전트(개발/운영)를 자동 삭제/비활성화하고, 헬스 체크 실패 시 개발자에게 사내 API로 메일을 발송한다.
  * (REQ 5) 에이전트 커스터마이징: 사용자가 에이전트 카드에 표시될 로고(URL), 카드 색상(Hex), 메타데이터(Title, Desc, Capabilities/Skills)를 직접 설정하고 수정할 수 있게 한다.
  * (REQ 1-신규) 모드별 테마: 운영 모드(파스텔 블루 계열)와 개발 모드(파스텔 레드 계열)의 시각적 구분을 명확히 한다.
  * (REQ 2, 4-신규) 브랜딩: A2G 플랫폼 로고 및 탭 제목을 일관되게 적용한다.
-3. 🛠️ Phase 2: 목표 기술 스택 (Target Tech Stack)
-| 구분 | 기술 스택 | 상세 설명 |
-|---|---|---|
-| Frontend | React 19+ (Vite), TypeScript | 현대적인 UI 개발 (기존 유지) |
-|  | Zustand | 경량 전역 상태 관리 (기존 유지) |
-|  | Tailwind CSS + MUI (Base UI) | (REQ 4) Gemini 디자인 시스템 구현 |
-|  | React Router DOM, Recharts | 라우팅 및 통계 시각화 (기존 유지) |
-|  | React Markdown, Socket.IO Client | (REQ 3, 7) 리치 채팅 및 실시간 로그 |
-| API Gateway | Nginx 또는 Kong | MSA 진입점, 라우팅, SSL 종료, 인증 (REQ 0) |
-| Backend | Go (Gin / Fiber) | (REQ 0) user-service, tracing-service (고성능) |
-|  | FastAPI (Python) | (REQ 0) agent-service, chat-service (Python 생태계 호환) |
-|  | Django (Python) | (REQ 0) admin-service (Admin UI 및 통계 API) |
-|  | Celery & Redis | (REQ 0) worker-service (비동기 작업) |
-| Database | PostgreSQL, Redis | 데이터 영속성 및 메시지 브로커 (기존 유지) |
-| Comms | gRPC (선호) / REST API | (REQ 0) 서비스 간 내부 통신 |
-| Dev Tools | Git, Husky, lint-staged, Makefile | 버전 관리 및 개발 자동화 (기존 유지) |
-4. 📂 Phase 2: 목표 프로젝트 구조 (Monorepo)
-서비스 간의 연동 및 버전 관리를 용이하게 하기 위해 Monorepo 구조를 지향합니다.
+<!-- end list -->
+ * 🛠️ Phase 2: 목표 기술 스택 (Target Tech Stack)
+   | 구분 | 기술 스택 | 상세 설명 |
+   |---|---|---|
+   | Frontend | React 19+ (Vite), TypeScript | 현대적인 UI 개발 (기존 유지) |
+   | | Zustand | 경량 전역 상태 관리 (기존 유지) |
+   | | Tailwind CSS + MUI (Base UI) | (REQ 4) Gemini 디자인 시스템 구현 |
+   | | React Router DOM, Recharts | 라우팅 및 통계 시각화 (기존 유지) |
+   | | React Markdown, Socket.IO Client | (REQ 3, 7) 리치 채팅 및 실시간 로그 |
+   | API Gateway | Nginx 또는 Kong | MSA 진입점, 라우팅, SSL 종료, 인증 (REQ 0) |
+   | Backend | Go (Gin / Fiber) | (REQ 0) user-service, tracing-service (고성능) |
+   | | FastAPI (Python) | (REQ 0) agent-service, chat-service (Python 생태계 호환) |
+   | | Django (Python) | (REQ 0) admin-service (Admin UI 및 통계 API) |
+   | | Celery & Redis | (REQ 0) worker-service (비동기 작업) |
+   | Database | PostgreSQL, Redis | 데이터 영속성 및 메시지 브로커 (기존 유지) |
+   | Comms | gRPC (선호) / REST API | (REQ 0) 서비스 간 내부 통신 |
+   | Dev Tools | Git, Husky, lint-staged, Makefile | 버전 관리 및 개발 자동화 (기존 유지) |
+ * 📂 Phase 2: 목표 프로젝트 구조 (Monorepo)
+   서비스 간의 연동 및 버전 관리를 용이하게 하기 위해 Monorepo 구조를 지향합니다.
+<!-- end list -->
 agent-platform/
 ├── services/                 # (신규) 백엔드 마이크로서비스
 │   ├── user-service/ (Go)
@@ -120,15 +126,16 @@ agent-platform/
     ├── frontend/
     └── docker-compose.yml
 
-5. 🚀 Phase 2: 핵심 기능 명세 (상세)
-5.1. UI/UX (REQ 1, 3, 4)
+ * 🚀 Phase 2: 핵심 기능 명세 (상세)
+   5.1. UI/UX (REQ 1, 3, 4)
+<!-- end list -->
  * Gemini 디자인 (REQ 4): MUI 또는 그에 준하는 컴포넌트 라이브러리를 도입하여 전체 UI를 재설계한다. 반응형 디자인, 일관된 스페이싱, 아이코노그래피, 폰트 시스템을 적용한다.
  * 모드별 테마 (REQ 1): useWorkspaceStore의 activeMode 상태에 따라 CSS 변수 또는 Tailwind 테마를 동적으로 변경하여, 운영(블루)/개발(레드) 모드 간 시각적 구분을 명확히 한다.
  * 리치 플레이그라운드 (REQ 3): ChatMessageList 컴포넌트에서 react-markdown을 사용하여 Markdown(테이블, 목록, 인용 등)을 렌더링한다. react-syntax-highlighter를 사용하여 코드 블록을 하이라이팅하고 복사 버튼을 추가한다. ChatInput에 파일/이미지 업로드 버튼을 추가하고, ChatMessage에 파일/이미지 URL을 표시 및 다운로드/미리보기를 지원한다.
-5.2. 에이전트 등록 (REQ 2, 5, 9)
+   5.2. 에이전트 등록 (REQ 2, 5, 9)
  * A2A 프로토콜 (REQ 2): agent-service가 /api/a2a/register 엔드포인트를 제공한다. Python/JS SDK는 이 엔드포인트로 에이전트 정보(이름, 설명, 엔드포인트, 프레임워크, 메타데이터 등)를 전송하여 자동으로 에이전트를 등록/업데이트한다.
  * 수동 등록/수정 (REQ 5, 9): App.tsx의 '+' 버튼 또는 AgentCard의 '수정' 버튼이 AddAgentModal을 연다. 이 모달은 framework (Agno, Langchain 등) 드롭다운을 제공하며, 로고 URL, 카드 색상, 스킬 태그(capabilities) 등을 입력받아 agent-service (POST 또는 PATCH /api/my-agents/{id})로 전송한다.
-5.3. Workbench (REQ 3, 10-신규)
+   5.3. Workbench (REQ 3, 10-신규)
  * 에이전트 통신 (Agno/Custom): AgentPlayground의 handleSendMessageAndGetResponse 함수는 framework.registry를 통해 agent.framework에 맞는 서비스(예: agno.service.tsx)를 동적으로 선택한다. Agno의 경우, Base URL 입력, /agents, /teams 스캔, 대상 선택 UI를 제공한다.
  * 실시간 Tracing (REQ 7):
    * chat-service는 wss://.../ws/trace/{trace_id}/ 경로로 WebSocket 연결을 관리한다.
@@ -139,31 +146,33 @@ agent-platform/
    * tracing-service는 LogProxyView에서 수신된 요청/응답을 분석하여 agent_id (호출 주체 식별자)를 추론한다. (예: transfer_ Tool Call 감지)
    * WebSocket 페이로드에 agent_id를 포함하여 LiveTrace로 전송한다.
    * TraceLogItem 컴포넌트는 log.agent_id에 따라 배경색과 태그를 다르게 렌더링한다.
-5.4. Chat History (REQ 6, 7, 8)
+     5.4. Chat History (REQ 6, 7, 8)
  * API: chat-service가 POST /api/agents/{id}/sessions (새 대화) 및 POST /api/sessions/{id}/messages (메시지 저장, role='user'/role='assistant' 모두 지원) API를 제공한다.
  * 로직:
    * 개발 (REQ 6): AgentPlayground (워크스페이스) 진입 시, 해당 user와 agent의 가장 최근 세션을 자동 로드.
    * 운영 (REQ 7): AgentPlayground (운영) 진입 시, user와 agent별 세션 목록 또는 최근 세션 로드.
    * 공통 (REQ 8): '새 대화' 버튼 클릭 시 새 ChatSession 생성 및 UI 초기화. 히스토리 목록/삭제 기능 제공.
-5.5. 운영 및 자동화 (REQ 1, 10, 11, 12)
+     5.5. 운영 및 자동화 (REQ 1, 10, 11, 12)
  * AI 랭킹 (REQ 1): admin-service가 GET /api/agents/ranked API를 제공한다. AgentCardProduction은 이 API를 호출하여 에이전트 Description 기반으로 최적화된 순서로 카드를 정렬한다.
  * 자동 정리 (REQ 10, 11): worker-service(Celery Beat)가 주기적으로 1달 이상 미사용 운영 에이전트(Disabled) 및 미수정 개발 에이전트(Delete)를 자동 정리한다.
  * 헬스 체크 및 알림 (REQ 12):
    * worker-service는 Agent 헬스 체크 실패 시, 해당 에이전트 status를 DISABLED로 변경한다.
    * INTERNAL_MAIL_API_ENDPOINT (환경변수)를 사용하여 agent.owner에게 사내 메일 API로 알림을 발송한다.
-5.6. 기존 기능 (마이그레이션 대상)
+     5.6. 기존 기능 (마이그레이션 대상)
  * SSO & RBAC: user-service로 마이그레이션.
  * API Key: user-service로 마이그레이션.
  * LLM 관리: admin-service로 마이그레이션.
  * 통계: admin-service로 마이그레이션.
-6. 📞 개발자 정보 및 Contact Point (REQ 3)
+<!-- end list -->
+ * 📞 개발자 정보 및 Contact Point (REQ 3)
+<!-- end list -->
  * 책임 개발자: 한승하 (syngha.han@samsung.com)
  * 문의 채널 (임시): (A2G 플랫폼 개발팀 사내 메신저 채널)
  * 버그 리포트 / 기능 제안: (프로젝트 Jira 또는 Git Issues 링크)
-부록 A: Phase 1 레거시 가이드 (현재 코드베이스)
-(신규 개발자가 현재 모놀리식 코드를 실행하고 이해하기 위한 기존 README 내용)
-A.1. Phase 1 아키텍처 (Monolithic - 분리된 로직)
-현재 개발 환경은 docker-compose.yml을 통해 아래 6가지 핵심 서비스로 구성되어 있습니다.
+   부록 A: Phase 1 레거시 가이드 (현재 코드베이스)
+   (신규 개발자가 현재 모놀리식 코드를 실행하고 이해하기 위한 기존 README 내용)
+   A.1. Phase 1 아키텍처 (Monolithic - 분리된 로직)
+   현재 개발 환경은 docker-compose.yml을 통해 아래 6가지 핵심 서비스로 구성되어 있습니다.
  * frontend (React/Vite): 사용자 인터페이스. (접속: http://localhost:9060)
  * backend (Django/Uvicorn): 핵심 비즈니스 로직 및 API 서버. (ASGI 서버로 실행)
  * nginx (Reverse Proxy): 로컬 HTTPS 지원 및 WebSocket 프록시. (접속: https://localhost:9050)
@@ -171,45 +180,46 @@ A.1. Phase 1 아키텍처 (Monolithic - 분리된 로직)
  * celery_worker (Celery): 백그라운드 작업 실행 (헬스 체크 등).
  * celery_beat (Celery): 주기적 작업 스케줄러.
  * (External) DB (PostgreSQL): 데이터 저장.
-A.2. Phase 1 기술 스택 (현재)
-| 구분 | 기술 스택 | 상세 설명 |
-|---|---|---|
-| Backend | Django & DRF | Python 기반, ORM 및 REST API 제공. |
-|  | Python 3.13 | 최신 파이썬 환경. |
-|  | uv | 초고속 Python 패키지 매니저. |
-|  | Uvicorn | ASGI 서버 (WebSocket 지원). |
-|  | Django Channels | WebSocket 연결 관리 (asgi.py, tracing/consumers.py). |
-|  | Celery & Redis | LLM Health Check 등 주기적인 백그라운드 작업. |
-|  | django-celery-beat | DB 기반의 주기적 작업 스케줄러. |
-|  | django-celery-results | Celery 작업 결과를 DB에 저장. |
-| Frontend | React 19.2+ | 컴포넌트 기반 UI. |
-|  | TypeScript | 코드 안정성. |
-|  | Vite | 빠르고 효율적인 프론트엔드 빌드/개발 서버. |
-|  | Tailwind CSS 4.1+ | 유틸리티 퍼스트 CSS. |
-|  | React Compiler | 자동 최적화. |
-|  | Zustand | 경량 전역 상태 관리. |
-|  | i18next | 다국어 지원 (한국어/영어). |
-|  | React Router DOM | SPA 라우팅 및 중첩 레이아웃(탭 구조). |
-|  | Recharts | (구현 중) 통계 데이터 시각화. |
-| Infra | Docker & Compose | 개발/운영 환경 표준화. |
-|  | Nginx | 리버스 프록시 (HTTPS, WebSocket 프록시). |
-|  | Redis (Container) | Celery 브로커 및 Django 캐시 (로컬 Docker). |
-| Dev Tools | Git (Enterprise) | 표준 소스 코드 관리. |
-|  | ESLint & Prettier | (Frontend) 코드 품질 검사. |
-|  | Black & Flake8 | (Backend) 코드 품질 검사. |
-|  | Husky & lint-staged | Git Pre-commit Hook (.lintstagedrc.js). |
-|  | Makefile | Docker 명령어 자동화. |
-| APIs/Auth | drf-spectacular | OpenAPI 3.0 (Swagger/ReDoc). |
-|  | SimpleJWT, PyJWT | SSO id_token 검증 및 내부 JWT 발급. |
-|  | Custom Permission | users/permissions.py (IsAdminRoleUser). |
-|  | Custom Middleware | users/middleware.py (TokenAuthMiddleware). |
-A.3. Phase 1 환경 구축 가이드 (현재)
-모든 개발 환경은 docker-compose를 기반으로 하며, Makefile을 통해 쉽게 관리할 수 있습니다.
-A.3.1. 사전 준비
+   A.2. Phase 1 기술 스택 (현재)
+   | 구분 | 기술 스택 | 상세 설명 |
+   |---|---|---|
+   | Backend | Django & DRF | Python 기반, ORM 및 REST API 제공. |
+   | | Python 3.13 | 최신 파이썬 환경. |
+   | | uv | 초고속 Python 패키지 매니저. |
+   | | Uvicorn | ASGI 서버 (WebSocket 지원). |
+   | | Django Channels | WebSocket 연결 관리 (asgi.py, tracing/consumers.py). |
+   | | Celery & Redis | LLM Health Check 등 주기적인 백그라운드 작업. |
+   | | django-celery-beat | DB 기반의 주기적 작업 스케줄러. |
+   | | django-celery-results | Celery 작업 결과를 DB에 저장. |
+   | Frontend | React 19.2+ | 컴포넌트 기반 UI. |
+   | | TypeScript | 코드 안정성. |
+   | | Vite | 빠르고 효율적인 프론트엔드 빌드/개발 서버. |
+   | | Tailwind CSS 4.1+ | 유틸리티 퍼스트 CSS. |
+   | | React Compiler | 자동 최적화. |
+   | | Zustand | 경량 전역 상태 관리. |
+   | | i18next | 다국어 지원 (한국어/영어). |
+   | | React Router DOM | SPA 라우팅 및 중첩 레이아웃(탭 구조). |
+   | | Recharts | (구현 중) 통계 데이터 시각화. |
+   | Infra | Docker & Compose | 개발/운영 환경 표준화. |
+   | | Nginx | 리버스 프록시 (HTTPS, WebSocket 프록시). |
+   | | Redis (Container) | Celery 브로커 및 Django 캐시 (로컬 Docker). |
+   | Dev Tools | Git (Enterprise) | 표준 소스 코드 관리. |
+   | | ESLint & Prettier | (Frontend) 코드 품질 검사. |
+   | | Black & Flake8 | (Backend) 코드 품질 검사. |
+   | | Husky & lint-staged | Git Pre-commit Hook (.lintstagedrc.js). |
+   | | Makefile | Docker 명령어 자동화. |
+   | APIs/Auth | drf-spectacular | OpenAPI 3.0 (Swagger/ReDoc). |
+   | | SimpleJWT, PyJWT | SSO id_token 검증 및 내부 JWT 발급. |
+   | | Custom Permission | users/permissions.py (IsAdminRoleUser). |
+   | | Custom Middleware | users/middleware.py (TokenAuthMiddleware). |
+   A.3. Phase 1 환경 구축 가이드 (현재)
+   모든 개발 환경은 docker-compose를 기반으로 하며, Makefile을 통해 쉽게 관리할 수 있습니다.
+   A.3.1. 사전 준비
  * Git 설치 및 Enterprise Git 접근 권한 확인.
  * Docker 및 Docker Compose 설치.
  * make 유틸리티 설치.
-A.3.2. 저장소 복제
+   A.3.2. 저장소 복제
+<!-- end list -->
 git clone <repository-url> agent-platform
 cd agent-platform
 
@@ -219,8 +229,9 @@ A.3.3. 보안 인증서 설정 (필수)
    * *.cer (SSO 토큰 검증용)
  * 로컬 HTTPS 인증서 (위치: certs/):
    * localhost.crt, localhost.key (로컬 HTTPS용)
-A.3.4. 환경 변수 설정
-backend/.env 파일을 생성하고 아래 내용을 입력합니다. (실제 값은 팀 내 공유된 정보 사용)
+     A.3.4. 환경 변수 설정
+     backend/.env 파일을 생성하고 아래 내용을 입력합니다. (실제 값은 팀 내 공유된 정보 사용)
+<!-- end list -->
 # backend/.env
 
 DJANGO_SECRET_KEY='<your-generated-secret-key>'
@@ -261,7 +272,8 @@ A.3.7. 접속 정보
  * Backend (HTTPS): https://localhost:9050 (Nginx Proxy)
  * API Docs: https://localhost:9050/api/docs/
  * Django Admin: https://localhost:9050/admin/
-A.3.8. 기타 유용한 명령어
+   A.3.8. 기타 유용한 명령어
+<!-- end list -->
 make down         # 모든 컨테이너 중지
 make logs         # 실시간 로그 보기
 make backend-shell # 백엔드 컨테이너 접속 (sh)
@@ -304,7 +316,7 @@ A.5. Phase 1 협업 워크플로우 (현재)
  * 코드 품질: Git Pre-commit Hook (.lintstagedrc.js)을 통해 Frontend(ESLint, Prettier) 및 Backend(Black, Flake8) 자동 검사/수정.
  * UI/UX 표준: Light/Dark 모드 지원, i18next 다국어 지원.
  * 프레임워크 연동: services/agent-frameworks/ (전략 패턴) 구조로 Agno/Custom 로직 분리.
-A.6. Phase 1 핵심 기능 명세 (현재 구현 상태)
+   A.6. Phase 1 핵심 기능 명세 (현재 구현 상태)
  * SSO & RBAC: OIDC SSO 연동, PENDING/USER/ADMIN 역할 기반 인증/인가 . TokenAuthMiddleware로 WebSocket 인증 . PendingApprovalPage 및 UserManagement 탭 .
  * API Key: 개인 API Key CRUD 및 ActiveAPIKeyView .
  * LLM 관리: 관리자용 LLM CRUD, 유효성 검증, Celery/Redis 기반 주기적 헬스 체크 및 상태 표시.
@@ -319,5 +331,3 @@ A.6. Phase 1 핵심 기능 명세 (현재 구현 상태)
    * ChatPlayground가 세션/메시지 로드, framework별(Agno) 스트리밍 응답 호출 (sendMessage) 및 실시간 UI 업데이트.
    * LiveTrace가 WebSocket 실시간 로그 및 과거 로그(GET /api/logs/) 표시, 로그 지우기/재연동 기능 (버그 수정 포함).
  * 통계 (구현 중): UsageStatsView (팀별 그룹화 포함) API . 프론트엔드 통계 탭(AdminStatsUsagePage - 차트/테이블) 구현.
-<!-- end list -->
-
