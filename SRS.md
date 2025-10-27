@@ -1,5 +1,5 @@
-📝 AGENT PLATFORM 요구사항 명세서 (SRS) (v1.5)
-문서 버전: 1.5 최종 수정일: 2025년 10월 22일
+📝 AGENT PLATFORM 요구사항 명세서 (SRS) (v1.6)
+문서 버전: 1.6 최종 수정일: 2025년 10월 27일
 1. 개요 (Introduction)
 본 문서는 Agent Platform (코드명: A2G) 프로젝트의 소프트웨어 요구사항 명세서(SRS)입니다. 플랫폼의 목적, 범위, 기능, 인터페이스, 성능, 제약 조건 등을 기술하여 개발팀과 이해 관계자 간의 명확한 이해를 돕는 것을 목표로 합니다.
 2. 전체 설명 (Overall Description)
@@ -7,6 +7,13 @@
 본 플랫폼은 Docker 기반의 웹 서비스입니다. 현재(Phase 1)는 Django(Backend)와 React(Frontend)로 구성된 모놀리식 아키텍처로 운영되며, 비동기 작업 처리를 위해 Celery와 Redis를 사용합니다.
 **향후 목표(Phase 2)**는 백엔드를 **마이크로서비스 아키텍처(MSA)**로 전환하여(REQ 0), user-service(Go/FastAPI), agent-service(FastAPI), chat-service(FastAPI/WebSocket), tracing-service(Go/Rust), admin-service(Django), worker-service(Celery) 등으로 기능을 분리하고 확장성을 확보하는 것입니다.
 UI는 헤더와 메인 컨텐츠 영역으로 구성된 2단 구조의 SPA(Single Page Application)이며, 인증은 사내 SSO 및 **내부 역할 기반 접근 제어(RBAC: PENDING, USER, ADMIN)**를 사용합니다. 플랫폼은 운영 모드와 개발(워크스페이스) 모드를 제공합니다.
+
+2.1.1. 외부 개발 환경 (신규 - Phase 2)
+본 프로젝트는 **8명의 개발자가 사외망에서 병렬 개발**하고, **사내망에서 통합 테스트**하는 하이브리드 개발 전략을 채택합니다.
+ * Mock Services: 사외망에서 사내 DB/Redis/SSO를 대체하는 경량 Mock 서비스 제공 (Mock SSO, Local PostgreSQL, Local Redis)
+ * API-First Development: 명확한 API 계약(OpenAPI Spec)을 기반으로 각 서비스가 독립적으로 개발됨
+ * 환경 변수 기반 전환: `.env.external` (사외망) ↔ `.env.internal` (사내망) 파일만 교체하면 코드 수정 없이 환경 전환 가능
+ * 상세 내용: [DEV_ENVIRONMENT.md](./DEV_ENVIRONMENT.md), [MOCK_SERVICES.md](./MOCK_SERVICES.md), [API_CONTRACTS.md](./API_CONTRACTS.md), [TEAM_ASSIGNMENT.md](./TEAM_ASSIGNMENT.md) 참조
 2.2. 사용자 인터페이스 (User Interface)
 플랫폼의 UI는 Google Gemini 디자인을 레퍼런스로 하여 세련되게 개선되는 것을 목표로 합니다(REQ 4). UI는 크게 3개의 핵심 영역으로 구성됩니다.
  * Workspace Header (상단 고정):
@@ -124,4 +131,7 @@ UI는 헤더와 메인 컨텐츠 영역으로 구성된 2단 구조의 SPA(Singl
  * NFR-NOTIF-01 (알림): Agent 비활성화 등 주요 이벤트 발생 시 관련 사용자에게 사내 메일 API를 통해 알림을 발송해야 한다.
  * (신규) NFR-ARCH-01 (확장성): 시스템은 마이크로서비스 아키텍처(Phase 2)를 기반으로, 특정 서비스(예: tracing-service)의 부하 증가 시 해당 서비스만 독립적으로 확장(scale-out) 가능해야 한다.
  * (신규) NFR-ARCH-02 (유지보수성): 각 서비스는 명확히 정의된 책임(SRP)을 가지며, 독립적으로 개발/테스트/배포가 가능해야 한다.
+ * (신규) NFR-DEV-01 (외부 개발 환경): 사외망에서 Mock Services를 통해 사내 인프라 없이도 완전한 기능 개발 및 테스트가 가능해야 한다.
+ * (신규) NFR-DEV-02 (API 계약 준수): 모든 마이크로서비스는 OpenAPI 3.0 스펙을 제공하고, API 계약 테스트(Contract Testing)를 통과해야 한다.
+ * (신규) NFR-DEV-03 (환경 전환): 환경 변수 파일 교체만으로 사외망↔사내망 환경 전환이 가능해야 하며, 코드 수정이 필요하지 않아야 한다.
 

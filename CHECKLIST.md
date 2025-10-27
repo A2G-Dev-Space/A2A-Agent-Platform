@@ -1,19 +1,31 @@
-Phase 0: 🏛️ 프로젝트 기반 및 아키텍처 설정 (Foundation)
+Phase 0: 🏛️ 프로젝트 기반 및 외부 개발 환경 설정 (Foundation) - **최우선**
+ * [ ] 0.0. **Mock Services 구축 (사외망 개발 필수)**
+   * [ ] **Mock SSO 구현** (infra/mock-sso/): FastAPI, 로그인 페이지, JWT 발급 (Dev #3 담당)
+   * [ ] docker-compose.external.yml 작성: Mock SSO, PostgreSQL, Redis 통합 (Dev #8 담당)
+   * [ ] 환경 변수 템플릿 생성: .env.external.example (모든 서비스)
+   * [ ] Mock Services 테스트: Mock SSO 로그인 → JWT 발급 → Frontend 리디렉션
+   * [ ] **팀 온보딩 세션**: Mock Services 사용법 공유 (Dev #3, #8 진행)
+   * [ ] 상세 가이드: [DEV_ENVIRONMENT.md](./DEV_ENVIRONMENT.md), [MOCK_SERVICES.md](./MOCK_SERVICES.md)
  * [ ] 0.1. (REQ 0) Monorepo 구조 설정
    * [ ] Git 저장소 생성 (A2G Agent Platform).
    * [ ] Lerna, Nx 또는 Turborepo 등 Monorepo 관리 도구 도입.
-   * [ ] services/, frontend/, infra/, sdks/, docs/, legacy/ 폴더 구조 생성 (README 4.1 참조).
+   * [ ] services/, frontend/, infra/, sdks/, docs/ 폴더 구조 생성 (README 4.1 참조).
  * [ ] 0.2. Git 전략 및 품질 설정
-   * [ ] main (운영), develop (개발 통합), feature/ (기능) 브랜칭 전략 확정.
+   * [ ] main (운영), develop (개발 통합), feature/{TASK-ID} (기능) 브랜칭 전략 확정.
    * [ ] main, develop 브랜치 보호 규칙 (PR 필수, 1인 승인) 설정.
    * [ ] 커밋 컨벤션 (type(scope): message) 정의.
    * [ ] husky 및 .lintstagedrc.js 설정 (Root Pre-commit Hook).
    * [ ] ESLint, Prettier (Frontend) 및 Black, Flake8 (Backend) 설정.
  * [ ] 0.3. (REQ 0) 인프라 및 CI/CD (개발 환경)
-   * [ ] infra/docker-compose/에 개발 환경용 docker-compose.yml 파일 작성 (Nginx Gateway, Frontend, 모든 Backend 서비스).
+   * [ ] infra/docker-compose/docker-compose.external.yml 작성 (Mock SSO, Postgres, Redis).
+   * [ ] infra/docker-compose/docker-compose.internal.yml 작성 (사내망용, Real SSO/DB/Redis).
    * [ ] infra/certs/에 로컬 HTTPS용 자체 서명 인증서 배치.
    * [ ] Makefile 스크립트 작성 (up, down, logs, build, shell 등).
-   * [ ] (신규) GitHub Actions 또는 Jenkins CI/CD 파이프라인 초안 작성 (테스트, 린트, 빌드 자동화).
+   * [ ] GitHub Actions CI/CD 파이프라인 초안 작성 (테스트, 린트, 빌드 자동화).
+ * [ ] 0.4. API 계약 정의 및 공유
+   * [ ] **API_CONTRACTS.md 검토 및 팀 공유** (모든 개발자)
+   * [ ] OpenAPI 스펙 생성 (각 서비스): FastAPI 자동 생성, Django drf-spectacular
+   * [ ] Postman Collection 작성 (선택 사항): 각 서비스별 API 테스트 컬렉션
 Phase 1: 🔐 Core Services - 인증, 관리, 작업자 (Backend MSA)
  * [ ] 1.1. user-service (인증/권한)
    * [ ] (REQ 0) Go(Gin) 또는 FastAPI 기반 서비스 뼈대 구축.
