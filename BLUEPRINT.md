@@ -1,8 +1,14 @@
-🎨 AGENT PLATFORM (A2G) 디자인 명세서 (UI/UX Blueprint) (v2.6)
-문서 버전: 2.6 (Phase 2 - Microservice & New Requirements)
+🎨 AGENT PLATFORM (A2G) 디자인 명세서 (UI/UX Blueprint) (v2.7)
+문서 버전: 2.7 (Phase 2 - Microservice & External Dev Environment)
 최종 수정일: 2025년 10월 27일
 1. 개요 (Introduction)
 본 문서는 A2G Agent Platform의 사용자 인터페이스(UI) 및 사용자 경험(UX) 설계 명세서입니다. Phase 2 마이크로서비스 아키텍처 전환 및 신규 기능 요구사항(Gemini UI, A2A, 리치 플레이그라운드 등)을 반영하여, 플랫폼의 레이아웃, 컴포넌트, 핵심 사용자 흐름을 정의합니다.
+
+1.1. 외부 개발 환경 고려사항 (신규)
+본 프로젝트는 **8명의 개발자가 사외망에서 병렬 개발**하는 환경을 지원합니다. Frontend 개발자(Dev #1, #2)는 Backend API가 완성되기 전까지 **MSW (Mock Service Worker)** 또는 **json-server**를 사용하여 Mock 데이터로 UI를 개발할 수 있습니다.
+ * Mock 데이터 경로: `frontend/src/mocks/data/` (agents.json, sessions.json 등)
+ * API Contracts 준수: [API_CONTRACTS.md](./API_CONTRACTS.md)에 정의된 응답 포맷과 정확히 일치해야 함
+ * 상세 내용: [TEAM_ASSIGNMENT.md](./TEAM_ASSIGNMENT.md) 참조
 2. 전역 스타일 (Global Styles)
 2.1. (REQ 4) 디자인 레퍼런스
  * Gemini UI: Google의 Gemini UI를 최우선 디자인 레퍼런스로 삼습니다. 간결함, 정보 중심적 레이아웃, 세련된 아이코노그래피, 명확한 상호작용을 목표로 합니다.

@@ -106,14 +106,90 @@ Phase 2는 서비스 간의 연동 및 버전 관리를 용이하게 하기 위�
 └── package.json              # (Monorepo 루트 - Lerna/Nx/Turborepo 관리)
 ```
 
-## 5. 🤝 개발 및 협업 가이드
- * Git 브랜칭: main (안정, 배포), develop (개발 통합), feature/{JIRA-TICKET} (기능 개발) 플로우를 사용합니다.
+## 5. 🌐 외부 개발 환경 (External Development Setup) - **중요**
+
+### 5.1 하이브리드 개발 전략
+
+본 프로젝트는 **8명의 개발자가 사외망에서 병렬 개발**하고, **사내망에서 통합 테스트**하는 하이브리드 전략을 채택합니다.
+
+**핵심 원칙**:
+- **Mock Services**: 사외망에서 사내 DB/Redis/SSO를 대체하는 Mock 서비스를 Docker Compose로 실행
+- **API-First Development**: 명확한 API 계약(OpenAPI)을 기반으로 각 팀이 독립적으로 개발
+- **환경 변수 기반 전환**: `.env.external` (사외망) ↔ `.env.internal` (사내망) 파일만 교체하면 코드 수정 없이 전환
+- **서비스 독립성**: 각 마이크로서비스는 독립적으로 실행 및 테스트 가능
+
+### 5.2 Mock Services 구성
+
+| 서비스 | 목적 | 기술 | 포트 |
+|--------|------|------|------|
+| **Mock SSO** | 사내 SSO 시뮬레이션 | FastAPI | 9999 |
+| **PostgreSQL** | 로컬 개발 DB | PostgreSQL 15 | 5432 |
+| **Redis** | 메시지 브로커/캐시 | Redis 7 | 6379 |
+
+### 5.3 빠른 시작 (Quick Start)
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
+cd Agent-Platform-Development
+
+# 2. Mock Services 실행 (최우선)
+docker-compose -f infra/docker-compose/docker-compose.external.yml up -d
+
+# 3. 환경 변수 설정
+cp services/user-service/.env.external.example services/user-service/.env
+# (각 서비스 동일하게 설정)
+
+# 4. 데이터베이스 마이그레이션
+cd services/admin-service  # (Django)
+python manage.py migrate
+python manage.py createsuperuser
+
+# 5. 서비스별 개발 서버 실행
+# Frontend
+cd frontend && npm install && npm run dev  # http://localhost:9060
+
+# User Service
+cd services/user-service && uv run uvicorn main:app --reload --port 8001
+
+# Agent Service
+cd services/agent-service && uv run uvicorn main:app --reload --port 8002
+
+# ... (나머지 서비스 동일)
+```
+
+### 5.4 개발자별 작업 분할
+
+| Developer | 담당 모듈 | 기술 스택 |
+|-----------|----------|----------|
+| **Dev #1, #2** | Frontend (UI/UX, Playground) | React, TypeScript, WebSocket |
+| **Dev #3** | User Service + **Mock SSO** | FastAPI, JWT, SSO |
+| **Dev #4** | Admin Service (LLM/통계) | Django, DRF |
+| **Dev #5** | Agent Service (CRUD, AI 랭킹) | FastAPI, RAG |
+| **Dev #6** | Chat Service (WebSocket) | FastAPI, Channels |
+| **Dev #7** | Tracing Service (로그 프록시) | Go/Rust, gRPC |
+| **Dev #8** | Worker Service + Infra | Celery, Docker, CI/CD |
+
+### 5.5 상세 문서 링크
+
+- **[DEV_ENVIRONMENT.md](./DEV_ENVIRONMENT.md)**: 외부 개발 환경 상세 가이드 ⭐
+- **[MOCK_SERVICES.md](./MOCK_SERVICES.md)**: Mock SSO/DB/Redis 구현 가이드
+- **[API_CONTRACTS.md](./API_CONTRACTS.md)**: 서비스 간 API 계약 명세
+- **[TEAM_ASSIGNMENT.md](./TEAM_ASSIGNMENT.md)**: 8명 개발자 작업 분할 계획 ⭐
+
+---
+
+## 6. 🤝 개발 및 협업 가이드
+ * Git 브랜칭: main (안정, 배포), develop (개발 통합), feature/{TASK-ID} (기능 개발) 플로우를 사용합니다.
  * 커밋/PR: 모든 커밋은 type(scope): message (예: feat(agent-service): A2A 등록 API 구현) 형식을 따릅니다. PR은 반드시 1명 이상의 리뷰어 승인을 받아야 develop에 머지됩니다.
  * 코드 품질: 모든 커밋은 lint-staged를 통해 Pre-commit Hook이 실행되어, 각 서비스/앱에 정의된 린트(ESLint, Flake8) 및 포맷터(Prettier, Black)를 통과해야 합니다.
  * 상태 관리 (Frontend): 전역 상태는 Zustand를 사용합니다. 서버 상태(API 데이터)는 react-query (TanStack Query) 도입을 적극 권장합니다.
-6. 📞 Contact Point (REQ 3)
+ * **일일 스탠드업**: 매일 오전 10시, API 인터페이스 변경 사항 공유
+ * **주간 API Review**: 매주 금요일 오후 3시, Backend 팀 API 스펙 검토
+
+## 7. 📞 Contact Point (REQ 3)
  * 책임 개발자: 한승하 (syngha.han@samsung.com)
- * 문의 채널 (임시): (A2G 플랫폼 개발팀 사내 메신저 채널)
- * 버그 리포트 / 기능 제안: (프로젝트 Jira 또는 Git Issues 링크)
+ * 문의 채널: Slack #a2g-dev (일반), #a2g-frontend, #a2g-backend
+ * 버그 리포트 / 기능 제안: GitHub Issues ([링크](https://github.com/A2G-Dev-Space/Agent-Platform-Development/issues))
 <!-- end list -->
 
