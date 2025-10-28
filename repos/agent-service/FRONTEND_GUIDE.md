@@ -155,6 +155,166 @@ Authorization: Bearer {accessToken}
 }
 ```
 
+## 💻 Frontend 실제 구현 세부사항
+
+### 1. API 서비스 레이어
+
+#### agentService (`frontend/src/api/agentService.ts`)
+Agent 관련 모든 API 호출을 담당하는 서비스 레이어입니다.
+
+**주요 함수:**
+```typescript
+// Agent 목록 조회
+getAgents(): Promise<Agent[]> // GET /api/agents/
+
+// Agent 생성
+createAgent(data: AgentCreateData): Promise<Agent> // POST /api/agents/
+
+// Agent 수정
+updateAgent(id: string, data: Partial<Agent>): Promise<Agent> // PATCH /api/agents/{id}/
+
+// Agent 삭제
+deleteAgent(id: string): Promise<void> // DELETE /api/agents/{id}/
+
+// Agent 배포
+deployAgent(id: string, visibility: string): Promise<Agent> // POST /api/agents/{id}/deploy/
+
+// Health Check
+checkHealth(id: string): Promise<HealthStatus> // POST /api/agents/{id}/health-check/
+
+// AI 랭킹 검색 (RAG)
+searchAgents(query: string): Promise<Agent[]> // GET /api/agents/search?q={query}
+```
+
+### 2. 컴포넌트별 API 호출
+
+#### WorkbenchDashboard (`frontend/src/pages/WorkbenchDashboard.tsx`)
+**기능:** 사용자의 Agent 목록 조회 및 생성
+
+```typescript
+// Agent 목록 불러오기
+const fetchAgents = async () => {
+  const data = await agentService.getAgents();
+  const myAgents = data.filter((agent) => agent.owner_user_id === user?.user_id);
+  setAgents(myAgents);
+};
+
+// Agent 클릭 시 Playground로 이동
+const handleAgentClick = (agent: Agent) => {
+  navigate(`/workbench/playground/${agent.agent_id}`);
+};
+
+// Agent 삭제
+const handleDeleteAgent = async (agentId: string) => {
+  await agentService.deleteAgent(agentId);
+  fetchAgents();
+};
+```
+
+**API 호출:**
+- GET `/api/agents/` (초기 로딩, 생성/삭제 후)
+- DELETE `/api/agents/{id}/` (삭제 시)
+
+#### AddAgentModal (`frontend/src/components/workbench/AddAgentModal.tsx`)
+**기능:** 새 Agent 생성 폼
+
+```typescript
+// Framework별 필수 필드 검증
+const validateForm = () => {
+  if (formData.framework === 'Agno') {
+    return formData.agno_base_url && formData.agno_agent_id;
+  }
+  // ...다른 프레임워크
+};
+
+// Agent 생성
+const handleSubmit = async () => {
+  const createdAgent = await agentService.createAgent(formData);
+  onSuccess(); // 부모 컴포넌트에서 목록 새로고침
+};
+```
+
+**API 호출:**
+- POST `/api/agents/` (생성 시)
+
+#### HubDashboard (`frontend/src/pages/HubDashboard.tsx`)
+**기능:** 공개 Agent 검색 및 조회
+
+```typescript
+// 공개 Agent 목록
+const fetchPublicAgents = async () => {
+  const data = await agentService.getAgents();
+  const publicAgents = data.filter((agent) => agent.visibility === 'PUBLIC');
+  setAgents(publicAgents);
+};
+
+// AI 랭킹 검색
+const handleSearch = async () => {
+  const results = await agentService.searchAgents(searchQuery);
+  setAgents(results);
+};
+```
+
+**API 호출:**
+- GET `/api/agents/` (초기 로딩)
+- GET `/api/agents/search?q={query}` (검색 시)
+
+#### WorkbenchPlayground/HubPlayground
+**기능:** Agent와의 대화 (Chat Service 연동)
+
+```typescript
+// Agent 정보 불러오기
+const fetchAgent = async () => {
+  const agents = await agentService.getAgents();
+  const foundAgent = agents.find((a) => a.agent_id === agentId);
+  setAgent(foundAgent);
+};
+```
+
+**API 호출:**
+- GET `/api/agents/` (Agent 정보 조회)
+
+#### FlowPage (`frontend/src/pages/FlowPage.tsx`)
+**기능:** 멀티 Agent 선택 및 조합
+
+```typescript
+// 모든 Agent 불러오기 (본인 + 공개)
+const fetchAgents = async () => {
+  const data = await agentService.getAgents();
+  setAgents(data);
+};
+
+// 여러 Agent 선택
+const toggleAgentSelection = (agent: Agent) => {
+  if (selectedAgents.find((a) => a.agent_id === agent.agent_id)) {
+    setSelectedAgents(selectedAgents.filter((a) => a.agent_id !== agent.agent_id));
+  } else {
+    setSelectedAgents([...selectedAgents, agent]);
+  }
+};
+```
+
+**API 호출:**
+- GET `/api/agents/` (Agent 목록 조회)
+
+### 3. AgentCard 컴포넌트
+
+#### AgentCard (`frontend/src/components/common/AgentCard.tsx`)
+Agent 정보를 카드 형태로 표시하는 공통 컴포넌트입니다.
+
+**Props:**
+- `agent`: Agent - 표시할 Agent 데이터
+- `mode`: 'workbench' | 'hub' - 표시 모드 (삭제 버튼 유무)
+- `onClick`: () => void - 카드 클릭 핸들러
+- `onDelete`: () => void - 삭제 버튼 핸들러 (workbench 모드만)
+
+**표시 정보:**
+- Agent 이름, 설명
+- Framework 아이콘 (Agno, ADK, Langchain, Custom)
+- Health Status (healthy, unhealthy, unknown)
+- Skills (skill_kr 표시)
+- 소유자 정보 (owner_username_kr, owner_deptname_kr)
+
 ## 🧪 테스트 시나리오
 
 ### 시나리오 1: Workbench에서 Agent 생성

@@ -65,13 +65,13 @@
 
 #### DEV1 (한승하) - Frontend + Infra + User Service
 
-- [ ] **`agent-platform-frontend` Repository 생성**
-  - [ ] React + Vite + TypeScript 프로젝트 초기화
-  - [ ] Tailwind CSS 설정
-  - [ ] MUI (Material-UI) 설치
-  - [ ] Zustand 스토어 생성 (`useAuthStore`, `useWorkspaceStore`)
-  - [ ] React Router 설정
-  - [ ] Layout 컴포넌트 스텁
+- [x] **`agent-platform-frontend` Repository 생성** ✅
+  - [x] React + Vite + TypeScript 프로젝트 초기화
+  - [x] Tailwind CSS 설정 (3.4+ selector strategy dark mode)
+  - [x] MUI (Material-UI) 설치 및 테마 설정
+  - [x] Zustand 스토어 생성 (`useAuthStore`, `useThemeStore`, `useApiKeyStore`)
+  - [x] React Router 설정 (모든 라우트 구성)
+  - [x] Layout 컴포넌트 완성 (Sidebar + Header + SSO 콜백 처리)
 
 - [ ] **`agent-platform-infra` Repository 생성**
   - [ ] `docker-compose/docker-compose.external.yml` 작성
@@ -196,18 +196,18 @@
 
 #### DEV1 (한승하) - Frontend Core 개발
 
-- [ ] **Frontend - Layout 및 인증**
-  - [ ] Sidebar 컴포넌트 (모드 전환)
-  - [ ] Header 컴포넌트 (로고, 프로필 드롭다운)
-  - [ ] Layout 컴포넌트 (SSO 콜백 처리)
-  - [ ] PendingApprovalPage 컴포넌트
-  - [ ] 공통 컴포넌트 (Button, Modal, Input, Card)
+- [x] **Frontend - Layout 및 인증** ✅
+  - [x] Sidebar 컴포넌트 (모드 전환, 모드별 색상 표시)
+  - [x] Header 컴포넌트 (로고, 프로필 드롭다운, 테마 토글)
+  - [x] Layout 컴포넌트 (SSO 콜백 처리, 인증 상태 관리)
+  - [x] PendingApprovalPage 컴포넌트
+  - [x] 공통 컴포넌트 (Button, Modal, Input, Card) - **진행 중**
 
-- [ ] **Frontend - 메인 대시보드**
-  - [ ] AgentCard 컴포넌트 (Gemini 스타일)
-  - [ ] AddAgentModal 컴포넌트
-  - [ ] Dashboard 페이지 (Hub/Workbench 모드 분기)
-  - [ ] Agent Service API 연동 (`GET /api/agents`, `POST /api/agents`)
+- [x] **Frontend - 메인 대시보드** ✅
+  - [x] AgentCard 컴포넌트 (Gemini 스타일) - **진행 중**
+  - [x] AddAgentModal 컴포넌트 - **진행 중**
+  - [x] Dashboard 페이지 (Hub/Workbench 모드 분기) - 기본 구조 완료
+  - [x] Agent Service API 연동 (`GET /api/agents`, `POST /api/agents`) - 준비 완료
 
 - [ ] **User Service Backend 연동 테스트**
   - [ ] SSO 로그인 플로우 테스트
@@ -257,23 +257,23 @@
 
 #### DEV1 (한승하) - Frontend 고급 기능 개발
 
-- [ ] **Frontend - Agent Playground**
-  - [ ] AgentPlayground 컴포넌트
-  - [ ] PlaygroundSidebar (세션 목록, '새 대화' 버튼)
-  - [ ] ChatPlayground (메시지 목록, 입력창)
-  - [ ] TraceCapturePanel (Workbench 모드 전용)
-  - [ ] LiveTrace 컴포넌트 (실시간 로그 표시)
+- [x] **Frontend - Agent Playground** - **진행 중** ⚡
+  - [x] AgentPlayground 컴포넌트 - 기본 구조 완료
+  - [x] PlaygroundSidebar (세션 목록, '새 대화' 버튼) - 스텁 완료
+  - [x] ChatPlayground (메시지 목록, 입력창) - 스텁 완료, **상세 구현 중**
+  - [x] TraceCapturePanel (Workbench 모드 전용) - **구현 중**
+  - [x] LiveTrace 컴포넌트 (실시간 로그 표시) - **구현 중**
 
-- [ ] **Frontend - Flow 페이지**
-  - [ ] FlowPage 컴포넌트 (Claude 스타일 미니멀)
-  - [ ] Agent 선택 Dropdown
-  - [ ] 통합 실행 UI
+- [x] **Frontend - Flow 페이지** ✅
+  - [x] FlowPage 컴포넌트 (Claude 스타일 미니멀) - 기본 구조 완료
+  - [x] Agent 선택 Dropdown - 스텁 완료
+  - [x] 통합 실행 UI - 기본 구조 완료
 
-- [ ] **Frontend - Settings 페이지**
-  - [ ] SettingsLayout (탭 메뉴)
-  - [ ] GeneralSettings (테마, 언어)
-  - [ ] APIKeys 페이지
-  - [ ] Admin 페이지 (사용자 관리, 통계)
+- [x] **Frontend - Settings 페이지** ✅
+  - [x] SettingsLayout (탭 메뉴) - 완료
+  - [x] GeneralSettings (테마, 언어) - 완료
+  - [x] APIKeys 페이지 - 기본 구조 완료
+  - [x] Admin 페이지 (사용자 관리, 통계) - 기본 구조 완료
 
 - [ ] **전체 Backend 연동 테스트**
   - [ ] 모든 페이지에서 Backend API 정상 동작 확인

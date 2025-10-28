@@ -179,6 +179,173 @@ Authorization: Bearer {accessToken}
 }
 ```
 
+## 💻 Frontend 실제 구현 세부사항
+
+### 1. State Management (Zustand)
+
+#### useAuthStore (`frontend/src/store/useAuthStore.ts`)
+사용자 인증 상태를 관리하는 전역 스토어입니다.
+
+**주요 상태:**
+- `user`: User | null - 현재 로그인한 사용자 정보
+- `accessToken`: string | null - JWT 액세스 토큰
+- `isAuthenticated`: boolean - 인증 여부
+- `role`: UserRole | null - 사용자 역할 (PENDING | USER | ADMIN)
+
+**주요 함수:**
+- `checkAuthAndLogin(token)`: JWT를 디코딩하여 사용자 정보를 추출하고 localStorage에 저장
+- `logout()`: localStorage에서 토큰 제거 및 상태 초기화
+
+**사용 위치:**
+- `Layout.tsx`: SSO 콜백 처리 (`?token=...` query parameter 감지)
+- `Header.tsx`: 로그아웃 버튼
+- `PendingApprovalPage.tsx`: PENDING 사용자 처리
+
+#### useApiKeyStore (`frontend/src/store/useApiKeyStore.ts`)
+API Key 관리 상태를 담당하는 스토어입니다.
+
+**주요 상태:**
+- `apiKeys`: APIKey[] - 사용자의 모든 API Key 목록
+- `activeApiKey`: APIKey | null - 현재 활성 API Key
+
+**주요 함수:**
+- `fetchApiKeys()`: GET `/api/auth/api-keys/` 호출
+- `fetchActiveApiKey()`: GET `/api/auth/api-keys/active/` 호출
+- `createApiKey()`: POST `/api/auth/api-keys/` 호출
+- `deleteApiKey(keyId)`: DELETE `/api/auth/api-keys/{keyId}/` 호출
+
+**사용 위치:**
+- `ApiKeysSettings.tsx`: API Key 관리 페이지
+- `TraceCapturePanel.tsx`: Workbench에서 활성 API Key 표시
+
+### 2. 컴포넌트별 API 호출
+
+#### Layout (`frontend/src/components/layout/Layout.tsx`)
+**기능:** SSO 콜백 처리 및 인증 체크
+
+```typescript
+// SSO 콜백에서 token을 받아 처리
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  if (token) {
+    checkAuthAndLogin(token);  // useAuthStore에서 제공
+    window.history.replaceState({}, document.title, location.pathname);
+    fetchActiveApiKey();  // useApiKeyStore에서 제공
+  }
+}, [location.search]);
+
+// PENDING 사용자는 승인 대기 페이지로 리디렉션
+if (user?.role === 'PENDING') {
+  return <PendingApprovalPage />;
+}
+```
+
+**API 호출:** 없음 (토큰 디코딩만 수행)
+
+#### Header (`frontend/src/components/layout/Header.tsx`)
+**기능:** 사용자 정보 표시 및 로그아웃
+
+```typescript
+const handleLogout = () => {
+  logout();  // useAuthStore에서 제공 (localStorage 제거)
+  window.location.href = '/api/auth/logout/';  // IdP 로그아웃
+};
+```
+
+**API 호출:** GET `/api/auth/logout/` (페이지 리디렉션)
+
+#### ApiKeysSettings (`frontend/src/pages/settings/ApiKeysSettings.tsx`)
+**기능:** API Key 목록 조회, 생성, 삭제
+
+```typescript
+// API Key 목록 불러오기
+const loadApiKeys = async () => {
+  await fetchApiKeys();  // useApiKeyStore
+};
+
+// API Key 생성
+const handleCreateApiKey = async () => {
+  const createdKey = await createApiKey();  // useApiKeyStore
+  setNewKey(createdKey.key);  // 한 번만 표시
+  await loadApiKeys();
+};
+
+// API Key 삭제
+const handleDeleteApiKey = async (keyId: string) => {
+  await deleteApiKey(keyId);  // useApiKeyStore
+  await loadApiKeys();
+};
+```
+
+**API 호출:**
+- GET `/api/auth/api-keys/` (초기 로딩, 생성/삭제 후)
+- POST `/api/auth/api-keys/` (생성 시)
+- DELETE `/api/auth/api-keys/{id}/` (삭제 시)
+
+#### UsersManagement (`frontend/src/pages/settings/UsersManagement.tsx`)
+**기능:** 사용자 목록 조회 및 역할 변경 (ADMIN 전용)
+
+**예상 API 호출:** (백엔드 개발 시 구현 필요)
+- GET `/api/auth/users/?role=PENDING`
+- PATCH `/api/auth/users/{id}/` (role 변경)
+- DELETE `/api/auth/users/{id}/`
+
+### 3. Axios 인터셉터 설정
+
+#### axios.ts (`frontend/src/api/axios.ts`)
+모든 API 요청에 JWT 토큰을 자동으로 추가합니다.
+
+```typescript
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // 토큰 만료 시 로그아웃
+      localStorage.removeItem('accessToken');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+### 4. JWT 디코딩 로직
+
+#### useAuthStore.ts
+```typescript
+const decodeJWT = (token: string | null): DecodedJWT | null => {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+
+    // 만료 체크
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
+
+    return {
+      user_id: payload.user_id,
+      username: payload.username,
+      username_kr: payload.username_kr,
+      email: payload.email,
+      role: payload.role,
+      deptname_kr: payload.deptname_kr,
+    };
+  } catch {
+    return null;
+  }
+};
+```
+
 ## 🧪 테스트 시나리오
 
 ### 시나리오 1: SSO 로그인
