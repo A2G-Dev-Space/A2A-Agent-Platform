@@ -501,14 +501,12 @@ git push origin main
 | **독립 개발** | ❌ | ✅ | ✅ |
 | **통합 실행** | ✅ | ❌ | ✅ |
 | **버전 관리** | 어려움 | 쉬움 | 쉬움 |
-| **CI/CD** | 단일 | 서비스별 | 양쪽 모두 |
 | **Clone 편의성** | 쉬움 | 복잡 | 쉬움 (`--recursive`) |
 
 **Sub-repository의 장점**:
 1. **독립 개발**: 각 서비스를 독립 Repository로 개발
 2. **통합 실행**: Main Repository에서 `docker-compose up` 한 번으로 전체 플랫폼 실행
 3. **버전 추적**: Main Repository가 각 Submodule의 특정 Commit Hash를 참조
-4. **CI/CD 양립**: 각 Sub-repo에 독립 CI + Main Repo에 통합 CI
 
 **상세 내용**: [GIT_SUBMODULES.md](./GIT_SUBMODULES.md) 참조
 
@@ -906,7 +904,7 @@ REDIS_HOST=redis.company.com
 
 | Developer | 담당 서비스 | 주요 작업 | 기술 스택 |
 |-----------|------------|----------|----------|
-| **DEV1 (한승하)** | Frontend 전체 + Infra + User Service | Frontend 모든 기능, Docker/CI/CD, SSO/인증 | React, TypeScript, Docker, FastAPI |
+| **DEV1 (한승하)** | Frontend 전체 + Infra + User Service | Frontend 모든 기능, Docker, SSO/인증 | React, TypeScript, Docker, FastAPI |
 | **DEV2 (이병주)** | Admin Service + Worker Service | LLM 관리, 통계, Celery Tasks | FastAPI, Celery, Redis |
 | **DEV3 (김영섭)** | Chat Service + Tracing Service | WebSocket, Session/Message, Log Proxy | FastAPI, WebSocket, Redis |
 | **DEV4 (안준형)** | Agent Service (agent subrepo) | A2A 프로토콜, Top-K 추천, Agent CRUD | FastAPI, RAG, LangChain |

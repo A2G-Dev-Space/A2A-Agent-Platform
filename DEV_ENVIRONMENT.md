@@ -273,41 +273,33 @@ graph LR
     A[로컬 개발] --> B[Mock Services 테스트]
     B --> C[API Contract 검증]
     C --> D[Git Commit & Push]
-    D --> E[PR 생성]
-    E --> F[Code Review]
-    F --> G[Develop 브랜치 Merge]
-    G --> H[사내망 통합 테스트]
-    H --> I[Main 브랜치 Merge]
-    I --> J[Production 배포]
+    D --> E[사내망 통합 테스트]
+    E --> F[Production 배포]
 ```
 
 ### 5.2 브랜치 전략
 
 - `main`: 운영 환경 (사내망 전용)
-- `develop`: 통합 개발 브랜치 (사내망에서 테스트)
-- `feature/[TASK-ID]-description`: 개발자 개인 작업 브랜치 (사외망)
+- `feature/[task-description]`: 개발자 개인 작업 브랜치 (사외망)
 
 **예시**:
 ```bash
-# Developer #1 (Frontend)
-git checkout -b feature/TASK-101-add-agent-card-ui
+# 개인 작업 브랜치 생성
+git checkout -b feature/add-agent-card-ui
 
 # 작업 후
 git add .
 git commit -m "feat(frontend): Add agent card UI component"
-git push origin feature/TASK-101-add-agent-card-ui
-
-# GitHub에서 PR 생성 (target: develop)
+git push origin feature/add-agent-card-ui
 ```
 
 ### 5.3 통합 테스트 프로세스
 
 **사외망 → 사내망 이전 시**:
-1. 개발자가 PR을 `develop` 브랜치로 머지
-2. 사내망 CI/CD 서버가 코드를 pull
-3. `.env.internal` 환경 변수 사용
-4. 통합 테스트 실행
-5. 성공 시 `main` 브랜치 머지 승인
+1. 개발자가 완성된 코드를 push
+2. `.env.internal` 환경 변수로 전환
+3. 사내망에서 통합 테스트 실행
+4. 성공 시 `main` 브랜치에 배포
 
 ---
 

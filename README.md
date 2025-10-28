@@ -245,7 +245,6 @@ git clone https://github.com/A2G-Dev-Space/agent-platform-worker-service.git
 | **Nginx** | API Gateway, SSL, 라우팅 |
 | **Docker** | 컨테이너화 |
 | **Docker Compose** | Multi-container 관리 |
-| **GitHub Actions** | CI/CD |
 
 ---
 
@@ -335,7 +334,7 @@ uv run celery -A app.worker beat --loglevel=info  # 별도 터미널
 
 | Developer | 담당 서비스 | 주요 책임 | 기술 |
 |-----------|------------|----------|------|
-| **DEV1 (한승하)** 🔥 | Frontend 전체 + Infra + User Service | Frontend 모든 기능 개발, Docker/CI/CD, SSO/인증 | React, TypeScript, Docker, FastAPI |
+| **DEV1 (한승하)** 🔥 | Frontend 전체 + Infra + User Service | Frontend 모든 기능 개발, Docker, SSO/인증 | React, TypeScript, Docker, FastAPI |
 | **DEV2 (이병주)** | Admin Service + Worker Service | LLM 관리, 통계, Celery Tasks, Health Check | FastAPI, Celery, Redis |
 | **DEV3 (김영섭)** | Chat Service + Tracing Service | WebSocket, Session/Message, Log Proxy | FastAPI, WebSocket, Redis |
 | **DEV4 (안준형)** | Agent Service (agent subrepo) | A2A 프로토콜, Top-K 추천, Agent CRUD | FastAPI, RAG, LangChain |
