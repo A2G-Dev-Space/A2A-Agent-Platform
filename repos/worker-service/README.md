@@ -1,6 +1,6 @@
 # 🔧 Worker Service
 
-**담당자**: DEV2 (이병주, byungju.lee@company.com)
+**담당자**: DEV1 (한승하,  syngha.han@company.com)
 **기술**: Celery + Redis
 **포트**: N/A (백그라운드 워커), 5555 (Flower 모니터링)
 
@@ -471,7 +471,7 @@ celery -A app.worker flower --port=5555
 
 ## Sprint 체크리스트
 
-### 이병주 (byungju.lee@company.com)
+### 한승하 ( syngha.han@company.com)
 
 #### Sprint 1 (1주차)
 - [ ] 프로젝트 초기화 및 Celery 설정
