@@ -1,119 +1,73 @@
-import React from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { Wrench, Building, Zap, Settings } from 'lucide-react'
-import { AppMode } from '@/types'
-import { useAppStore } from '@/stores/appStore'
-import clsx from 'clsx'
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Home, LayoutGrid, Workflow, Settings, LogOut } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
 
-interface SidebarButtonProps {
-  icon: React.ReactNode
-  label: string
-  active: boolean
-  color: 'purple' | 'sky' | 'teal' | 'gray'
-  onClick: () => void
-}
+const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
+  const { logout } = useAuthStore();
 
-const SidebarButton: React.FC<SidebarButtonProps> = ({
-  icon,
-  label,
-  active,
-  color,
-  onClick,
-}) => {
-  const bgColorMap = {
-    purple: active ? 'bg-purple-200 dark:bg-purple-800' : 'bg-transparent',
-    sky: active ? 'bg-sky-200 dark:bg-sky-800' : 'bg-transparent',
-    teal: active ? 'bg-teal-200 dark:bg-teal-800' : 'bg-transparent',
-    gray: active ? 'bg-gray-200 dark:bg-gray-700' : 'bg-transparent',
-  }
-
-  const textColorMap = {
-    purple: 'text-purple-700 dark:text-purple-300',
-    sky: 'text-sky-700 dark:text-sky-300',
-    teal: 'text-teal-700 dark:text-teal-300',
-    gray: 'text-gray-700 dark:text-gray-300',
-  }
+  const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+      isActive
+        ? 'bg-primary/10 text-primary'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
+    }`;
 
   return (
-    <button
-      onClick={onClick}
-      className={clsx(
-        'w-12 h-12 rounded-lg flex items-center justify-center',
-        'transition-all duration-200 group relative',
-        bgColorMap[color],
-        'hover:bg-gray-200 dark:hover:bg-gray-700',
-        active && textColorMap[color]
-      )}
-      title={label}
-      aria-label={label}
-    >
-      <span className="text-xl">{icon}</span>
-      {/* Tooltip */}
-      <span className={clsx(
-        'absolute left-14 px-2 py-1 text-xs font-medium',
-        'bg-gray-900 text-white rounded whitespace-nowrap',
-        'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
-        'pointer-events-none z-50'
-      )}>
-        {label}
-      </span>
-    </button>
-  )
-}
-
-export const Sidebar: React.FC = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { mode, setMode } = useAppStore()
-
-  const currentPath = location.pathname
-  const isSettings = currentPath.startsWith('/settings')
-
-  const handleModeChange = (newMode: AppMode, path: string) => {
-    setMode(newMode)
-    navigate(path)
-  }
-
-  return (
-    <aside className="w-16 h-screen flex flex-col bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
-      {/* Mode buttons */}
-      <div className="flex flex-col gap-2 p-2">
-        <SidebarButton
-          icon={<Wrench size={24} />}
-          label="Workbench"
-          active={mode === AppMode.WORKBENCH && !isSettings}
-          color="purple"
-          onClick={() => handleModeChange(AppMode.WORKBENCH, '/workbench')}
-        />
-        <SidebarButton
-          icon={<Building size={24} />}
-          label="Hub"
-          active={mode === AppMode.HUB && !isSettings}
-          color="sky"
-          onClick={() => handleModeChange(AppMode.HUB, '/hub')}
-        />
-        <SidebarButton
-          icon={<Zap size={24} />}
-          label="Flow"
-          active={mode === AppMode.FLOW && !isSettings}
-          color="teal"
-          onClick={() => handleModeChange(AppMode.FLOW, '/flow')}
-        />
+    <aside className="flex flex-col h-screen w-64 bg-white dark:bg-[#110d1a] border-r border-slate-200 dark:border-slate-800 sticky top-0 p-4">
+      <div className="flex items-center gap-3 h-16 border-b border-slate-200 dark:border-slate-800 px-2">
+        <div className="size-8 text-primary">
+          <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <g clipPath="url(#clip0_6_535)">
+              <path
+                clipRule="evenodd"
+                d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z"
+                fill="currentColor"
+                fillRule="evenodd"
+              ></path>
+            </g>
+            <defs>
+              <clipPath id="clip0_6_535">
+                <rect fill="white" height="48" width="48"></rect>
+              </clipPath>
+            </defs>
+          </svg>
+        </div>
+        <h2 className="text-slate-800 dark:text-white text-lg font-bold">A2G Platform</h2>
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Settings button */}
-      <div className="flex flex-col gap-2 p-2 border-t border-gray-200 dark:border-gray-800">
-        <SidebarButton
-          icon={<Settings size={24} />}
-          label="Settings"
-          active={isSettings}
-          color="gray"
-          onClick={() => navigate('/settings/general')}
-        />
+      <div className="flex flex-col justify-between flex-1 mt-4">
+        <nav className="flex flex-col gap-2">
+          <NavLink to="/workbench" className={navLinkClasses}>
+            <Home className="size-5" />
+            <p className="text-sm font-medium">{t('sidebar.workbench')}</p>
+          </NavLink>
+          <NavLink to="/hub" className={navLinkClasses}>
+            <LayoutGrid className="size-5" />
+            <p className="text-sm font-medium">{t('sidebar.hub')}</p>
+          </NavLink>
+          <NavLink to="/flow" className={navLinkClasses}>
+            <Workflow className="size-5" />
+            <p className="text-sm font-medium">{t('sidebar.flow')}</p>
+          </NavLink>
+          <NavLink to="/settings" className={navLinkClasses}>
+            <Settings className="size-5" />
+            <p className="text-sm font-medium">{t('sidebar.settings')}</p>
+          </NavLink>
+        </nav>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={() => logout()}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+          >
+            <LogOut className="size-5" />
+            <p className="text-sm font-medium">{t('sidebar.logout')}</p>
+          </button>
+        </div>
       </div>
     </aside>
-  )
-}
+  );
+};
+
+export default Sidebar;

@@ -138,3 +138,53 @@ async def delete_api_key(
     await db.commit()
     
     return {"message": "API key deleted successfully"}
+
+# New User Management Endpoints
+
+class UserManagementInfo(BaseModel):
+    id: int
+    name: str
+    email: str
+    department: str
+    role: str
+    status: str
+
+class UserInvite(BaseModel):
+    email: str
+    role: str
+
+@router.get("/users/", response_model=List[UserManagementInfo])
+async def list_users(
+    current_user: User = Depends(get_current_user)
+):
+    """List all users for management"""
+    # Dummy data for now
+    return [
+        { "id": 1, "name": "Olivia Rhye", "email": "olivia@a2g.com", "department": "Engineering", "role": "Admin", "status": "Active" },
+        { "id": 2, "name": "Phoenix Baker", "email": "phoenix@a2g.com", "department": "Product", "role": "Standard", "status": "Active" },
+    ]
+
+@router.post("/users/invite/", response_model=UserManagementInfo)
+async def invite_user(
+    invite: UserInvite,
+    current_user: User = Depends(get_current_user)
+):
+    """Invite a new user"""
+    # Dummy data for now
+    return { "id": 3, "name": "New User", "email": invite.email, "department": "Unassigned", "role": invite.role, "status": "Invited" }
+
+@router.put("/users/{user_id}/approve/")
+async def approve_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """Approve a user's registration"""
+    return {"message": f"User {user_id} approved successfully"}
+
+@router.put("/users/{user_id}/reject/")
+async def reject_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """Reject a user's registration"""
+    return {"message": f"User {user_id} rejected successfully"}

@@ -1,0 +1,116 @@
+{
+  "translation": {
+    "greeting": "Hello",
+    "sidebar": {
+      "workbench": "Workbench",
+      "hub": "Hub",
+      "flow": "Flow",
+      "settings": "Settings",
+      "logout": "Logout"
+    },
+    "login": {
+      "welcome": "Welcome to A2G",
+      "description": "Access your Workbench, Hub, and Flow.",
+      "ssoButton": "Continue with SSO",
+      "help": "Help",
+      "docs": "Docs"
+    },
+    "hub": {
+        "title": "Agent Hub",
+        "subtitle": "Discover and launch production-ready agents.",
+        "searchPlaceholder": "Search for agents by name, tag, or description...",
+        "topPicks": "Top Picks for You",
+        "allAgents": "All Agents"
+    },
+    "workbench": {
+        "agentsTitle": "Agents",
+        "newAgent": "New Agent",
+        "filterPlaceholder": "Filter agents...",
+        "noAgentSelectedTitle": "Select an Agent",
+        "noAgentSelectedSubtitle": "Choose an agent from the list to start a session."
+    },
+    "createAgent": {
+        "title": "Create New Agent",
+        "subtitle": "Fill in the details below to set up your new agent.",
+        "nameLabel": "Agent Name",
+        "namePlaceholder": "Enter a unique name for your agent",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Provide a brief description of what this agent does",
+        "frameworkLabel": "Framework",
+        "frameworkPlaceholder": "Select a framework",
+        "colorLabel": "Card Color",
+        "createButton": "Create Agent"
+    },
+    "common": {
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "save": "Save"
+    },
+    "flow": {
+        "title": "Flow Dashboard",
+        "subtitle": "Select agents and start a conversation.",
+        "newChat": "New Chat",
+        "allAgents": "All Agents",
+        "welcomeTitle": "Welcome to Flow Chat",
+        "welcomeSubtitle": "Select one or more agents from the dropdown above to start your conversation. If no agent is selected, you'll be interacting with all available agents.",
+        "messagePlaceholder": "Type your message here..."
+    },
+    "settings": {
+        "title": "Settings",
+        "subtitle": "Manage your account and platform settings.",
+        "tabs": {
+            "general": "General",
+            "userManagement": "User Management",
+            "llmManagement": "LLM Model Management",
+            "statistics": "Statistics"
+        },
+        "general": {
+            "themeTitle": "Theme",
+            "themeSubtitle": "Choose how A2G Platform looks to you.",
+            "lightTheme": "Light",
+            "lightThemeDesc": "Optimized for bright environments.",
+            "darkTheme": "Dark",
+            "darkThemeDesc": "Ideal for low-light conditions.",
+            "languageTitle": "Language",
+            "languageSubtitle": "Select your preferred language for the interface.",
+            "saveButton": "Save Changes"
+        },
+        "userManagement": {
+            "inviteUser": "Invite User",
+            "user": "User",
+            "department": "Department",
+            "role": "Role",
+            "status": "Status",
+            "actions": "Actions"
+        },
+        "llmManagement": {
+            "title": "Available LLM Models",
+            "subtitle": "Add, view, and manage your LLM models.",
+            "addNewModel": "Add New Model",
+            "modelName": "Model Name",
+            "endpoint": "Endpoint",
+            "key": "Key",
+            "healthStatus": "Health Status",
+            "active": "Active",
+            "actions": "Actions",
+            "addModal": {
+                "title": "Add New LLM Model",
+                "modelNameLabel": "Model Name",
+                "modelNamePlaceholder": "Enter a descriptive name",
+                "endpointLabel": "Endpoint",
+                "endpointPlaceholder": "Enter the model API endpoint URL",
+                "keyLabel": "Key",
+                "keyPlaceholder": "Enter your secret API key"
+            }
+        },
+        "statistics": {
+            "title": "Statistics Dashboard",
+            "totalUsers": "Total Users",
+            "activeAgents": "Active Agents",
+            "agentsInDev": "Agents in Develop Process",
+            "topConsumers": "Top LLM Token Consumers",
+            "agentUsage": "Agent Usage Frequency"
+        }
+    }
+  }
+}

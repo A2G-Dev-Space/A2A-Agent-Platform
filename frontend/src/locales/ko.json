@@ -1,0 +1,116 @@
+{
+  "translation": {
+    "greeting": "안녕하세요",
+    "sidebar": {
+      "workbench": "워크벤치",
+      "hub": "허브",
+      "flow": "플로우",
+      "settings": "설정",
+      "logout": "로그아웃"
+    },
+    "login": {
+      "welcome": "A2G에 오신 것을 환영합니다",
+      "description": "Workbench, Hub, Flow에 액세스하세요.",
+      "ssoButton": "SSO로 계속하기",
+      "help": "도움말",
+      "docs": "문서"
+    },
+    "hub": {
+        "title": "에이전트 허브",
+        "subtitle": "프로덕션 준비가 된 에이전트를 찾아보세요.",
+        "searchPlaceholder": "이름, 태그, 또는 설명으로 에이전트 검색...",
+        "topPicks": "추천 에이전트",
+        "allAgents": "모든 에이전트"
+    },
+    "workbench": {
+        "agentsTitle": "에이전트",
+        "newAgent": "새 에이전트",
+        "filterPlaceholder": "에이전트 필터링...",
+        "noAgentSelectedTitle": "에이전트를 선택하세요",
+        "noAgentSelectedSubtitle": "세션을 시작하려면 목록에서 에이전트를 선택하세요."
+    },
+    "createAgent": {
+        "title": "새 에이전트 생성",
+        "subtitle": "새 에이전트를 설정하려면 아래 세부 정보를 입력하세요.",
+        "nameLabel": "에이전트 이름",
+        "namePlaceholder": "에이전트의 고유한 이름을 입력하세요",
+        "descriptionLabel": "설명",
+        "descriptionPlaceholder": "이 에이전트가 수행하는 작업에 대한 간략한 설명을 제공하세요",
+        "frameworkLabel": "프레임워크",
+        "frameworkPlaceholder": "프레임워크 선택",
+        "colorLabel": "카드 색상",
+        "createButton": "에이전트 생성"
+    },
+    "common": {
+        "cancel": "취소",
+        "creating": "생성 중...",
+        "save": "저장"
+    },
+    "flow": {
+        "title": "플로우 대시보드",
+        "subtitle": "에이전트를 선택하고 대화를 시작하세요.",
+        "newChat": "새 채팅",
+        "allAgents": "모든 에이전트",
+        "welcomeTitle": "플로우 채팅에 오신 것을 환영합니다",
+        "welcomeSubtitle": "대화를 시작하려면 위 드롭다운에서 하나 이상의 에이전트를 선택하세요. 에이전트를 선택하지 않으면 사용 가능한 모든 에이전트와 상호 작용하게 됩니다.",
+        "messagePlaceholder": "여기에 메시지를 입력하세요..."
+    },
+    "settings": {
+        "title": "설정",
+        "subtitle": "계정 및 플랫폼 설정을 관리하세요.",
+        "tabs": {
+            "general": "일반",
+            "userManagement": "사용자 관리",
+            "llmManagement": "LLM 모델 관리",
+            "statistics": "통계"
+        },
+        "general": {
+            "themeTitle": "테마",
+            "themeSubtitle": "A2G 플랫폼의 모양을 선택하세요.",
+            "lightTheme": "라이트",
+            "lightThemeDesc": "밝은 환경에 최적화되었습니다.",
+            "darkTheme": "다크",
+            "darkThemeDesc": "저조도 환경에 이상적입니다.",
+            "languageTitle": "언어",
+            "languageSubtitle": "인터페이스에 사용할 언어를 선택하세요.",
+            "saveButton": "변경 사항 저장"
+        },
+        "userManagement": {
+            "inviteUser": "사용자 초대",
+            "user": "사용자",
+            "department": "부서",
+            "role": "역할",
+            "status": "상태",
+            "actions": "작업"
+        },
+        "llmManagement": {
+            "title": "사용 가능한 LLM 모델",
+            "subtitle": "LLM 모델을 추가, 확인 및 관리하세요.",
+            "addNewModel": "새 모델 추가",
+            "modelName": "모델 이름",
+            "endpoint": "엔드포인트",
+            "key": "키",
+            "healthStatus": "상태",
+            "active": "활성",
+            "actions": "작업",
+            "addModal": {
+                "title": "새 LLM 모델 추가",
+                "modelNameLabel": "모델 이름",
+                "modelNamePlaceholder": "설명적인 이름을 입력하세요",
+                "endpointLabel": "엔드포인트",
+                "endpointPlaceholder": "모델 API 엔드포인트 URL을 입력하세요",
+                "keyLabel": "키",
+                "keyPlaceholder": "비밀 API 키를 입력하세요"
+            }
+        },
+        "statistics": {
+            "title": "통계 대시보드",
+            "totalUsers": "총 사용자",
+            "activeAgents": "활성 에이전트",
+            "agentsInDev": "개발 중인 에이전트",
+            "topConsumers": "상위 LLM 토큰 소비자",
+            "agentUsage": "에이전트 사용 빈도"
+        }
+    }
+  }
+}

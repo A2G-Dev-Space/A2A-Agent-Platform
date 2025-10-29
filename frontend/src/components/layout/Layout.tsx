@@ -1,56 +1,25 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
-import { Sidebar } from './Sidebar'
-import { Header } from './Header'
-import { Toaster } from 'react-hot-toast'
-import { useAppStore } from '@/stores/appStore'
-import clsx from 'clsx'
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import { Toaster } from 'react-hot-toast';
 
 export const Layout: React.FC = () => {
-  const { mode } = useAppStore()
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-background-light dark:bg-background-dark">
       <Sidebar />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-
-        {/* Page Content */}
-        <main className={clsx(
-          'flex-1 overflow-auto bg-gray-50 dark:bg-gray-900',
-          `mode-${mode}`
-        )}>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-10">
           <Outlet />
         </main>
       </div>
-
-      {/* Toast Notifications */}
       <Toaster
         position="top-right"
         toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            style: {
-              background: '#10b981',
-            },
-          },
-          error: {
-            duration: 5000,
-            style: {
-              background: '#ef4444',
-            },
-          },
+          className: 'dark:bg-slate-700 dark:text-white',
         }}
       />
     </div>
-  )
-}
+  );
+};
