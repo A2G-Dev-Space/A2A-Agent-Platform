@@ -7,15 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Starting the Development Environment
 
 ```bash
-# Quick start with Docker Compose (all services)
-docker-compose -f repos/infra/docker-compose.dev.yml up -d
+# Quick start with Docker Compose (all services including API Gateway)
+docker compose -f repos/infra/docker-compose.dev.yml up -d
 cd frontend && npm install && npm run dev
 
-# Minimal setup (Frontend + Mock Backend only)
-cd frontend
-npm install
-npm run dev    # Terminal 1 - Frontend on http://localhost:9060
-npm run mock   # Terminal 2 - Mock API on http://localhost:9050
+# Minimal setup (Frontend + API Gateway + Mock SSO)
+docker compose -f repos/infra/docker-compose.dev.yml up -d api-gateway mock-sso postgres redis
+cd frontend && npm install && npm run dev
+
+# Frontend will be at http://localhost:9060
+# API Gateway will be at http://localhost:9050
 ```
 
 ### Running Tests
@@ -30,8 +31,12 @@ fetch('/api/agents', {
   headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }
 }).then(r => r.json()).then(console.log)
 
-# Backend service tests
+# Backend service tests (local development)
 cd repos/{service-name}
+uv sync  # Install all dependencies from pyproject.toml
+uv run pytest tests/
+
+# Or activate virtual environment first
 uv venv && source .venv/bin/activate
 uv sync
 pytest tests/
@@ -90,24 +95,24 @@ The A2G Platform is a microservices-based AI agent development platform with thr
   - SSO authentication integration
   - Real-time WebSocket communication
   - Responsive design for all screen sizes
-  - Mock API server for independent development
+  - Communicates through unified API Gateway
 
 #### Backend Services (`/repos/*`)
 
 Each service follows a standard FastAPI microservice pattern:
 
-1. **User Service** (Port 8001): Authentication, authorization, user management
-2. **Agent Service** (Port 8002): Agent CRUD, A2A protocol, Top-K recommendations
-3. **Chat Service** (Port 8003): WebSocket sessions, message streaming
-4. **Tracing Service** (Port 8004): Log proxy, real-time tracing
-5. **Admin Service** (Port 8005): LLM model management, platform statistics
-6. **Worker Service**: Celery-based background tasks
+1. **API Gateway** (Port 9050): Request routing, authentication, rate limiting
+2. **User Service** (Port 8001): Authentication, authorization, user management
+3. **Agent Service** (Port 8002): Agent CRUD, A2A protocol, Top-K recommendations
+4. **Chat Service** (Port 8003): WebSocket sessions, message streaming
+5. **Tracing Service** (Port 8004): Log proxy, real-time tracing
+6. **Admin Service** (Port 8005): LLM model management, platform statistics
+7. **Worker Service**: Celery-based background tasks
 
 #### Infrastructure
 
 - **PostgreSQL** (Port 5432): Primary database with separate schemas per service
 - **Redis** (Port 6379): Session cache, Celery broker, WebSocket pub/sub
-- **Nginx** (Port 9050): API gateway and reverse proxy
 - **Mock SSO** (Port 9999): Development authentication service
 
 ### A2A (Agent-to-Agent) Protocol
@@ -131,7 +136,7 @@ Supported frameworks: Agno, ADK, Langchain, Custom
 ### Service Communication Flow
 
 ```
-User → Frontend (9060) → Nginx (9050) → Backend Services (800X) → PostgreSQL/Redis
+User → Frontend (9060) → API Gateway (9050) → Backend Services (800X) → PostgreSQL/Redis
                             ↓
                         WebSocket → Chat Service → Redis Pub/Sub
 ```
@@ -147,15 +152,15 @@ User → Frontend (9060) → Nginx (9050) → Backend Services (800X) → Postgr
 
 ### Development Workflow
 
-1. **Frontend-First Development**: Start with Mock API server for rapid UI development
+1. **Frontend Development**: Start with API Gateway and Mock SSO for rapid UI development
 2. **Service Implementation**: Develop backend services independently with their own databases
-3. **Integration Testing**: Use Frontend to test real backend services
-4. **Real-time Features**: Test WebSocket connections through Chat Service
+3. **Integration Testing**: Use Frontend to test real backend services through API Gateway
+4. **Real-time Features**: Test WebSocket connections through API Gateway to Chat Service
 
 ### Key Architectural Decisions
 
 - **Microservices**: Each service is independently deployable with its own database
-- **Mock Services**: Enable frontend development without backend dependencies
+- **API Gateway**: Centralized entry point with authentication and routing
 - **Git Submodules**: Services are managed as separate repositories
 - **Docker Compose**: Unified development environment setup
 - **JWT Authentication**: Stateless authentication across services
@@ -165,7 +170,7 @@ User → Frontend (9060) → Nginx (9050) → Backend Services (800X) → Postgr
 ### Important File Locations
 
 - Frontend configuration: `frontend/vite.config.ts`
-- Mock API server: `frontend/mock-server.js`
+- API Gateway: `repos/api-gateway/`
 - Docker Compose: `repos/infra/docker-compose.dev.yml`
 - Service templates: `repos/shared/`
 - Database init: `repos/infra/init-db.sql`
@@ -185,7 +190,7 @@ SP_REDIRECT_URL=http://localhost:9060/callback
 ### Port Allocation Strategy
 
 - 9060: Frontend application
-- 9050: API Gateway (Nginx)
+- 9050: API Gateway (FastAPI)
 - 9999: Mock SSO
 - 800X: Backend services (8001-8005)
 - 5432: PostgreSQL

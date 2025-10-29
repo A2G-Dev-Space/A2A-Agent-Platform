@@ -271,9 +271,9 @@ tail -f agent-service.log
 tail -f chat-service.log
 
 # Docker 로그 확인
-docker-compose logs -f user-service
-docker-compose logs -f agent-service
-docker-compose logs -f chat-service
+docker compose logs -f user-service
+docker compose logs -f agent-service
+docker compose logs -f chat-service
 ```
 
 ---

@@ -52,7 +52,7 @@ mkdir -p mock-sso
 # nginx/nginx.conf 작성 (HTTPS, 프록시 설정)
 
 # 5. 실행 테스트
-docker-compose -f docker-compose.external.yml up -d
+docker compose -f docker-compose.external.yml up -d
 ```
 
 ### ✅ Sprint 1 (2주차) - User Service + Frontend 기초

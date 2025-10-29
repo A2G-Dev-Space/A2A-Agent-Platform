@@ -1,0 +1,27 @@
+# Development Dockerfile for Admin Service
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+
+WORKDIR /app
+
+# Install basic dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy dependency files
+COPY pyproject.toml .
+COPY .python-version .
+
+# Install dependencies using uv
+RUN uv sync --no-install-project
+
+# Copy application code
+COPY . .
+
+EXPOSE 8005
+
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8005", "--reload"]

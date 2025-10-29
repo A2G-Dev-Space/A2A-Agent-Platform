@@ -129,7 +129,7 @@ docker run -d \
   redis:7-alpine
 
 # Mock SSO 실행 (선택사항, 나중에 구축 가능)
-# docker-compose -f docker-compose.external.yml up -d mock-sso
+# docker compose -f docker-compose.external.yml up -d mock-sso
 
 # 실행 확인
 docker ps
@@ -179,11 +179,15 @@ uv sync
 
 # 환경 변수 설정
 cat > .env.local << EOF
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/user_service_db
+DATABASE_URL=postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
+REDIS_URL=redis://redis:6379/0
 SERVICE_PORT=8001
 JWT_SECRET_KEY=local-dev-secret-key
 DEBUG=true
 EOF
+
+# docker-compose 네트워크에서 실행 시에는 위와 같이 `postgres`, `redis` 서비스를 직접 참조합니다.
+# 만약 FastAPI 앱을 로컬 머신에서 단독으로 실행한다면 `postgres` → `localhost` 로 변경해 주세요.
 
 # DB 마이그레이션
 alembic init alembic  # 최초 1회만
@@ -560,19 +564,19 @@ volumes:
 ```bash
 # Mock 서비스 시작
 cd infra/docker-compose
-docker-compose -f docker-compose.external.yml up -d
+docker compose -f docker-compose.external.yml up -d
 
 # 상태 확인
-docker-compose ps
+docker compose ps
 
 # 로그 확인
-docker-compose logs -f mock-sso
+docker compose logs -f mock-sso
 
 # 중지
-docker-compose down
+docker compose down
 
 # 데이터 초기화
-docker-compose down -v
+docker compose down -v
 ```
 
 ---
@@ -586,14 +590,14 @@ docker-compose down -v
 **`.env.local`** (외부 개발):
 ```bash
 # Database
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/user_service_db
+DATABASE_URL=postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
 
 # Mock SSO
-IDP_ENTITY_ID=http://localhost:9999/mock-sso/login
+IDP_ENTITY_ID=http://mock-sso:9999/mock-sso/login
 SP_REDIRECT_URL=http://localhost:9050/api/auth/callback/
 
 # Redis
-REDIS_URL=redis://:dev_redis_password@localhost:6379/0
+REDIS_URL=redis://redis:6379/0
 
 # Service
 SERVICE_PORT=8001
@@ -604,7 +608,7 @@ JWT_SECRET_KEY=local-dev-secret-key
 **`.env.internal`** (사내망):
 ```bash
 # Database (회사 DB)
-DATABASE_URL=postgresql://prod_user:${VAULT_PASSWORD}@company-db:5432/prod_db
+DATABASE_URL=postgresql+asyncpg://prod_user:${VAULT_PASSWORD}@company-db:5432/prod_db
 
 # Real SSO
 IDP_ENTITY_ID=https://sso.company.com/auth
@@ -618,6 +622,8 @@ SERVICE_PORT=8001
 DEBUG=false
 JWT_SECRET_KEY=${VAULT_JWT_SECRET}
 ```
+
+> ✅ **호스트 전환 규칙**: 개발용 Docker Compose에서는 `postgres`, `redis` 서비스 이름을 그대로 사용하고, 운영/스테이징 배포 시에는 위 예시처럼 해당 환경의 엔드포인트로 `DATABASE_URL`, `REDIS_URL`만 교체하면 됩니다.
 
 ### 8.2 환경 전환
 
@@ -656,6 +662,13 @@ paths:
                 items:
                   $ref: '#/components/schemas/User'
 ```
+
+### 8.4 배포 시 엔드포인트 전환 체크리스트
+
+- [ ] 운영/스테이징 환경의 `DATABASE_URL`, `REDIS_URL` 값을 `.env.internal` 또는 배포 파이프라인 시크릿으로 교체합니다.
+- [ ] Redis는 동일한 클러스터를 공유하되 서비스별 DB 번호(`0~7`)를 유지해 충돌을 방지합니다.
+- [ ] API Gateway 환경 변수(`USER_SERVICE_URL`, 등)를 해당 환경의 도메인으로 조정합니다.
+- [ ] 기타 환경 변수는 기본값을 유지하며, URL만 교체했는지 다시 확인합니다.
 
 ---
 
@@ -931,7 +944,7 @@ docker exec -it a2g-postgres-dev psql -U dev_user -c "CREATE DATABASE user_servi
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 # 또는 패키지 설치
-pip install -e .
+uv pip install -e .
 ```
 
 #### Alembic 마이그레이션 충돌

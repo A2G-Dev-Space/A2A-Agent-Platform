@@ -164,10 +164,10 @@ cd repos/YOUR-SERVICE
 
 ```bash
 # 모든 것 시작
-docker-compose -f repos/infra/docker-compose.dev.yml up -d
+docker compose -f repos/infra/docker-compose.dev.yml up -d
 
 # 로그 모니터링
-docker-compose -f repos/infra/docker-compose.dev.yml logs -f
+docker compose -f repos/infra/docker-compose.dev.yml logs -f
 
 # Frontend 접속
 open http://localhost:9060

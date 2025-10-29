@@ -8,7 +8,6 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "mock": "node mock-server.js",
     "test:auth": "node -e \"console.log('Open browser console and run: testLogin()')\"",
     "test:agents": "node -e \"console.log('Open browser console and run: listAgents()')\""
   },

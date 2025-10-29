@@ -80,7 +80,7 @@ MOCK_USERS = {
 }
 
 # Secret key for JWT (in production, use a secure secret)
-JWT_SECRET = "mock-sso-secret-key-12345"
+JWT_SECRET = "local-dev-secret-key-change-in-production"
 JWT_ALGORITHM = "HS256"
 
 @app.get("/")

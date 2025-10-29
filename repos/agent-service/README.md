@@ -225,10 +225,10 @@ SERVICE_NAME=agent-service
 SERVICE_PORT=8002
 
 # pgvector를 포함한 데이터베이스
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/agent_service_db
+DATABASE_URL=postgresql+asyncpg://dev_user:dev_password@postgres:5432/agent_service_db
 
 # Redis
-REDIS_URL=redis://localhost:6379/1
+REDIS_URL=redis://redis:6379/1
 
 # OpenAI (임베딩용)
 OPENAI_API_KEY=your-openai-api-key
@@ -250,6 +250,8 @@ REGISTRY_URL=http://localhost:8080/registry
 # CORS
 CORS_ORIGINS=["http://localhost:9060", "http://localhost:9050"]
 ```
+
+> ✅ **배포 환경에서는** `DATABASE_URL`, `REDIS_URL`만 사내 공용 엔드포인트로 교체하면 됩니다. 서비스별 Redis DB 번호는 그대로 유지해 주세요.
 
 ## 📂 프로젝트 구조
 
@@ -337,57 +339,3 @@ Mock 에이전트 실행:
 ```bash
 python tests/mock_a2a_agent.py
 ```
-
-## 🐛 일반적인 문제
-
-### 1. pgvector 확장자 누락
-```sql
--- 데이터베이스에 연결
-docker exec -it a2g-postgres-dev psql -U dev_user -d agent_service_db
-
--- 확장자 생성
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- 확인
-SELECT * FROM pg_extension WHERE extname = 'vector';
-```
-
-### 2. 임베딩 생성 실패
-- `OPENAI_API_KEY`가 유효한지 확인
-- API 할당량/제한 확인
-- API 키 테스트:
-  ```python
-  import openai
-  openai.api_key = "your-key"
-  response = openai.Embedding.create(
-      input="test",
-      model="text-embedding-ada-002"
-  )
-  print(response)
-  ```
-
-### 3. Top-K가 결과를 반환하지 않음
-- 에이전트가 생성된 임베딩을 가지고 있는지 확인
-- 유사도 임계값 확인
-- 쿼리가 의미 있는지 확인
-- 디버깅:
-  ```sql
-  SELECT id, name, embedding_vector IS NOT NULL as has_embedding
-  FROM agents;
-  ```
-
-### 4. A2A 연결 실패
-- 대상 에이전트 엔드포인트가 접근 가능한지 확인
-- 네트워크 연결 확인
-- 엔드포인트 직접 테스트:
-  ```bash
-  curl -X POST http://localhost:8100/rpc \
-    -H "Content-Type: application/json" \
-    -d '{"jsonrpc":"2.0","method":"test","id":1}'
-  ```
-
-## 📞 지원
-
-- **담당자**: DEV4 (안준형)
-- **Slack**: #a2g-platform-dev
-- **이메일**: junhyung.ahn@company.com

@@ -339,8 +339,8 @@ docker run -d \
   -p 9999:9999 \
   -v $(pwd):/app \
   -w /app \
-  python:3.11-slim \
-  sh -c "pip install fastapi uvicorn pyjwt && python main.py"
+  ghcr.io/astral-sh/uv:python3.11-bookworm-slim \
+  sh -c "uv pip install fastapi uvicorn pyjwt && python main.py"
 ```
 
 ---
@@ -683,7 +683,7 @@ git clone --recursive git@github.com:A2G-Dev-Space/agent-platform-development.gi
 cd agent-platform-development
 
 # 2. 인프라 시작
-docker-compose -f repos/infra/docker-compose.dev.yml up -d
+docker compose -f repos/infra/docker-compose.dev.yml up -d
 
 # 3. 서비스 설정
 cd repos/user-service
@@ -814,10 +814,10 @@ SHOW_ERROR_DETAILS=true
 tail -f service.log
 
 # 모든 Docker 로그 보기
-docker-compose logs -f
+docker compose logs -f
 
 # 특정 서비스 필터링
-docker-compose logs -f user-service
+docker compose logs -f user-service
 
 # Frontend 콘솔 확인
 # 브라우저 DevTools(F12) → Console

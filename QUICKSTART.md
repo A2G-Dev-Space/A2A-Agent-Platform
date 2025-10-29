@@ -11,7 +11,7 @@
 # 저장소 복제 및 모든 서비스 시작
 git clone --recursive https://github.com/A2G-Dev-Space/agent-platform-development.git
 cd agent-platform-development
-docker-compose -f repos/infra/docker-compose.dev.yml up -d
+./start-dev.sh  # 또는: docker compose -f repos/infra/docker-compose.dev.yml up -d
 cd frontend && npm install && npm run dev
 ```
 
@@ -57,7 +57,9 @@ docker exec -it a2g-postgres-dev psql -U dev_user -d agent_service_db -c "CREATE
 
 ```bash
 cd repos/infra/mock-sso
-pip install fastapi uvicorn python-jose
+uv venv
+source .venv/bin/activate
+uv pip install fastapi uvicorn python-jose
 python main.py &
 ```
 
@@ -79,9 +81,9 @@ npm run dev &
 cd repos/user-service
 
 # Python 환경 설정
-python -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install fastapi uvicorn sqlalchemy asyncpg redis pydantic python-jose passlib httpx alembic
+uv sync
 
 # 설정
 cat > .env.local <<EOF
@@ -138,7 +140,7 @@ fetch('/api/health')
 
 ```bash
 # 최소 인프라 시작
-docker-compose -f repos/infra/docker-compose.dev.yml up postgres redis mock-sso -d
+docker compose -f repos/infra/docker-compose.dev.yml up postgres redis mock-sso -d
 
 # Frontend 시작
 cd frontend && npm run dev
@@ -148,7 +150,7 @@ cd frontend && npm run dev
 
 ```bash
 # 인프라 시작
-docker-compose -f repos/infra/docker-compose.dev.yml up postgres redis -d
+docker compose -f repos/infra/docker-compose.dev.yml up postgres redis -d
 
 # 서비스 개발
 cd repos/YOUR-SERVICE
@@ -164,13 +166,13 @@ cd frontend && npm run dev
 
 ```bash
 # Docker Compose로 모든 것 시작
-docker-compose -f repos/infra/docker-compose.dev.yml up -d
+docker compose -f repos/infra/docker-compose.dev.yml up -d
 
 # 로그 모니터링
-docker-compose -f repos/infra/docker-compose.dev.yml logs -f
+docker compose -f repos/infra/docker-compose.dev.yml logs -f
 
 # 모든 것 중지
-docker-compose -f repos/infra/docker-compose.dev.yml down
+docker compose -f repos/infra/docker-compose.dev.yml down
 ```
 
 ---
@@ -237,6 +239,16 @@ testWS();
 ---
 
 ## 🛠️ 문제 해결
+
+### Docker 권한 문제
+```bash
+# Permission denied 오류가 발생하는 경우
+sudo ./start-dev.sh  # 또는
+sudo docker compose -f repos/infra/docker-compose.dev.yml up -d
+
+# 영구적 해결책 (재로그인 필요)
+sudo usermod -aG docker $USER
+```
 
 ### 포트가 이미 사용 중인 경우
 ```bash

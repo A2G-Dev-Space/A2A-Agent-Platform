@@ -1,0 +1,29 @@
+[project]
+name = "agent-platform-worker-service"
+version = "0.1.0"
+description = "A2G Platform - Worker Service"
+requires-python = ">=3.11"
+dependencies = [
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

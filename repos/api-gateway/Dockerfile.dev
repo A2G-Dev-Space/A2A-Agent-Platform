@@ -1,0 +1,30 @@
+# Development Dockerfile for API Gateway
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable bytecode compilation for faster startup
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy dependency files
+COPY pyproject.toml .
+COPY .python-version .
+
+# Install dependencies using uv
+RUN uv sync --no-install-project
+
+# Copy application code
+COPY app ./app
+
+# Expose port
+EXPOSE 9050
+
+# Development command with auto-reload
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9050", "--reload"]

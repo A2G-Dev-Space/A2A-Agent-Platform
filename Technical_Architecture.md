@@ -29,10 +29,10 @@
 │                              Frontend (React 19)                             │
 │                               Port: 9060                                     │
 └──────────────────────────────────┬──────────────────────────────────────────┘
-                                   │ HTTPS/WSS
+                                   │ HTTP/WSS
                     ┌──────────────▼──────────────┐
-                    │   API Gateway (Nginx)       │
-                    │   Port: 9050 (SSL)          │
+                    │   API Gateway (FastAPI)     │
+                    │        Port: 9050           │
                     └──────────┬──────────────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
@@ -66,34 +66,64 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 네트워크 흐름
+### 1.2 개발 환경 구성
 
+#### 1.2.1 Full Stack Development (모든 서비스 실행)
 ```
-사용자 → Frontend → Nginx → Backend Services → Database/Cache
-                      ↓
-                  WebSocket → Chat Service → Redis Pub/Sub
+사용자 → Frontend → API Gateway (FastAPI) → Backend Services → Database/Cache
+        (9060)       (9050)                    (800X)           (5432/6379)
 ```
+
+#### 1.2.2 Minimal Development (API Gateway + Mock SSO만 사용)
+```
+사용자 → Frontend → API Gateway → Mock SSO
+        (9060)       (9050)         (9999)
+```
+
+**특징**: 단일 API Gateway를 통한 일관된 개발 경험 제공
 
 ### 1.3 포트 할당
 
-| 서비스 | 내부 포트 | 외부 포트 | 프로토콜 |
-|--------|-----------|-----------|----------|
-| Frontend | 9060 | 9060 | HTTP |
-| API Gateway | - | 9050 | HTTPS/WSS |
-| User Service | 8001 | - | HTTP |
-| Agent Service | 8002 | - | HTTP |
-| Chat Service | 8003 | - | HTTP/WS |
-| Tracing Service | 8004 | - | HTTP |
-| Admin Service | 8005 | - | HTTP |
-| PostgreSQL | 5432 | 5432 | TCP |
-| Redis | 6379 | 6379 | TCP |
-| Mock SSO | 9999 | 9999 | HTTP |
+| 서비스 | 내부 포트 | 외부 포트 | 프로토콜 | 용도 |
+|--------|-----------|-----------|----------|------|
+| Frontend | 9060 | 9060 | HTTP | React 개발 서버 |
+| API Gateway | 9050 | 9050 | HTTP/WSS | 통합 API Gateway |
+| User Service | 8001 | - | HTTP | 인증/권한 서비스 |
+| Agent Service | 8002 | - | HTTP | 에이전트 관리 서비스 |
+| Chat Service | 8003 | - | HTTP/WS | 채팅 서비스 |
+| Tracing Service | 8004 | - | HTTP | 로그 추적 서비스 |
+| Admin Service | 8005 | - | HTTP | 관리자 서비스 |
+| PostgreSQL | 5432 | 5432 | TCP | 데이터베이스 |
+| Redis | 6379 | 6379 | TCP | 캐시/메시지 브로커 |
+| Mock SSO | 9999 | 9999 | HTTP | 개발용 SSO 시뮬레이터 |
 
 ---
 
 ## 2. 마이크로서비스 구성
 
-### 2.1 User Service (인증/권한)
+### 2.1 API Gateway (통합 Gateway)
+**담당**: 플랫폼 팀
+**기술**: FastAPI + httpx + JWT
+
+**핵심 기능**:
+- 모든 Backend 서비스로의 요청 라우팅
+- JWT 토큰 검증 및 인증 처리
+- Rate Limiting (IP당 분당 100회)
+- 요청/응답 로깅
+- WebSocket 프록시
+- Health Check 통합
+- Mock SSO 제공 (개발 환경)
+- CORS 처리
+
+**라우팅 규칙**:
+- `/api/auth/*` → User Service (8001)
+- `/api/agents/*` → Agent Service (8002)
+- `/api/chat/*` → Chat Service (8003)
+- `/api/tracing/*` → Tracing Service (8004)
+- `/api/admin/*` → Admin Service (8005)
+- `/ws/*` → WebSocket 프록시
+
+### 2.2 User Service (인증/권한)
 **담당**: DEV1 (한승하)
 **기술**: FastAPI + PostgreSQL + JWT
 
@@ -104,7 +134,7 @@
 - API Key 관리
 - RBAC 권한 관리
 
-### 2.2 Agent Service (에이전트 관리)
+### 2.3 Agent Service (에이전트 관리)
 **담당**: DEV4 (안준형)
 **기술**: FastAPI + PostgreSQL + LangChain + pgvector
 
@@ -115,7 +145,7 @@
 - Agent Registry 통합
 - 상태 관리 (DEVELOPMENT/STAGING/PRODUCTION)
 
-### 2.3 Chat Service (채팅/세션)
+### 2.4 Chat Service (채팅/세션)
 **담당**: DEV3 (김영섭)
 **기술**: FastAPI + PostgreSQL + WebSocket + Redis
 
@@ -125,7 +155,7 @@
 - 메시지 스트리밍
 - 세션 히스토리
 
-### 2.4 Tracing Service (로그 추적)
+### 2.5 Tracing Service (로그 추적)
 **담당**: DEV3 (김영섭)
 **기술**: FastAPI + PostgreSQL
 
@@ -135,7 +165,7 @@
 - Agent Transfer 감지
 - 로그 저장/조회
 
-### 2.5 Admin Service (관리/통계)
+### 2.6 Admin Service (관리/통계)
 **담당**: DEV2 (이병주)
 **기술**: FastAPI + PostgreSQL
 
@@ -145,7 +175,7 @@
 - 사용량 모니터링
 - 시스템 설정
 
-### 2.6 Worker Service (백그라운드 작업)
+### 2.7 Worker Service (백그라운드 작업)
 **담당**: DEV2 (이병주)
 **기술**: Celery + Redis
 
