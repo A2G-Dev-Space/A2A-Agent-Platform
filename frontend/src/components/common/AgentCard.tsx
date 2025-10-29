@@ -1,5 +1,5 @@
 import React from 'react';
-import { Agent } from '@/types';
+import { type Agent } from '@/types';
 
 const AgentCard: React.FC<{ agent: Agent }> = ({ agent }) => {
   return (

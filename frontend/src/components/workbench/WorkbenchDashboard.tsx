@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, MoreVert, Refresh, Send } from 'lucide-react';
+import { Plus, Search, MoreVertical, RefreshCw, Send } from 'lucide-react';
 import { useAgentStore } from '@/stores/agentStore';
-import { Agent } from '@/types';
+import { type Agent } from '@/types';
 import AddAgentModal from './AddAgentModal';
 
 const AgentListItem: React.FC<{ agent: Agent; selected: boolean; onClick: () => void }> = ({ agent, selected, onClick }) => {
@@ -18,7 +18,7 @@ const AgentListItem: React.FC<{ agent: Agent; selected: boolean; onClick: () => 
         </span>
       </div>
       <button className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-white/10">
-        <MoreVert className="text-xl" />
+        <MoreVertical className="text-xl" />
       </button>
     </div>
   );
@@ -30,7 +30,7 @@ const ChatPlayground: React.FC = () => {
             <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark p-4">
                 <h2 className="text-base font-bold">Chat Playground</h2>
                 <button className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 text-gray-600 dark:text-gray-300 gap-2 text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark">
-                    <Refresh className="text-lg" />
+                    <RefreshCw className="text-lg" />
                     <span className="truncate">Clear Session</span>
                 </button>
             </div>
@@ -55,7 +55,7 @@ const TraceView: React.FC = () => {
             <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark p-4">
                 <h2 className="text-base font-bold">Trace</h2>
                 <button className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-white/10">
-                    <MoreVert className="text-xl" />
+                    <MoreVertical className="text-xl" />
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-xs">

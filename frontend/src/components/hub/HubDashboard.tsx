@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
 import { useAgentStore } from '@/stores/agentStore';
-import { Agent } from '@/types';
+import { type Agent } from '@/types';
 
 // This would be a real API call in a real app
 const dummyTopPicks: Agent[] = [
