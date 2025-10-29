@@ -1,11 +1,29 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { LogIn, Shield, Bot } from 'lucide-react'
+import { useAppStore } from '@/stores/appStore'
+
+const ThemeToggleButton = () => {
+  const { theme, setTheme } = useAppStore()
+
+  const toggleTheme = () => {
+    const newMode = theme.mode === 'dark' ? 'light' : 'dark';
+    setTheme({ ...theme, mode: newMode });
+  }
+
+  return (
+    <button onClick={toggleTheme} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-black/5 dark:bg-white/10 text-[#6C757D] dark:text-[#ADB5BD]">
+      <span className="material-symbols-outlined dark:hidden">dark_mode</span>
+      <span className="material-symbols-outlined hidden dark:inline">light_mode</span>
+    </button>
+  )
+}
+
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const { login, isAuthenticated, isLoading, error } = useAuthStore()
+  const { login, ssoLogin, isAuthenticated, isLoading, error } = useAuthStore()
+  const [token, setToken] = useState('')
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -13,86 +31,82 @@ export const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
-  const handleLogin = () => {
-    console.log('Login button clicked')
-    login()
+  const handleSsoLogin = () => {
+    ssoLogin()
+  }
+
+  const handleTokenLogin = () => {
+    if (token) {
+      login(token)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <Bot size={40} className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            A2G Platform
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Agent Generation & Management Platform
-          </p>
-        </div>
-
-        {/* Login Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-            Welcome Back
-          </h2>
-
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-              <Shield size={20} />
-              <span className="text-sm">Secure SSO Authentication</span>
+    <div className="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-[#212529] dark:text-[#EAEAEA]">
+      <div className="absolute top-6 right-6">
+        <ThemeToggleButton />
+      </div>
+      <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="flex w-full max-w-md flex-col items-center gap-8">
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-full max-w-[120px] aspect-square rounded-full flex">
+              <div className="w-full bg-center bg-no-repeat bg-contain" style={{ backgroundImage: `url('/src/assets/logo.png')` }}></div>
             </div>
-            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-              <Bot size={20} />
-              <span className="text-sm">Access to AI Agent Platform</span>
+            <div className="flex flex-col gap-3 text-center">
+              <p className="text-3xl font-black tracking-[-0.033em] text-[#212529] dark:text-white">Welcome to A2G</p>
+              <p className="text-base font-normal text-[#6C757D] dark:text-[#ADB5BD]">Access your Workbench, Hub, and Flow.</p>
             </div>
           </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          <div className="w-full flex flex-col gap-4">
+            <button
+              onClick={handleSsoLogin}
+              disabled={isLoading}
+              className="flex min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] disabled:opacity-50"
+            >
+              {isLoading ? 'Redirecting...' : 'Continue with SSO'}
+            </button>
+            <div className="flex flex-col">
+              <details className="flex flex-col border-t border-t-black/10 dark:border-t-white/10 py-2 group">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-2">
+                  <p className="text-sm font-medium text-[#6C757D] dark:text-[#ADB5BD]">Use a token instead</p>
+                  <div className="text-[#6C757D] dark:text-[#ADB5BD] transition-transform duration-200 group-open:rotate-180">
+                    <span className="material-symbols-outlined text-xl">expand_more</span>
+                  </div>
+                </summary>
+                <div className="flex max-w-[480px] flex-wrap items-end gap-4 pb-2">
+                  <label className="flex flex-col min-w-40 flex-1">
+                    <p className="text-sm font-medium pb-2 text-[#212529] dark:text-white">JWT Token</p>
+                    <input
+                      className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg focus:outline-0 focus:ring-0 border border-black/10 bg-white dark:border-white/10 dark:bg-white/5 focus:border-primary h-12 placeholder:text-[#6C757D] dark:placeholder:text-[#ADB5BD] px-4 py-2 text-base font-normal leading-normal text-[#212529] dark:text-white"
+                      placeholder="Enter your JWT token"
+                      type="password"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    onClick={handleTokenLogin}
+                    disabled={isLoading || !token}
+                    className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-gray-200 dark:bg-[#2d2938] text-sm font-bold leading-normal tracking-[0.015em] disabled:opacity-50"
+                  >
+                    Login
+                  </button>
+                </div>
+              </details>
             </div>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={isLoading}
-            className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <span className="loading-spinner" />
-                Redirecting to SSO...
-              </>
-            ) : (
-              <>
-                <LogIn size={20} />
-                Login with SSO
-              </>
-            )}
-          </button>
-
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              By logging in, you agree to our Terms of Service and Privacy Policy
-            </p>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2025 A2G Platform Development Team</p>
-          <p className="mt-2">
-            Need help?{' '}
-            <a href="#" className="text-purple-600 hover:text-purple-700 dark:text-purple-400">
-              Contact Support
-            </a>
-          </p>
         </div>
       </div>
+      <footer className="flex items-center justify-center py-6 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-4 text-sm text-[#6C757D] dark:text-[#ADB5BD]">
+          <span>© 2024 A2G Platform</span>
+          <span className="text-black/20 dark:text-white/20">|</span>
+          <a className="hover:text-primary" href="#">Help</a>
+          <span className="text-black/20 dark:text-white/20">|</span>
+          <a className="hover:text-primary" href="#">Docs</a>
+        </div>
+      </footer>
     </div>
   )
 }

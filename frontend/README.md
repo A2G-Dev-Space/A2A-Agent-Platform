@@ -79,23 +79,24 @@ frontend/
 │   │   ├── layout/       # 레이아웃 (Header, Sidebar 등)
 │   │   ├── agent/        # 에이전트 관련 컴포넌트
 │   │   └── chat/         # 채팅 관련 컴포넌트
-│   ├── pages/            # 페이지 컴포넌트
-│   │   ├── Workbench/    # 워크벤치 모드
-│   │   ├── Hub/          # 허브 모드
-│   │   ├── Flow/         # 플로우 모드
-│   │   └── Settings/     # 설정
-│   ├── hooks/            # Custom Hooks
-│   ├── stores/           # Zustand stores
+│   ├── assets/           # 로고 등 정적 에셋
+│   ├── components/       # 재사용 가능한 컴포넌트 (모드별 대시보드 포함)
+│   │   ├── auth/
+│   │   ├── common/
+│   │   ├── flow/
+│   │   ├── hub/
+│   │   ├── layout/
+│   │   ├── statistics/
+│   │   └── workbench/
+│   ├── pages/            # 라우팅 페이지 컴포넌트 (로그인, 콜백 등)
 │   ├── services/         # API 서비스
+│   ├── stores/           # Zustand stores
 │   ├── types/            # TypeScript 타입
-│   ├── utils/            # 유틸리티 함수
-│   ├── styles/           # 전역 스타일
-│   ├── App.tsx          # 메인 App 컴포넌트
-│   └── main.tsx         # 진입점
-├── public/              # 정적 파일
+│   ├── App.tsx           # 메인 App 컴포넌트 및 라우터
+│   └── main.tsx          # 진입점
+├── public/               # 정적 파일
 ├── package.json
 ├── vite.config.ts
-├── tailwind.config.js
 └── tsconfig.json
 ```
 
@@ -118,39 +119,33 @@ frontend/
 - 스트리밍 응답
 - Agent Transfer 감지
 
-### 4. 통계 대시보드
-- 사용자/에이전트 통계
-- LLM 사용량
-- 시각화 (차트)
+### 4. 통계 대시보드 (신규)
+- 사용자/에이전트/LLM 사용량 통계 제공
+- 관리자(Admin) 역할 사용자에게만 표시
+- 경로: `/statistics`
 
 ---
 
 ## UI/UX 디자인 시스템
 
-### 색상 팔레트
+새로운 통합 디자인 시스템이 적용되었습니다. 모든 스타일링은 Tailwind CSS v4를 기반으로 하며, `tailwind.config.js` 파일 없이 `src/index.css` 내 `@theme` 지시어를 사용하여 중앙에서 관리됩니다.
 
-#### Light/Dark 모드
-```css
-/* Light 모드 */
-배경: #FFFFFF
-텍스트: #1F2937 (gray-900)
-보더: #E5E7EB (gray-200)
+### 핵심 글꼴
+- **Display**: Manrope, Public Sans, Pretendard
+- **Mono**: Fira Code, JetBrains Mono
 
-/* Dark 모드 */
-배경: #111827 (gray-900)
-텍스트: #F3F4F6 (gray-100)
-보더: #374151 (gray-700)
-```
+### 아이콘
+- **Google Material Symbols**: 모든 아이콘은 Material Symbols (outlined)를 사용합니다.
 
-#### 모드별 강조 색상
-- **Workbench**: 파스텔 퍼플 (#E9D5FF)
-- **Hub**: 파스텔 블루 (#E0F2FE)
-- **Flow**: 파스텔 틸 (#CCFBF1)
+### 주요 색상 (Theme)
+`src/index.css`에 정의된 전체 색상 팔레트를 참조하세요. 주요 색상은 다음과 같습니다.
+- **Primary**: `#607AFB`
+- **Background (Light/Dark)**: `#f5f6f8` / `#0f1323`
+- **Panel (Light/Dark)**: `#ffffff` / `#1f2937`
 
-### 타이포그래피
-- **한글**: Pretendard
-- **영문**: -apple-system, BlinkMacSystemFont
-- **코드**: JetBrains Mono
+> **구현 참고사항**:
+> 제공된 디자인 레퍼런스(HTML)는 Tailwind CDN을 사용하며 `tailwind.config.js`를 스크립트로 포함합니다.
+> 본 프로젝트는 최신 Vite와 Tailwind CSS v4를 사용하므로, 별도의 설정 파일 없이 `src/index.css` 내 `@theme`을 통해 테마를 직접 정의하는 방식을 채택했습니다. 이는 최신 프런트엔드 개발 방식에 따른 것입니다.
 
 ### 레이아웃
 ```
@@ -494,18 +489,13 @@ ws.send(JSON.stringify({ type: 'message', content: 'Hello!' }));
 - [ ] AddAgentModal 구현
 
 #### Sprint 3 (3주차)
-- [ ] 3가지 모드 UI 구현
-- [ ] Workbench Playground
-- [ ] WebSocket 채팅 UI
-- [ ] Top-K 추천 UI
-- [ ] 실시간 로그 뷰어
-
-#### Sprint 4 (4주차)
-- [ ] Flow 모드 플로우 빌더
-- [ ] 통계 대시보드
-- [ ] 다크 모드 완성
-- [ ] 반응형 디자인
-- [ ] 통합 테스트 및 버그 수정
+- [x] **New Design System**: 전체 UI/UX 리뉴얼 완료
+- [x] **Workbench**: 3분할 레이아웃 (에이전트, 채팅, 로그) 적용
+- [x] **Hub**: 캐러셀 및 카드 그리드 디자인 적용
+- [x] **Flow**: 시각적 워크플로우 빌더 UI 적용
+- [x] **Statistics Page**: 관리자 전용 통계 대시보드 추가
+- [x] **Login Page**: 신규 로그인 UI 적용
+- [x] **Dark Mode**: 모든 페이지 다크 모드 지원
 
 ---
 

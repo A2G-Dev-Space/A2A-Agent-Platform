@@ -1,119 +1,129 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Wrench, Building, Zap, Settings } from 'lucide-react'
-import { AppMode } from '@/types'
 import { useAppStore } from '@/stores/appStore'
+import { useAuthStore } from '@/stores/authStore'
+import { AppMode, UserRole } from '@/types'
 import clsx from 'clsx'
 
-interface SidebarButtonProps {
-  icon: React.ReactNode
-  label: string
-  active: boolean
-  color: 'purple' | 'sky' | 'teal' | 'gray'
-  onClick: () => void
-}
-
-const SidebarButton: React.FC<SidebarButtonProps> = ({
-  icon,
-  label,
-  active,
-  color,
-  onClick,
-}) => {
-  const bgColorMap = {
-    purple: active ? 'bg-purple-200 dark:bg-purple-800' : 'bg-transparent',
-    sky: active ? 'bg-sky-200 dark:bg-sky-800' : 'bg-transparent',
-    teal: active ? 'bg-teal-200 dark:bg-teal-800' : 'bg-transparent',
-    gray: active ? 'bg-gray-200 dark:bg-gray-700' : 'bg-transparent',
+const NavLink = ({ to, icon, label, active, appMode, currentMode, setMode }) => {
+  const navigate = useNavigate()
+  const modeClass = {
+    [AppMode.FLOW]: 'text-accent-dark dark:text-accent',
+    [AppMode.HUB]: 'text-hub-accent-dark dark:text-hub-accent-light',
+    [AppMode.WORKBENCH]: 'text-primary-dark dark:text-primary',
+    [AppMode.STATISTICS]: 'text-primary dark:text-primary',
+    [AppMode.SETTINGS]: 'text-text-light-secondary dark:text-text-dark-secondary',
+  }
+  const bgClass = {
+    [AppMode.FLOW]: 'bg-accent/20 dark:bg-accent/10',
+    [AppMode.HUB]: 'bg-hub-accent-light dark:bg-hub-accent/20',
+    [AppMode.WORKBENCH]: 'bg-primary/20 dark:bg-primary/20',
+    [AppMode.STATISTICS]: 'bg-primary/20 dark:bg-primary/30',
+    [AppMode.SETTINGS]: 'bg-black/5 dark:bg-white/5',
   }
 
-  const textColorMap = {
-    purple: 'text-purple-700 dark:text-purple-300',
-    sky: 'text-sky-700 dark:text-sky-300',
-    teal: 'text-teal-700 dark:text-teal-300',
-    gray: 'text-gray-700 dark:text-gray-300',
+  const handleClick = () => {
+    setMode(appMode)
+    navigate(to)
   }
 
   return (
-    <button
-      onClick={onClick}
+    <a
+      href={to}
+      onClick={(e) => { e.preventDefault(); handleClick(); }}
       className={clsx(
-        'w-12 h-12 rounded-lg flex items-center justify-center',
-        'transition-all duration-200 group relative',
-        bgColorMap[color],
-        'hover:bg-gray-200 dark:hover:bg-gray-700',
-        active && textColorMap[color]
+        'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+        active ? `${bgClass[appMode]} ${modeClass[appMode]}` : 'hover:bg-black/5 dark:hover:bg-white/5'
       )}
-      title={label}
-      aria-label={label}
     >
-      <span className="text-xl">{icon}</span>
-      {/* Tooltip */}
-      <span className={clsx(
-        'absolute left-14 px-2 py-1 text-xs font-medium',
-        'bg-gray-900 text-white rounded whitespace-nowrap',
-        'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
-        'pointer-events-none z-50'
-      )}>
-        {label}
+      <span className={clsx("material-symbols-outlined", active ? modeClass[appMode] : 'text-text-light-secondary dark:text-text-dark-secondary')}>
+        {icon}
       </span>
-    </button>
+      <p className={clsx("text-sm font-medium leading-normal", active ? `font-bold ${modeClass[appMode]}` : '')}>
+        {label}
+      </p>
+    </a>
   )
 }
 
-export const Sidebar: React.FC = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
+const FlowSidebar = ({ activePath }) => {
+  const { mode, setMode } = useAppStore()
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-3 items-center">
+        <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-10 bg-accent/20 flex items-center justify-center">
+          <span className="material-symbols-outlined text-accent-dark">hub</span>
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-base font-medium leading-normal">Flow Mode</h1>
+          <p className="text-sm font-normal leading-normal text-text-light-secondary dark:text-text-dark-secondary">Agent Workflow Builder</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <NavLink to="/flow" icon="account_tree" label="Flows" active={activePath.startsWith('/flow')} appMode={AppMode.FLOW} currentMode={mode} setMode={setMode} />
+        {/* Add other flow-related links here if needed */}
+      </div>
+    </div>
+  )
+}
+
+const DefaultSidebar = ({ activePath }) => {
+  const { user } = useAuthStore()
   const { mode, setMode } = useAppStore()
 
-  const currentPath = location.pathname
-  const isSettings = currentPath.startsWith('/settings')
+  const navItems = [
+    { to: '/workbench', icon: 'code', label: 'Workbench', appMode: AppMode.WORKBENCH },
+    { to: '/hub', icon: 'hub', label: 'Hub', appMode: AppMode.HUB },
+    { to: '/flow', icon: 'timeline', label: 'Flow', appMode: AppMode.FLOW },
+  ]
 
-  const handleModeChange = (newMode: AppMode, path: string) => {
-    setMode(newMode)
-    navigate(path)
+  if (user?.role === UserRole.ADMIN) {
+    navItems.push({ to: '/statistics', icon: 'bar_chart', label: 'Statistics', appMode: AppMode.STATISTICS })
   }
 
   return (
-    <aside className="w-16 h-screen flex flex-col bg-gray-100 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
-      {/* Mode buttons */}
-      <div className="flex flex-col gap-2 p-2">
-        <SidebarButton
-          icon={<Wrench size={24} />}
-          label="Workbench"
-          active={mode === AppMode.WORKBENCH && !isSettings}
-          color="purple"
-          onClick={() => handleModeChange(AppMode.WORKBENCH, '/workbench')}
-        />
-        <SidebarButton
-          icon={<Building size={24} />}
-          label="Hub"
-          active={mode === AppMode.HUB && !isSettings}
-          color="sky"
-          onClick={() => handleModeChange(AppMode.HUB, '/hub')}
-        />
-        <SidebarButton
-          icon={<Zap size={24} />}
-          label="Flow"
-          active={mode === AppMode.FLOW && !isSettings}
-          color="teal"
-          onClick={() => handleModeChange(AppMode.FLOW, '/flow')}
-        />
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" style={{ backgroundImage: `url("https://lh3.googleusercontent.com/aida-public/AB6AXuCYAWRCFLeDKQEe8xsaQ-KCcSsiyuyFx1n1cg-LEjau4K7b0-vBkYNAbB0IxW_JjZAZAWIwCuHx_fx6vfVyCMN9SC8aLd9GK3c15Z_HTnSz2qOfubU25dlLcdjn7nmv7Z1hn1sESu5wZH0CYaZGcDU4iA3E5CH_mgAtw3PuSxcwZ9-E-V0SsZHHSD_bNrA7-ef8tYqR9rXWGdAcGsUpXXeiRHv22f0YzfeOWy8AsHvrOPGv3U4rrjkaBQOM5c0YtT1X4rJVF5-Z_K7N")` }}></div>
+          <div className="flex flex-col">
+            <h1 className="text-base font-bold">A2G Platform</h1>
+            <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{user?.username}</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          {navItems.map(item => (
+            <NavLink key={item.to} {...item} active={activePath.startsWith(item.to)} currentMode={mode} setMode={setMode} />
+          ))}
+        </div>
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Settings button */}
-      <div className="flex flex-col gap-2 p-2 border-t border-gray-200 dark:border-gray-800">
-        <SidebarButton
-          icon={<Settings size={24} />}
-          label="Settings"
-          active={isSettings}
-          color="gray"
-          onClick={() => navigate('/settings/general')}
-        />
+      <div className="flex flex-col gap-1">
+        <NavLink to="/settings" icon="settings" label="Settings" active={activePath.startsWith('/settings')} appMode={AppMode.SETTINGS} currentMode={mode} setMode={setMode} />
+        <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+            <span className="material-symbols-outlined text-text-light-secondary dark:text-text-dark-secondary">help</span>
+            <p className="text-sm font-medium leading-normal">Help</p>
+        </a>
       </div>
+    </>
+  )
+}
+
+
+export const Sidebar: React.FC = () => {
+  const location = useLocation()
+  const activePath = location.pathname
+
+  const getSidebarContent = () => {
+    if (activePath.startsWith('/flow')) {
+      return <FlowSidebar activePath={activePath} />
+    }
+    // For Hub, Workbench, Statistics, Settings
+    return <DefaultSidebar activePath={activePath} />
+  }
+
+  return (
+    <aside className="flex h-full w-64 flex-col justify-between border-r border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark p-4 shrink-0">
+      {getSidebarContent()}
     </aside>
   )
 }

@@ -1,326 +1,146 @@
 import React, { useEffect, useState } from 'react'
-import { Search, Filter, TrendingUp, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { AgentCard } from '@/components/common/AgentCard'
 import { useAgentStore } from '@/stores/agentStore'
-import { type Agent, AgentStatus, AgentFramework } from '@/types'
-import clsx from 'clsx'
+import { type Agent, AgentStatus } from '@/types'
+import toast from 'react-hot-toast'
+
+const TopPickCard = ({ agent, onLaunch }) => (
+  <div className="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 w-72 flex-shrink-0 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+    <div className="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover rounded-t-xl" style={{ backgroundImage: `url(${agent.bgUrl})` }}></div>
+    <div className="flex flex-col flex-1 justify-between p-4 pt-0">
+      <div>
+        <p className="text-slate-800 dark:text-white text-base font-bold">{agent.name}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{agent.description}</p>
+      </div>
+      <button onClick={() => onLaunch(agent)} className="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors">
+        <span>Launch</span>
+      </button>
+    </div>
+  </div>
+)
+
+const AgentGridCard = ({ agent, onStartChat }) => {
+  const tagColors = [
+    'text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/50',
+    'text-emerald-600 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/50',
+    'text-rose-600 bg-rose-100 dark:text-rose-300 dark:bg-rose-900/50',
+    'text-amber-600 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/50',
+    'text-teal-600 bg-teal-100 dark:text-teal-300 dark:bg-teal-900/50',
+    'text-fuchsia-600 bg-fuchsia-100 dark:text-fuchsia-300 dark:bg-fuchsia-900/50',
+  ]
+
+  const iconColors = [
+    'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-500 dark:text-indigo-400',
+    'bg-rose-100 dark:bg-rose-900/50 text-rose-500 dark:text-rose-400',
+    'bg-teal-100 dark:bg-teal-900/50 text-teal-500 dark:text-teal-400',
+    'bg-amber-100 dark:bg-amber-900/50 text-amber-500 dark:text-amber-400',
+  ]
+
+  return (
+    <div className="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
+      <div className="flex items-center gap-4 mb-3">
+        <div className={`size-12 rounded-lg flex items-center justify-center ${iconColors[agent.id % iconColors.length]}`}>
+          <span className="material-symbols-outlined text-3xl">{agent.icon || 'support_agent'}</span>
+        </div>
+        <p className="text-slate-900 dark:text-white font-bold">{agent.name}</p>
+      </div>
+      <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">{agent.description}</p>
+      <div className="flex items-center gap-2 mb-4">
+        {agent.tags?.map((tag, index) => (
+          <span key={tag} className={`text-xs font-medium px-2 py-1 rounded-full ${tagColors[index % tagColors.length]}`}>{tag}</span>
+        ))}
+      </div>
+      <button onClick={() => onStartChat(agent)} className="w-full flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 group-hover:bg-hub-accent group-hover:text-white text-slate-700 dark:text-slate-300 text-sm font-bold transition-colors">
+        <span>Start Chat</span>
+      </button>
+    </div>
+  )
+}
 
 export const HubDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { agents, recommendations, fetchAgents, getRecommendations, isLoading } = useAgentStore()
+  const { agents, fetchAgents, isLoading } = useAgentStore()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedFramework, setSelectedFramework] = useState<AgentFramework | 'ALL'>('ALL')
-  const [selectedVisibility, setSelectedVisibility] = useState<'public' | 'private' | 'team' | 'ALL'>('ALL')
-  const [onlyMine, setOnlyMine] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
   const [productionAgents, setProductionAgents] = useState<Agent[]>([])
 
-  useEffect(() => {
-    loadProductionAgents()
-  }, [selectedVisibility, onlyMine])
+  const loadAgents = async () => {
+    try {
+      await fetchAgents({ status: AgentStatus.PRODUCTION })
+    } catch (error) {
+      console.error('Failed to load agents:', error)
+      toast.error('Failed to load agents')
+    }
+  }
 
   useEffect(() => {
-    // Filter only production agents
+    loadAgents()
+  }, [])
+
+  useEffect(() => {
     if (agents && Array.isArray(agents)) {
-      const filtered = agents.filter(agent =>
-        agent.status === AgentStatus.PRODUCTION
-      )
+      const filtered = agents.filter(agent => agent.status === AgentStatus.PRODUCTION)
       setProductionAgents(filtered)
     }
   }, [agents])
 
-  useEffect(() => {
-    // Get AI recommendations when search query changes
-    if (searchQuery.length > 2) {
-      const debounceTimer = setTimeout(() => {
-        getRecommendations(searchQuery, 5)
-      }, 500)
-      return () => clearTimeout(debounceTimer)
-    }
-  }, [searchQuery])
-
-  const loadProductionAgents = async () => {
-    try {
-      const filters: any = { status: AgentStatus.PRODUCTION }
-
-      // Add Access Control filters
-      if (selectedVisibility !== 'ALL') {
-        filters.visibility = selectedVisibility
-      }
-      if (onlyMine) {
-        filters.only_mine = true
-      }
-
-      await fetchAgents(filters)
-    } catch (error) {
-      console.error('Failed to load agents:', error)
-    }
-  }
-
   const handleAgentClick = (agent: Agent) => {
-    navigate(`/hub/${agent.id}`)
+    navigate(`/workbench?agent=${agent.id}`)
+    toast.success(`Navigating to ${agent.name} in Workbench.`)
   }
 
-  const handleSearch = async () => {
-    if (searchQuery.trim()) {
-      await getRecommendations(searchQuery, 10)
-    }
-  }
+  const filteredAgents = productionAgents.filter(agent =>
+    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  // Filter agents based on search and framework
-  const filteredAgents = productionAgents.filter(agent => {
-    const matchesSearch = !searchQuery ||
-      agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.capabilities?.skills?.some(skill =>
-        skill.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+  const topPicks = [
+    { id: 1, name: "Customer Support Bot", description: "Handles customer queries instantly.", bgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAFvpJtfAyetRXQCCQrpijWJzLJ74V_-Sw18ooQYgHRLOR4ucBIwxuctUOQDoTcmrGF8RBTgt62wH579RFUFKU6z2iFxQZK7sCOrfmyivHmMkKbSd1XKfL6W8Y3f4P5Sre2zEMP4w3HurGQgeLDfATMeZw0FH3zUHGhJEJGPsAsuq2rY98REffYQ1npMo85oRIg7oq8TrLNaA17NU4co30acOnSEJSlON_ZqPljnec2d5xjJX8OnJbOfAR3TLBj937JtjPi0a_VdRAV" },
+    { id: 2, name: "Sales Assistant", description: "Automates lead qualification and follow-ups.", bgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuAzLn9Pq6SaAKUIE4cbYNnVP_mRClcoufZFaSY6iUOmNgORHCH_eelSJbGPrTn01zx72uMyLxwYSv_WXAAtb5WKs91ji_4qd1ORJX25L14PXKx55nbWRwAZ-SZ5YI2sBOWQ5CJn_NHZv-qJX3wPBAcNFooPNee1WCN6WBLMMKUmiEPRlJkqN_sdgTt-WBRtCUNmun0XVsMMO6xMIAfJ2dYrwqbWmY7pQeidNkDJFClcl068lvPapXAoQdk9YZrb96mqBQmAZCvpwJQ2" },
+    { id: 3, name: "Data Analyst AI", description: "Generates deep insights from your data.", bgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuBKIVIoNcEJvqr1xrUem2BaBYGeINg2rfzfu-hhz1436AtZKYHroRNuIJtZ0JQeT1DH0shxuZUaOX1kDa1VPgplEIl942ZwoHFZ-2t3k3UuHU-_PAYQv7-U8tmZDEh_hOZDGXOxI2wRb5LhIvunJ63ehlq-sWTQVISAkGvWbd19LUS5k1XGs3UfoWT4gyB_hRc1Q79cXGqkYolJhfH5dSPW3N36efhaxbcWuERDDniDs_tE7huhq2WpIUI0w6JWIO4_qH42vBxtpzzz" },
+  ];
 
-    const matchesFramework = selectedFramework === 'ALL' ||
-      agent.framework === selectedFramework
+  const allAgents = filteredAgents.map(agent => ({
+    ...agent,
+    icon: 'support_agent',
+    tags: ['Support', 'Customer'],
+  }));
 
-    return matchesSearch && matchesFramework
-  })
-
-  // Combine recommendations with filtered agents
-  const displayAgents = searchQuery && recommendations.length > 0
-    ? recommendations.map(rec =>
-        productionAgents.find(a => a.id === rec.agent_id)
-      ).filter(Boolean) as Agent[]
-    : filteredAgents
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-sky-700 dark:text-sky-300 mb-2">
-          Agent Hub
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Discover and use production-ready AI agents
-        </p>
-      </div>
-
-      {/* Search Section */}
-      <div className="max-w-3xl mx-auto mb-8">
-        <div className="relative">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="What kind of agent are you looking for?"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500 text-lg"
-              />
-            </div>
-            <button
-              onClick={handleSearch}
-              className="px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <Sparkles size={20} />
-              AI Search
-            </button>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={clsx(
-                'px-4 py-3 border rounded-lg transition-colors flex items-center gap-2',
-                showFilters
-                  ? 'bg-sky-100 dark:bg-sky-900 border-sky-300 dark:border-sky-700'
-                  : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-              )}
-            >
-              <Filter size={20} />
-            </button>
-          </div>
-
-          {/* AI Recommendations Badge */}
-          {searchQuery && recommendations.length > 0 && (
-            <div className="absolute -bottom-6 left-0 flex items-center gap-2">
-              <TrendingUp size={16} className="text-green-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                AI found {recommendations.length} relevant agents
-              </span>
-            </div>
-          )}
+    <main className="flex-1 p-6 lg:p-10 bg-background-light dark:bg-background-dark">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-slate-900 dark:text-white text-4xl font-black tracking-tighter">Agent Hub</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">Discover and launch production-ready agents.</p>
         </div>
 
-        {/* Filter Options */}
-        {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg animate-fadeIn space-y-4">
-            {/* Framework Filter */}
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Filter by Framework</h3>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedFramework('ALL')}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedFramework === 'ALL'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  )}
-                >
-                  All Frameworks
-                </button>
-                {Object.values(AgentFramework).map(framework => (
-                  <button
-                    key={framework}
-                    onClick={() => setSelectedFramework(framework)}
-                    className={clsx(
-                      'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                      selectedFramework === framework
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    )}
-                  >
-                    {framework}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="relative mb-10">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+          <input
+            className="w-full h-14 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-hub-accent focus:border-hub-accent transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-200"
+            placeholder="Search for agents by name, tag, or description..."
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
 
-            {/* Visibility Filter */}
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Filter by Visibility</h3>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedVisibility('ALL')}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedVisibility === 'ALL'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  )}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setSelectedVisibility('public')}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedVisibility === 'public'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  )}
-                >
-                  Public
-                </button>
-                <button
-                  onClick={() => setSelectedVisibility('team')}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedVisibility === 'team'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  )}
-                >
-                  Team
-                </button>
-                <button
-                  onClick={() => setSelectedVisibility('private')}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedVisibility === 'private'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                  )}
-                >
-                  Private
-                </button>
-              </div>
-            </div>
+        <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight mb-4">Top Picks for You</h2>
+        <div className="mb-12 overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-stretch pb-4 gap-6">
+            {topPicks.map(agent => <TopPickCard key={agent.id} agent={agent} onLaunch={handleAgentClick} />)}
+          </div>
+        </div>
 
-            {/* Only Mine Checkbox */}
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={onlyMine}
-                  onChange={(e) => setOnlyMine(e.target.checked)}
-                  className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500"
-                />
-                <span className="text-sm font-medium">Show only my agents</span>
-              </label>
-            </div>
+        <h2 className="text-slate-900 dark:text-white text-2xl font-bold tracking-tight mb-6">All Agents</h2>
+        {isLoading ? (
+          <div className="text-center py-10">Loading...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {allAgents.map(agent => <AgentGridCard key={agent.id} agent={agent} onStartChat={handleAgentClick} />)}
           </div>
         )}
       </div>
-
-      {/* Agents Grid */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="loading-spinner w-8 h-8 border-sky-500 mx-auto mb-4" />
-            <p className="text-gray-500">Loading agents...</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Recommendations Section */}
-          {searchQuery && recommendations.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Sparkles className="text-yellow-500" size={20} />
-                AI Recommendations
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayAgents.slice(0, 6).map(agent => (
-                  <div key={agent.id} className="relative">
-                    <AgentCard
-                      agent={agent}
-                      mode="hub"
-                      onClick={() => handleAgentClick(agent)}
-                    />
-                    {/* Similarity Score Badge */}
-                    {recommendations.find(r => r.agent_id === agent.id) && (
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-yellow-100 dark:bg-yellow-900 rounded text-xs font-medium text-yellow-700 dark:text-yellow-300">
-                        {Math.round(
-                          recommendations.find(r => r.agent_id === agent.id)!.similarity_score * 100
-                        )}% Match
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* All Agents Section */}
-          {(!searchQuery || recommendations.length === 0) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayAgents.map(agent => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  mode="hub"
-                  onClick={() => handleAgentClick(agent)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {displayAgents.length === 0 && (
-            <div className="text-center py-12">
-              <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Search size={40} className="text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                No agents found
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                {searchQuery
-                  ? `No agents match "${searchQuery}"`
-                  : 'No production agents available'}
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+    </main>
   )
 }

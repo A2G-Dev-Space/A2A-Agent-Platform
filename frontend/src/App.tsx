@@ -9,6 +9,8 @@ import { LoginPage } from '@/pages/LoginPage'
 import { CallbackPage } from '@/pages/CallbackPage'
 import { PendingApprovalPage } from '@/pages/PendingApprovalPage'
 import { PrivateRoute } from '@/components/auth/PrivateRoute'
+import { AdminRoute } from '@/components/auth/AdminRoute'
+import { StatisticsDashboard } from '@/components/statistics/StatisticsDashboard'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import { UserRole } from '@/types'
@@ -64,6 +66,11 @@ function App() {
 
                 {/* Flow Mode */}
                 <Route path="/flow" element={<FlowDashboard />} />
+
+                {/* Statistics for Admins */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/statistics" element={<StatisticsDashboard />} />
+                </Route>
 
                 {/* Settings */}
                 <Route path="/settings/*" element={<div>Settings Coming Soon</div>} />
