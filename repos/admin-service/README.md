@@ -1,6 +1,6 @@
 # ⚙️ Admin Service
 
-**담당자**: DEV2 (이병주, byungju.lee@company.com)
+**담당자**: DEV1 (한승하, syngha.han@company.com)
 **포트**: 8005
 **데이터베이스**: admin_service_db (PostgreSQL)
 
@@ -566,7 +566,7 @@ uvicorn app.main:app --reload --port 8005
 
 ## Sprint 체크리스트
 
-### 이병주 (byungju.lee@company.com)
+### 한승하 (syngha.han@company.com)
 
 #### Sprint 1 (1주차)
 - [ ] 프로젝트 초기화 및 환경 설정
