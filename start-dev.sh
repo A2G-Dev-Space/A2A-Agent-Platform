@@ -43,6 +43,94 @@ check_docker_compose
 MODE=${1:-full}
 
 case $MODE in
+    update)
+        echo "🔄 Updating all service databases with latest migrations..."
+        echo ""
+
+        # Check if PostgreSQL is running
+        if ! docker exec a2g-postgres-dev pg_isready -U dev_user > /dev/null 2>&1; then
+            echo "❌ PostgreSQL is not running. Please start it first with: ./start-dev.sh setup"
+            exit 1
+        fi
+
+        # List of services with potential migrations
+        SERVICES=("user-service" "agent-service" "chat-service" "tracing-service" "admin-service")
+
+        SUCCESS_COUNT=0
+        SKIP_COUNT=0
+        FAIL_COUNT=0
+
+        for service in "${SERVICES[@]}"; do
+            SERVICE_PATH="repos/$service"
+
+            if [ ! -d "$SERVICE_PATH" ]; then
+                echo "⚠️  $service: Directory not found, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            # Check if alembic is configured
+            if [ ! -f "$SERVICE_PATH/alembic.ini" ]; then
+                echo "⏭️  $service: No alembic configuration, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            echo "📦 $service: Checking for migrations..."
+            cd "$SERVICE_PATH"
+
+            # Check current migration status
+            CURRENT=$(alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "none")
+
+            # Check if there are any migrations
+            if [ ! -d "alembic/versions" ] || [ -z "$(ls -A alembic/versions/*.py 2>/dev/null)" ]; then
+                echo "   ℹ️  No migration files found"
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                cd ../..
+                continue
+            fi
+
+            # Apply migrations
+            echo "   Current: $CURRENT"
+            echo "   Running: alembic upgrade head..."
+
+            if alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log; then
+                NEW_CURRENT=$(alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
+
+                if [ "$CURRENT" = "$NEW_CURRENT" ] && [ "$CURRENT" != "none" ]; then
+                    echo "   ✅ Already up to date ($NEW_CURRENT)"
+                else
+                    echo "   ✅ Updated to: $NEW_CURRENT"
+                fi
+                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            else
+                echo "   ❌ Migration failed! Check logs above."
+                FAIL_COUNT=$((FAIL_COUNT + 1))
+            fi
+
+            echo ""
+            cd ../..
+        done
+
+        # Summary
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📊 Migration Update Summary:"
+        echo "   ✅ Success: $SUCCESS_COUNT"
+        echo "   ⏭️  Skipped: $SKIP_COUNT"
+        echo "   ❌ Failed:  $FAIL_COUNT"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        if [ $FAIL_COUNT -gt 0 ]; then
+            echo ""
+            echo "⚠️  Some migrations failed. Please check the error messages above."
+            exit 1
+        else
+            echo ""
+            echo "🎉 All migrations completed successfully!"
+        fi
+
+        exit 0
+        ;;
     setup)
         echo "🔧 Setting up development databases..."
         cd repos/infra
@@ -179,8 +267,9 @@ case $MODE in
         exit 0
         ;;
     *)
-        echo "Usage: ./start-dev.sh [setup|full|minimal|gateway|stop]"
+        echo "Usage: ./start-dev.sh [setup|update|full|minimal|gateway|stop]"
         echo "  setup   - Initialize development databases (run this first!)"
+        echo "  update  - Update all service databases with latest migrations (after git pull)"
         echo "  full    - Start all services (default)"
         echo "  minimal - Start API Gateway, Mock SSO, and databases only"
         echo "  gateway - Start API Gateway and databases only"

@@ -76,6 +76,9 @@ uvicorn app.main:app --reload --port {port}
 # 초기 데이터베이스 설정 (처음 한번만)
 ./start-dev.sh setup
 
+# 데이터베이스 마이그레이션 업데이트 (git pull 후)
+./start-dev.sh update
+
 # 모든 서비스 시작
 ./start-dev.sh full
 
@@ -119,6 +122,92 @@ Agent-Platform-Development/
 | **이병주** | Admin/Worker Service | byungju.lee@company.com |
 | **김영섭** | Chat/Tracing Service | youngsub.kim@company.com |
 | **안준형** | Agent Service | junhyung.ahn@company.com |
+
+## 👥 팀 개발 워크플로우
+
+### Git Pull 후 확인사항
+
+다른 팀원이 데이터베이스 마이그레이션을 추가한 경우:
+
+```bash
+# 1. 코드 pull
+git pull origin main
+
+# 2. 모든 서비스의 마이그레이션 자동 업데이트
+./start-dev.sh update
+
+# 출력 예시:
+# 🔄 Updating all service databases with latest migrations...
+#
+# 📦 user-service: Checking for migrations...
+#    Current: 001
+#    Running: alembic upgrade head...
+#    ✅ Already up to date (001)
+#
+# 📦 agent-service: Checking for migrations...
+#    Current: 001
+#    Running: alembic upgrade head...
+#    ✅ Updated to: 002
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 Migration Update Summary:
+#    ✅ Success: 2
+#    ⏭️  Skipped: 3
+#    ❌ Failed:  0
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 🎉 All migrations completed successfully!
+```
+
+**⚠️ 주의:**
+- `./start-dev.sh update`를 실행하지 않으면 DB 스키마와 코드가 맞지 않아 에러 발생
+- PostgreSQL이 실행 중이어야 합니다 (`./start-dev.sh setup` 또는 `full` 먼저 실행)
+
+### 새 마이그레이션 생성 시
+
+스키마를 변경한 경우 해당 서비스에서 마이그레이션 생성:
+
+```bash
+# 1. 서비스 디렉토리로 이동
+cd repos/agent-service
+
+# 2. 모델 변경 (app/core/database.py 등)
+
+# 3. 마이그레이션 생성
+alembic revision --autogenerate -m "Add user_preferences table"
+
+# 4. 생성된 파일 검토
+# alembic/versions/002_add_user_preferences_table.py
+
+# 5. 로컬에서 테스트
+alembic upgrade head
+
+# 6. 커밋 및 푸시
+git add alembic/versions/002_*.py
+git commit -m "feat: add user_preferences table migration"
+git push
+
+# 7. 팀원들에게 알리기
+# Slack: "agent-service에 새 마이그레이션 추가했습니다. pull 후 ./start-dev.sh update 실행해주세요!"
+```
+
+### 일반적인 워크플로우
+
+```bash
+# 매일 아침 작업 시작 시
+git pull origin main
+./start-dev.sh update    # 새 마이그레이션 적용
+./start-dev.sh full      # 서비스 시작
+cd frontend && npm run dev
+
+# 작업 중
+# 1. 코드 변경
+# 2. 테스트
+# 3. 커밋 & 푸시
+
+# 작업 종료 시
+./start-dev.sh stop
+```
 
 ## 📞 지원
 

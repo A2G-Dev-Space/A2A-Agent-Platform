@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import agents, a2a, recommendations
+from app.api.v1 import agents, registry
 from app.core.security import get_current_user
 
 # Configure logging
@@ -49,9 +49,11 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
-app.include_router(a2a.router, prefix="/api/agents/a2a", tags=["a2a"])
-app.include_router(recommendations.router, prefix="/api/agents", tags=["recommendations"])
+# A2A Registry endpoints (following A2A spec)
+app.include_router(registry.router, prefix="/api", tags=["registry"])
+
+# Legacy CRUD endpoints (maintained for backward compatibility)
+app.include_router(agents.router, prefix="/api/agents", tags=["agents-legacy"])
 
 @app.get("/health")
 async def health_check():

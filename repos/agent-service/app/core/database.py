@@ -40,9 +40,9 @@ class HealthStatus(str, PyEnum):
     UNKNOWN = "unknown"
 
 class Agent(Base):
-    """Agent model"""
+    """Agent model with Access Control"""
     __tablename__ = "agents"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -51,9 +51,15 @@ class Agent(Base):
     a2a_endpoint: Mapped[Optional[str]] = mapped_column(String(500))
     capabilities: Mapped[Dict[str, Any]] = mapped_column(JSON)
     embedding_vector: Mapped[Optional[List[float]]] = mapped_column(JSON)  # Store embedding as JSON array
+
+    # Access Control Fields
     owner_id: Mapped[str] = mapped_column(String(50), index=True)
     department: Mapped[Optional[str]] = mapped_column(String(100))
     is_public: Mapped[bool] = mapped_column(Boolean, default=True)
+    visibility: Mapped[str] = mapped_column(String(20), default="public", index=True)  # public, private, team
+    allowed_users: Mapped[Optional[List[str]]] = mapped_column(JSON)  # List of usernames with access
+
+    # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

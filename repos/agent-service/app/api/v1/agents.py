@@ -20,6 +20,8 @@ class AgentCreate(BaseModel):
     a2a_endpoint: Optional[str] = None
     capabilities: Dict[str, Any] = {}
     is_public: bool = True
+    visibility: str = "public"  # public, private, team
+    allowed_users: Optional[List[str]] = None
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
@@ -28,6 +30,9 @@ class AgentUpdate(BaseModel):
     a2a_endpoint: Optional[str] = None
     capabilities: Optional[Dict[str, Any]] = None
     is_public: Optional[bool] = None
+    status: Optional[AgentStatus] = None  # Status update integrated here
+    visibility: Optional[str] = None  # public, private, team
+    allowed_users: Optional[List[str]] = None
 
 class AgentResponse(BaseModel):
     id: int
@@ -40,6 +45,8 @@ class AgentResponse(BaseModel):
     owner_id: str
     department: Optional[str]
     is_public: bool
+    visibility: str
+    allowed_users: Optional[List[str]]
     health_status: HealthStatus
     last_health_check: Optional[datetime]
     created_at: datetime
@@ -56,14 +63,19 @@ async def get_agents(
     status: Optional[AgentStatus] = Query(None),
     framework: Optional[AgentFramework] = Query(None),
     department: Optional[str] = Query(None),
+    visibility: Optional[str] = Query(None, description="public, private, team"),
+    only_mine: bool = Query(False, description="Show only my agents"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
+    current_user: dict = Depends(get_current_user),
     db=Depends(async_session_maker)
 ):
-    """Get list of agents with filtering"""
+    """Get list of agents with Access Control filtering"""
+    from sqlalchemy import or_
+
     query = select(Agent)
-    
-    # Apply filters
+
+    # Apply basic filters
     filters = []
     if status:
         filters.append(Agent.status == status)
@@ -71,7 +83,43 @@ async def get_agents(
         filters.append(Agent.framework == framework)
     if department:
         filters.append(Agent.department == department)
-    
+
+    # Access Control filtering
+    if only_mine:
+        # Show only agents owned by current user
+        filters.append(Agent.owner_id == current_user["username"])
+    elif visibility == "private":
+        # Show only private agents owned by current user
+        filters.append(Agent.owner_id == current_user["username"])
+        filters.append(Agent.visibility == "private")
+    elif visibility == "team":
+        # Show team agents from same department
+        filters.append(Agent.visibility == "team")
+        filters.append(Agent.department == current_user.get("department"))
+    elif visibility == "public":
+        # Show only public agents
+        filters.append(Agent.visibility == "public")
+    else:
+        # Default: show public agents + my agents + team agents + agents where I'm in allowed_users
+        username = current_user["username"]
+        user_dept = current_user.get("department")
+
+        access_filters = [
+            Agent.visibility == "public",
+            Agent.owner_id == username,
+        ]
+
+        # Add team filter if user has department
+        if user_dept:
+            access_filters.append(
+                and_(
+                    Agent.visibility == "team",
+                    Agent.department == user_dept
+                )
+            )
+
+        filters.append(or_(*access_filters))
+
     if filters:
         query = query.where(and_(*filters))
     
@@ -100,6 +148,8 @@ async def get_agents(
                 owner_id=agent.owner_id,
                 department=agent.department,
                 is_public=agent.is_public,
+                visibility=agent.visibility,
+                allowed_users=agent.allowed_users,
                 health_status=agent.health_status,
                 last_health_check=agent.last_health_check,
                 created_at=agent.created_at,
@@ -134,7 +184,10 @@ async def create_agent(
         a2a_endpoint=request.a2a_endpoint,
         capabilities=request.capabilities,
         owner_id=current_user["username"],
+        department=current_user.get("department"),
         is_public=request.is_public,
+        visibility=request.visibility,
+        allowed_users=request.allowed_users,
         status=AgentStatus.DEVELOPMENT
     )
     
@@ -153,6 +206,8 @@ async def create_agent(
         owner_id=agent.owner_id,
         department=agent.department,
         is_public=agent.is_public,
+        visibility=agent.visibility,
+        allowed_users=agent.allowed_users,
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
@@ -185,6 +240,8 @@ async def get_agent(
         owner_id=agent.owner_id,
         department=agent.department,
         is_public=agent.is_public,
+        visibility=agent.visibility,
+        allowed_users=agent.allowed_users,
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
@@ -234,6 +291,8 @@ async def update_agent(
         owner_id=agent.owner_id,
         department=agent.department,
         is_public=agent.is_public,
+        visibility=agent.visibility,
+        allowed_users=agent.allowed_users,
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
@@ -268,31 +327,3 @@ async def delete_agent(
     
     return {"message": "Agent deleted successfully"}
 
-@router.patch("/{agent_id}/status")
-async def update_agent_status(
-    agent_id: int,
-    status: AgentStatus,
-    current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
-):
-    """Update agent status"""
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
-    agent = result.scalar_one_or_none()
-    
-    if not agent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agent not found"
-        )
-    
-    # Check ownership
-    if agent.owner_id != current_user["username"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this agent"
-        )
-    
-    agent.status = status
-    await db.commit()
-    
-    return {"message": f"Agent status updated to {status}"}

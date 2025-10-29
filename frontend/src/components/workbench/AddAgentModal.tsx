@@ -25,8 +25,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
     skill_en: '',
     logo_url: '',
     card_color: '#E9D5FF',
-    is_public: false,
-    visibility: 'PRIVATE' as 'ALL' | 'TEAM' | 'PRIVATE',
+    visibility: 'private' as 'public' | 'private' | 'team',
   })
 
   if (!isOpen) return null
@@ -57,8 +56,7 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
         },
         logo_url: formData.logo_url || undefined,
         card_color: formData.card_color,
-        is_public: formData.visibility === 'ALL',
-        department: formData.visibility === 'TEAM' ? 'current_team' : undefined,
+        visibility: formData.visibility,
         status: 'DEVELOPMENT' as any,
         health_status: 'unknown' as any,
       }
@@ -240,8 +238,8 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 <input
                   type="radio"
                   name="visibility"
-                  value="ALL"
-                  checked={formData.visibility === 'ALL'}
+                  value="public"
+                  checked={formData.visibility === 'public'}
                   onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
                   className="w-4 h-4 text-purple-600"
                 />
@@ -254,8 +252,8 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 <input
                   type="radio"
                   name="visibility"
-                  value="TEAM"
-                  checked={formData.visibility === 'TEAM'}
+                  value="team"
+                  checked={formData.visibility === 'team'}
                   onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
                   className="w-4 h-4 text-purple-600"
                 />
@@ -268,8 +266,8 @@ export const AddAgentModal: React.FC<AddAgentModalProps> = ({
                 <input
                   type="radio"
                   name="visibility"
-                  value="PRIVATE"
-                  checked={formData.visibility === 'PRIVATE'}
+                  value="private"
+                  checked={formData.visibility === 'private'}
                   onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
                   className="w-4 h-4 text-purple-600"
                 />

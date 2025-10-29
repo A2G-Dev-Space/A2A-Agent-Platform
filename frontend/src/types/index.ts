@@ -59,6 +59,8 @@ export interface Agent {
   owner_deptname_kr?: string
   department: string
   is_public: boolean
+  visibility: string  // 'public', 'private', 'team'
+  allowed_users?: string[]  // List of usernames with access
   health_status: HealthStatus
   logo_url?: string
   card_color?: string

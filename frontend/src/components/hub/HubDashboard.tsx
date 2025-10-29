@@ -11,18 +11,20 @@ export const HubDashboard: React.FC = () => {
   const { agents, recommendations, fetchAgents, getRecommendations, isLoading } = useAgentStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFramework, setSelectedFramework] = useState<AgentFramework | 'ALL'>('ALL')
+  const [selectedVisibility, setSelectedVisibility] = useState<'public' | 'private' | 'team' | 'ALL'>('ALL')
+  const [onlyMine, setOnlyMine] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [productionAgents, setProductionAgents] = useState<Agent[]>([])
 
   useEffect(() => {
     loadProductionAgents()
-  }, [])
+  }, [selectedVisibility, onlyMine])
 
   useEffect(() => {
     // Filter only production agents
     if (agents && Array.isArray(agents)) {
       const filtered = agents.filter(agent =>
-        agent.status === AgentStatus.PRODUCTION && agent.is_public
+        agent.status === AgentStatus.PRODUCTION
       )
       setProductionAgents(filtered)
     }
@@ -40,7 +42,17 @@ export const HubDashboard: React.FC = () => {
 
   const loadProductionAgents = async () => {
     try {
-      await fetchAgents({ status: AgentStatus.PRODUCTION })
+      const filters: any = { status: AgentStatus.PRODUCTION }
+
+      // Add Access Control filters
+      if (selectedVisibility !== 'ALL') {
+        filters.visibility = selectedVisibility
+      }
+      if (onlyMine) {
+        filters.only_mine = true
+      }
+
+      await fetchAgents(filters)
     } catch (error) {
       console.error('Failed to load agents:', error)
     }
@@ -138,34 +150,101 @@ export const HubDashboard: React.FC = () => {
 
         {/* Filter Options */}
         {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg animate-fadeIn">
-            <h3 className="text-sm font-semibold mb-3">Filter by Framework</h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedFramework('ALL')}
-                className={clsx(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                  selectedFramework === 'ALL'
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-                )}
-              >
-                All Frameworks
-              </button>
-              {Object.values(AgentFramework).map(framework => (
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg animate-fadeIn space-y-4">
+            {/* Framework Filter */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Filter by Framework</h3>
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={framework}
-                  onClick={() => setSelectedFramework(framework)}
+                  onClick={() => setSelectedFramework('ALL')}
                   className={clsx(
                     'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
-                    selectedFramework === framework
+                    selectedFramework === 'ALL'
                       ? 'bg-sky-600 text-white'
                       : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
                   )}
                 >
-                  {framework}
+                  All Frameworks
                 </button>
-              ))}
+                {Object.values(AgentFramework).map(framework => (
+                  <button
+                    key={framework}
+                    onClick={() => setSelectedFramework(framework)}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                      selectedFramework === framework
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    )}
+                  >
+                    {framework}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Visibility Filter */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Filter by Visibility</h3>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedVisibility('ALL')}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                    selectedVisibility === 'ALL'
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setSelectedVisibility('public')}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                    selectedVisibility === 'public'
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  )}
+                >
+                  Public
+                </button>
+                <button
+                  onClick={() => setSelectedVisibility('team')}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                    selectedVisibility === 'team'
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  )}
+                >
+                  Team
+                </button>
+                <button
+                  onClick={() => setSelectedVisibility('private')}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                    selectedVisibility === 'private'
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  )}
+                >
+                  Private
+                </button>
+              </div>
+            </div>
+
+            {/* Only Mine Checkbox */}
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={onlyMine}
+                  onChange={(e) => setOnlyMine(e.target.checked)}
+                  className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500"
+                />
+                <span className="text-sm font-medium">Show only my agents</span>
+              </label>
             </div>
           </div>
         )}
