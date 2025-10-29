@@ -87,10 +87,10 @@
 | **API Gateway** | 9050 | 플랫폼 팀 | 요청 라우팅, 인증, Rate Limiting |
 | **User Service** | 8001 | DEV1 (한승하) | SSO 인증, JWT, 사용자 관리 |
 | **Agent Service** | 8002 | DEV4 (안준형) | 에이전트 CRUD, A2A, Top-K |
-| **Chat Service** | 8003 | DEV3 (김영섭) | WebSocket 채팅, 스트리밍 |
+| **Chat Service** | 8003 | DEV2 (이병주) | WebSocket 채팅, 스트리밍 |
 | **Tracing Service** | 8004 | DEV3 (김영섭) | 로그 수집, 실시간 추적 |
-| **Admin Service** | 8005 | DEV2 (이병주) | LLM 관리, 통계 대시보드 |
-| **Worker Service** | N/A | DEV2 (이병주) | Celery 백그라운드 작업 |
+| **Admin Service** | 8005 | DEV1 (한승하) | LLM 관리, 통계 대시보드 |
+| **Worker Service** | N/A | DEV1 (한승하) | Celery 백그라운드 작업 |
 | **Frontend** | 9060 | DEV1 (한승하) | React UI, 3가지 모드 |
 
 ### 2.3 데이터베이스
@@ -148,22 +148,10 @@
 
 | 개발자 | 담당 영역 | 이메일 | 주요 책임 |
 |--------|-----------|--------|-----------|
-| **DEV1 (한승하)** | Frontend + User Service | syngha.han@company.com | SPRINT Lead, UI/UX, SSO 인증 |
-| **DEV2 (이병주)** | Admin + Worker | byungju.lee@company.com | LLM 관리, 통계, Celery 작업 |
-| **DEV3 (김영섭)** | Chat + Tracing | youngsub.kim@company.com | WebSocket, 실시간 로그 |
+| **DEV1 (한승하)** | Frontend + User Service + Admin + Worker  | syngha.han@company.com | SPRINT Lead, UI/UX, SSO 인증, LLM 관리, 통계, Celery 작업 |
+| **DEV2 (이병주)** | Chat | byungju.lee@company.com | WebSocket, Chat |
+| **DEV3 (김영섭)** | Tracing | youngsub.kim@company.com | WebSocket, 실시간 로그 |
 | **DEV4 (안준형)** | Agent Service | joonhyung.ahn@company.com | A2A Protocol, Top-K, Registry |
-
-### 4.2 Sprint 일정
-
-| Sprint | 기간 | 주요 목표 |
-|--------|------|-----------|
-| **Sprint 0** | 1주차 | 환경 구축, Mock 서비스, 레포 설정 |
-| **Sprint 1** | 2주차 | 핵심 백엔드 API 구현 |
-| **Sprint 2** | 3주차 | Frontend 코어 + 백엔드 통합 |
-| **Sprint 3** | 4-5주차 | 고급 기능 (WebSocket, Top-K) |
-| **Sprint 4** | 6주차 | 통합 테스트, 버그 수정, 배포 |
-
----
 
 ## 5. 핵심 기능
 
