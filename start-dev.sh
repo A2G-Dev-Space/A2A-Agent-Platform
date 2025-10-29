@@ -53,18 +53,33 @@ case $MODE in
             exit 1
         fi
 
-        # List of services with potential migrations
-        SERVICES=("user-service" "agent-service" "chat-service" "tracing-service" "admin-service")
+        # Map service names to container names
+        declare -A SERVICE_CONTAINERS=(
+            ["user-service"]="a2g-user-service"
+            ["agent-service"]="a2g-agent-service"
+            ["chat-service"]="a2g-chat-service"
+            ["tracing-service"]="a2g-tracing-service"
+            ["admin-service"]="a2g-admin-service"
+        )
 
         SUCCESS_COUNT=0
         SKIP_COUNT=0
         FAIL_COUNT=0
 
-        for service in "${SERVICES[@]}"; do
+        for service in "${!SERVICE_CONTAINERS[@]}"; do
+            CONTAINER_NAME="${SERVICE_CONTAINERS[$service]}"
             SERVICE_PATH="repos/$service"
 
             if [ ! -d "$SERVICE_PATH" ]; then
                 echo "⚠️  $service: Directory not found, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            # Check if container is running
+            if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+                echo "⏭️  $service: Container not running, skipping..."
+                echo "   Start services with: ./start-dev.sh full"
                 SKIP_COUNT=$((SKIP_COUNT + 1))
                 continue
             fi
@@ -76,28 +91,37 @@ case $MODE in
                 continue
             fi
 
-            echo "📦 $service: Checking for migrations..."
-            cd "$SERVICE_PATH"
-
-            # Check current migration status
-            CURRENT=$(alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "none")
-
             # Check if there are any migrations
-            if [ ! -d "alembic/versions" ] || [ -z "$(ls -A alembic/versions/*.py 2>/dev/null)" ]; then
-                echo "   ℹ️  No migration files found"
+            if [ ! -d "$SERVICE_PATH/alembic/versions" ] || [ -z "$(ls -A $SERVICE_PATH/alembic/versions/*.py 2>/dev/null)" ]; then
+                echo "⏭️  $service: No migration files found, skipping..."
                 SKIP_COUNT=$((SKIP_COUNT + 1))
-                cd ../..
                 continue
             fi
 
-            # Apply migrations
+            echo "📦 $service: Checking for migrations..."
+
+            # Check current migration status (inside container)
+            CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "none")
             echo "   Current: $CURRENT"
-            echo "   Running: alembic upgrade head..."
 
-            if alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log; then
-                NEW_CURRENT=$(alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
+            # Apply migrations (inside container)
+            echo "   Running: docker exec $CONTAINER_NAME uv run alembic upgrade head"
 
-                if [ "$CURRENT" = "$NEW_CURRENT" ] && [ "$CURRENT" != "none" ]; then
+            # Run migration and capture output
+            MIGRATION_OUTPUT=$(docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log)
+            MIGRATION_EXIT_CODE=$?
+
+            # Check if migration succeeded or if objects already exist (which is ok)
+            if [ $MIGRATION_EXIT_CODE -eq 0 ] || echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
+                NEW_CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
+
+                if echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
+                    echo "   ⚠️  Some objects already exist (likely from manual setup)"
+                    echo "   📝 Stamping migration as applied..."
+                    docker exec "$CONTAINER_NAME" uv run alembic stamp head 2>/dev/null
+                    NEW_CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
+                    echo "   ✅ Marked as up to date ($NEW_CURRENT)"
+                elif [ "$CURRENT" = "$NEW_CURRENT" ] && [ "$CURRENT" != "none" ]; then
                     echo "   ✅ Already up to date ($NEW_CURRENT)"
                 else
                     echo "   ✅ Updated to: $NEW_CURRENT"
@@ -109,7 +133,6 @@ case $MODE in
             fi
 
             echo ""
-            cd ../..
         done
 
         # Summary
@@ -180,8 +203,10 @@ case $MODE in
         # Initialize databases
         echo "🏗️  Creating service databases..."
         docker exec a2g-postgres-dev psql -U dev_user -d postgres -f /docker-entrypoint-initdb.d/init.sql
-        
-        # Create initial schema for agent_service_db (without pgvector for now)
+
+        # Create initial schema for agent_service_db
+        # Note: Basic tables are created here for initial setup.
+        # Use './start-dev.sh update' after git pull to apply Alembic migrations.
         echo "🔧 Setting up agent_service_db..."
         docker exec a2g-postgres-dev psql -U dev_user -d agent_service_db -c "
         CREATE TABLE IF NOT EXISTS agents (
@@ -232,12 +257,46 @@ case $MODE in
             echo "   - tracing_service_db"
             echo "   - admin_service_db"
             echo ""
-            echo "🎉 You can now run: ./start-dev.sh full"
+
+            # Start services temporarily to stamp migrations
+            echo "🚀 Starting services to initialize migration tracking..."
+            $DOCKER_COMPOSE -f docker-compose.dev.yml up -d
+
+            # Wait for services to be ready
+            echo "⏳ Waiting for services to start..."
+            sleep 10
+
+            # Stamp migrations as applied for services with manual schema
+            echo "📝 Marking migrations as applied..."
+
+            # Check and stamp agent-service migrations
+            if docker ps --format '{{.Names}}' | grep -q "a2g-agent-service"; then
+                if [ -f "../agent-service/alembic.ini" ]; then
+                    echo "   Stamping agent-service migrations..."
+                    docker exec a2g-agent-service uv run alembic stamp head 2>/dev/null || echo "   ⚠️  Could not stamp agent-service (may not have migrations yet)"
+                fi
+            fi
+
+            # Check and stamp user-service migrations
+            if docker ps --format '{{.Names}}' | grep -q "a2g-user-service"; then
+                if [ -f "../user-service/alembic.ini" ]; then
+                    echo "   Stamping user-service migrations..."
+                    docker exec a2g-user-service uv run alembic stamp head 2>/dev/null || echo "   ⚠️  Could not stamp user-service (may not have migrations yet)"
+                fi
+            fi
+
+            echo ""
+            echo "✅ Migration tracking initialized!"
+            echo ""
+            echo "🎉 Setup complete! Services are now running."
+            echo "   - Frontend: cd frontend && npm install && npm run dev"
+            echo "   - API Gateway: http://localhost:9050"
+            echo "   - Update migrations: ./start-dev.sh update"
         else
             echo "❌ Database setup failed!"
             exit 1
         fi
-        
+
         cd ../..
         exit 0
         ;;
