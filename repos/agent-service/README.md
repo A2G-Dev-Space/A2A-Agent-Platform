@@ -6,8 +6,21 @@
 
 ## 🚀 빠른 시작
 
+### Prerequisites
+
+먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+
+```bash
+# 프로젝트 루트 디렉토리에서
+./start-dev.sh setup   # 최초 1회 - 데이터베이스 및 pgvector 자동 설정
+./start-dev.sh full    # 모든 서비스 시작
+```
+
+### Local Development
+
 ```bash
 # 1. 환경 설정
+cd repos/agent-service
 uv venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv sync
@@ -16,18 +29,15 @@ uv sync
 cp .env.example .env.local
 # .env.local을 설정에 맞게 편집하세요
 
-# 3. pgvector 확장자를 포함한 데이터베이스 설정
-docker exec -it a2g-postgres-dev psql -U dev_user -d agent_service_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-# 4. 마이그레이션 실행
+# 3. 마이그레이션 실행
 alembic init alembic  # 첫 실행 시만
 alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
 
-# 5. 서비스 실행
+# 4. 서비스 실행
 uvicorn app.main:app --reload --port 8002
 
-# 6. 헬스 체크
+# 5. 헬스 체크
 curl http://localhost:8002/health
 ```
 

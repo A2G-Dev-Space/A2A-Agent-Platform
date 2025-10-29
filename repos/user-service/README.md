@@ -14,6 +14,16 @@ User Service는 A2G Platform의 인증, 권한부여, 사용자 관리를 담당
 
 ## Quick Start
 
+### Prerequisites
+
+먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+
+```bash
+# 프로젝트 루트 디렉토리에서
+./start-dev.sh setup   # 최초 1회
+./start-dev.sh full    # 모든 서비스 시작
+```
+
 ### Local Development
 
 ```bash
