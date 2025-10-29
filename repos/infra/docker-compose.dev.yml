@@ -1,0 +1,255 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: a2g-postgres-dev
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - a2g-network
+
+  # Redis Cache & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: a2g-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - a2g-network
+
+  # Mock SSO Service
+  mock-sso:
+    image: python:3.11-slim
+    container_name: a2g-mock-sso
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./mock-sso:/app
+    working_dir: /app
+    command: >
+      sh -c "pip install fastapi uvicorn python-jose &&
+             python main.py"
+    networks:
+      - a2g-network
+
+  # Nginx API Gateway (optional for development)
+  nginx:
+    image: nginx:alpine
+    container_name: a2g-nginx-dev
+    ports:
+      - "9050:9050"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - a2g-network
+
+  # User Service (DEV1)
+  user-service:
+    build:
+      context: ../user-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-user-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/user_service_db
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: local-dev-secret-key
+      IDP_ENTITY_ID: http://mock-sso:9999/mock-sso/login
+      SP_REDIRECT_URL: http://localhost:9050/api/auth/callback/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-sso:
+        condition: service_started
+    networks:
+      - a2g-network
+    volumes:
+      - ../user-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  # Agent Service (DEV4)
+  agent-service:
+    build:
+      context: ../agent-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-agent-service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/agent_service_db
+      REDIS_URL: redis://redis:6379/1
+      JWT_SECRET_KEY: local-dev-secret-key
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-your-api-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../agent-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+
+  # Chat Service (DEV3)
+  chat-service:
+    build:
+      context: ../chat-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-chat-service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/chat_service_db
+      REDIS_URL: redis://redis:6379/2
+      JWT_SECRET_KEY: local-dev-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../chat-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
+
+  # Tracing Service (DEV3)
+  tracing-service:
+    build:
+      context: ../tracing-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-tracing-service
+    ports:
+      - "8004:8004"
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/tracing_service_db
+      REDIS_URL: redis://redis:6379/3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../tracing-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8004 --reload
+
+  # Admin Service (DEV2)
+  admin-service:
+    build:
+      context: ../admin-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-admin-service
+    ports:
+      - "8005:8005"
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/admin_service_db
+      REDIS_URL: redis://redis:6379/4
+      JWT_SECRET_KEY: local-dev-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../admin-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8005 --reload
+
+  # Worker Service (DEV2)
+  worker-service:
+    build:
+      context: ../worker-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-worker-service
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/admin_service_db
+      REDIS_URL: redis://redis:6379/5
+      CELERY_BROKER_URL: redis://redis:6379/6
+      CELERY_RESULT_BACKEND: redis://redis:6379/7
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../worker-service:/app
+    command: celery -A app.celery_app worker --loglevel=info
+
+  # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: ../worker-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-celery-beat
+    environment:
+      DATABASE_URL: postgresql://dev_user:dev_password@postgres:5432/admin_service_db
+      REDIS_URL: redis://redis:6379/5
+      CELERY_BROKER_URL: redis://redis:6379/6
+      CELERY_RESULT_BACKEND: redis://redis:6379/7
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - a2g-network
+    volumes:
+      - ../worker-service:/app
+    command: celery -A app.celery_app beat --loglevel=info
+
+  # Flower - Celery Monitoring (Optional)
+  flower:
+    image: mher/flower:2.0
+    container_name: a2g-flower
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/6
+      FLOWER_PORT: 5555
+    depends_on:
+      - redis
+    networks:
+      - a2g-network
+
+networks:
+  a2g-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
