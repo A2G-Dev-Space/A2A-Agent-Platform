@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import httpx
 import json
 
-from app.core.database import async_session_maker, Agent, AgentFramework
+from app.core.database import get_db, Agent, AgentFramework
 from app.core.security import get_current_user
 from sqlalchemy import select
 
@@ -38,7 +38,7 @@ class A2AExecuteResponse(BaseModel):
 async def register_a2a_agent(
     request: A2ARegisterRequest,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ):
     """Register A2A compatible agent"""
     # Create agent record
@@ -70,7 +70,7 @@ async def execute_a2a_agent(
     agent_id: str,
     request: A2AExecuteRequest,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ):
     """Execute A2A agent"""
     # Get agent

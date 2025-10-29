@@ -63,9 +63,24 @@ api.interceptors.response.use(
 
     // Handle other errors
     if (error.response) {
-      const errorMessage = error.response.data?.error?.message ||
-                          error.response.data?.detail ||
-                          'An error occurred'
+      let errorMessage = 'An error occurred'
+
+      // Handle FastAPI validation errors (422 Unprocessable Entity)
+      if (error.response.status === 422 && Array.isArray(error.response.data?.detail)) {
+        // Parse FastAPI validation errors
+        const validationErrors = error.response.data.detail
+        errorMessage = validationErrors
+          .map((err: any) => {
+            const field = err.loc?.slice(1).join('.') || 'field'
+            return `${field}: ${err.msg}`
+          })
+          .join(', ')
+      } else {
+        // Handle other error formats
+        errorMessage = error.response.data?.error?.message ||
+                      (typeof error.response.data?.detail === 'string' ? error.response.data.detail : null) ||
+                      'An error occurred'
+      }
 
       // Show error toast for user-facing errors
       if (error.response.status >= 400 && error.response.status < 500) {

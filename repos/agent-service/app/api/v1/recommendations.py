@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 import json
 
-from app.core.database import async_session_maker, Agent, AgentStatus
+from app.core.database import get_db, Agent, AgentStatus
 from app.core.security import get_current_user
 from app.core.config import settings
 from sqlalchemy import select
@@ -36,7 +36,7 @@ class RecommendationResponse(BaseModel):
 async def get_recommendations(
     request: RecommendationRequest,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ):
     """Get Top-K agent recommendations based on query"""
     

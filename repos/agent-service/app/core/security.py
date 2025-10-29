@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.database import async_session_maker
+from app.core.database import get_db
 
 # JWT token scheme
 security = HTTPBearer()
@@ -25,7 +25,7 @@ def verify_token(token: str) -> Optional[dict]:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Get current authenticated user (simplified for agent service)"""
     credentials_exception = HTTPException(

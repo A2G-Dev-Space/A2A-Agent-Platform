@@ -40,7 +40,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     }
   }
 
-  const isDisabled = agent.status === 'DEPRECATED'
+  const isDisabled = agent.status === 'ARCHIVED'
 
   return (
     <div
@@ -165,7 +165,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           'absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium',
           agent.status === 'DEVELOPMENT' && 'bg-yellow-100 text-yellow-700',
           agent.status === 'STAGING' && 'bg-blue-100 text-blue-700',
-          agent.status === 'DEPRECATED' && 'bg-red-100 text-red-700'
+          agent.status === 'ARCHIVED' && 'bg-red-100 text-red-700'
         )}>
           {agent.status}
         </div>

@@ -30,7 +30,7 @@ export enum AgentStatus {
   DEVELOPMENT = 'DEVELOPMENT',
   STAGING = 'STAGING',
   PRODUCTION = 'PRODUCTION',
-  DEPRECATED = 'DEPRECATED',
+  ARCHIVED = 'ARCHIVED',
 }
 
 export enum HealthStatus {

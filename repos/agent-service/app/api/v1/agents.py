@@ -5,9 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
-from app.core.database import async_session_maker, Agent, AgentFramework, AgentStatus, HealthStatus
+from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
 from app.core.security import get_current_user
 from sqlalchemy import select, and_
 
@@ -68,7 +69,7 @@ async def get_agents(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get list of agents with Access Control filtering"""
     from sqlalchemy import or_
@@ -166,7 +167,7 @@ async def get_agents(
 async def create_agent(
     request: AgentCreate,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create new agent"""
     # Check if agent name already exists
@@ -217,7 +218,7 @@ async def create_agent(
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: int,
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get agent by ID"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -253,7 +254,7 @@ async def update_agent(
     agent_id: int,
     request: AgentUpdate,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update agent"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -303,7 +304,7 @@ async def update_agent(
 async def delete_agent(
     agent_id: int,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Delete agent"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))

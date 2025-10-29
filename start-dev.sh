@@ -204,23 +204,9 @@ case $MODE in
         echo "🏗️  Creating service databases..."
         docker exec a2g-postgres-dev psql -U dev_user -d postgres -f /docker-entrypoint-initdb.d/init.sql
 
-        # Create initial schema for agent_service_db
-        # Note: Basic tables are created here for initial setup.
-        # Use './start-dev.sh update' after git pull to apply Alembic migrations.
-        echo "🔧 Setting up agent_service_db..."
-        docker exec a2g-postgres-dev psql -U dev_user -d agent_service_db -c "
-        CREATE TABLE IF NOT EXISTS agents (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            description TEXT,
-            framework VARCHAR(50),
-            status VARCHAR(50),
-            capabilities JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        "
-        
+        # Note: agent_service_db schema is managed by Alembic migrations
+        # Tables will be created when services start and run migrations
+
         # Create initial schema for user_service_db
         echo "🔧 Setting up user_service_db..."
         docker exec a2g-postgres-dev psql -U dev_user -d user_service_db -c "
@@ -258,40 +244,44 @@ case $MODE in
             echo "   - admin_service_db"
             echo ""
 
-            # Start services temporarily to stamp migrations
-            echo "🚀 Starting services to initialize migration tracking..."
+            # Start services to run migrations
+            echo "🚀 Starting services to run database migrations..."
             $DOCKER_COMPOSE -f docker-compose.dev.yml up -d
 
             # Wait for services to be ready
             echo "⏳ Waiting for services to start..."
             sleep 10
 
-            # Stamp migrations as applied for services with manual schema
-            echo "📝 Marking migrations as applied..."
+            # Run migrations for services
+            echo "📝 Running database migrations..."
 
-            # Check and stamp agent-service migrations
+            # Run agent-service migrations (creates tables via Alembic)
             if docker ps --format '{{.Names}}' | grep -q "a2g-agent-service"; then
                 if [ -f "../agent-service/alembic.ini" ]; then
-                    echo "   Stamping agent-service migrations..."
-                    docker exec a2g-agent-service uv run alembic stamp head 2>/dev/null || echo "   ⚠️  Could not stamp agent-service (may not have migrations yet)"
+                    echo "   Running agent-service migrations..."
+                    docker exec a2g-agent-service uv run alembic upgrade head 2>/dev/null && echo "   ✅ agent-service migrations applied" || echo "   ⚠️  Could not run agent-service migrations"
                 fi
             fi
 
-            # Check and stamp user-service migrations
+            # Stamp user-service migrations (tables created manually above)
             if docker ps --format '{{.Names}}' | grep -q "a2g-user-service"; then
                 if [ -f "../user-service/alembic.ini" ]; then
                     echo "   Stamping user-service migrations..."
-                    docker exec a2g-user-service uv run alembic stamp head 2>/dev/null || echo "   ⚠️  Could not stamp user-service (may not have migrations yet)"
+                    docker exec a2g-user-service uv run alembic stamp head 2>/dev/null && echo "   ✅ user-service migrations stamped" || echo "   ⚠️  Could not stamp user-service"
                 fi
             fi
 
             echo ""
-            echo "✅ Migration tracking initialized!"
+            echo "✅ Database migrations completed!"
             echo ""
             echo "🎉 Setup complete! Services are now running."
-            echo "   - Frontend: cd frontend && npm install && npm run dev"
-            echo "   - API Gateway: http://localhost:9050"
-            echo "   - Update migrations: ./start-dev.sh update"
+            echo ""
+            echo "📌 Next steps:"
+            echo "   1. Start frontend: cd frontend && npm install && npm run dev"
+            echo "   2. Access app at: http://localhost:9060"
+            echo "   3. API Gateway at: http://localhost:9050"
+            echo ""
+            echo "📝 After 'git pull', run: ./start-dev.sh update"
         else
             echo "❌ Database setup failed!"
             exit 1

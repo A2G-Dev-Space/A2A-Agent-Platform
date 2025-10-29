@@ -41,4 +41,9 @@ export const agentService = {
   deleteAgent: async (id: number): Promise<void> => {
     return apiClient.delete(`${AGENT_BASE}/${id}/`)
   },
+
+  // Get AI-powered recommendations (Top-K similarity search)
+  getRecommendations: async (request: RecommendationRequest): Promise<{ recommendations: AgentRecommendation[] }> => {
+    return apiClient.post(`${AGENT_BASE}/recommend/`, request)
+  },
 }

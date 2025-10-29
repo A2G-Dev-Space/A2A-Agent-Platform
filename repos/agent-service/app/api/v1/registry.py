@@ -9,7 +9,7 @@ from urllib.parse import unquote
 
 from app.core.types import AgentCard
 from app.core.storage import RegistryStorage
-from app.core.database import async_session_maker
+from app.core.database import get_db
 from app.core.security import get_current_user
 import logging
 
@@ -31,7 +31,7 @@ class AgentSearchRequest(BaseModel):
 async def register_agent(
     request: RegisterAgentRequest,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     Register an agent in the registry using AgentCard format
@@ -162,7 +162,7 @@ async def register_agent(
 async def get_agent(
     agent_id: str,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     Get an agent by ID
@@ -187,7 +187,7 @@ async def list_agents(
     department: Optional[str] = Query(None, description="Filter by department"),
     only_mine: bool = Query(False, description="Show only my agents"),
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     List all registered agents with Access Control filtering
@@ -269,7 +269,7 @@ async def list_agents(
 async def unregister_agent(
     agent_id: str,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     Unregister an agent
@@ -301,7 +301,7 @@ async def unregister_agent(
 async def search_agents(
     request: AgentSearchRequest,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     Search for agents by query string
@@ -381,7 +381,7 @@ async def list_extensions(
         100, description="Number of extensions per page", ge=1, le=1000
     ),
     page_token: Optional[str] = Query(None, description="Page token for pagination"),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """List all extensions with provenance information"""
     try:
@@ -411,7 +411,7 @@ async def list_extensions(
 @router.get("/extensions/{uri:path}", response_model=dict[str, Any])
 async def get_extension_info(
     uri: str,
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """Get specific extension information by URI"""
     try:
@@ -445,7 +445,7 @@ async def get_extension_info(
 async def get_agent_extensions(
     agent_id: str,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ) -> dict[str, Any]:
     """
     Get all extensions used by a specific agent
