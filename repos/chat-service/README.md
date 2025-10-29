@@ -1,7 +1,7 @@
 # 💬 Chat Service - A2G Platform
 
 **포트**: 8003
-**담당자**: DEV3 (김영섭)
+**담당자**: DEV2 (이병주)
 **기술 스택**: FastAPI, WebSocket, PostgreSQL, Redis Pub/Sub, Socket.IO
 
 ---
@@ -1050,7 +1050,7 @@ await websocket.send_text(chunk, encode=False)  # 즉시 전송
 
 ## Sprint 체크리스트
 
-### Sprint 1 (2주차) - DEV3 담당
+### Sprint 1 (2주차) - DEV2 담당
 - [x] 프로젝트 초기화 및 구조 설정
 - [x] 데이터베이스 모델 생성
 - [x] 기본 WebSocket 연결 구현
