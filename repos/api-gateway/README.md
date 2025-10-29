@@ -28,12 +28,15 @@ The API Gateway is the centralized entry point for all A2G Platform backend serv
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Using start-dev.sh (Recommended)
 
 ```bash
+# From project root directory
+# Initial setup (first time only)
+./start-dev.sh setup
+
 # Start all services including API Gateway
-cd repos/infra
-docker compose -f docker-compose.dev.yml up -d
+./start-dev.sh full
 
 # API Gateway will be available at http://localhost:9050
 ```

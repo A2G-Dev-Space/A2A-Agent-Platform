@@ -203,36 +203,49 @@
 
 ## 5. 개발환경 설정
 
-### 5.1 빠른 시작 (Docker)
+### 5.1 빠른 시작 (start-dev.sh 사용)
 
 ```bash
-# 1. 인프라 시작
-docker compose -f repos/infra/docker-compose.dev.yml up -d
+# 1. 초기 설정 (최초 1회만 실행)
+./start-dev.sh setup
 
-# 2. Frontend 실행
+# 2. 모든 서비스 시작
+./start-dev.sh full
+
+# 3. Frontend 실행 (별도 터미널)
 cd frontend && npm install && npm run dev
 
-# 3. 접속
+# 4. 접속
 http://localhost:9060
+
+# 5. 서비스 중지
+./start-dev.sh stop
 ```
 
-### 5.2 데이터베이스 초기화
+### 5.2 start-dev.sh 명령어
 
 ```bash
-# PostgreSQL 컨테이너 접속
-docker exec -it a2g-postgres-dev psql -U dev_user -d postgres
+# 데이터베이스 초기화 (처음 1회)
+./start-dev.sh setup
 
-# 데이터베이스 생성
-CREATE DATABASE user_service_db;
-CREATE DATABASE agent_service_db;
-CREATE DATABASE chat_service_db;
-CREATE DATABASE tracing_service_db;
-CREATE DATABASE admin_service_db;
+# 모든 서비스 시작
+./start-dev.sh full
 
-# pgvector 확장 설치 (Agent Service용)
-\c agent_service_db
-CREATE EXTENSION IF NOT EXISTS vector;
+# 최소 서비스만 시작 (Gateway + SSO + DB)
+./start-dev.sh minimal
+
+# Gateway와 DB만 시작
+./start-dev.sh gateway
+
+# 모든 서비스 중지
+./start-dev.sh stop
 ```
+
+**start-dev.sh setup이 하는 일:**
+- PostgreSQL 컨테이너 시작 및 대기
+- 서비스별 데이터베이스 자동 생성
+- 기본 사용자 계정 생성 (팀원 4명 + 테스트 사용자)
+- 초기 스키마 설정
 
 ### 5.3 환경 변수 설정
 

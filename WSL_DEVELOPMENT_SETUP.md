@@ -396,36 +396,32 @@ cd Agent-Platform-Development
 git submodule update --init --recursive
 ```
 
-### 9.2 Docker 서비스 시작
+### 9.2 개발 환경 시작 (start-dev.sh 사용)
 
 ```bash
-# PostgreSQL 시작
-docker run -d \
-  --name a2g-postgres-dev \
-  -e POSTGRES_USER=dev_user \
-  -e POSTGRES_PASSWORD=dev_password \
-  -e POSTGRES_DB=postgres \
-  -p 5432:5432 \
-  postgres:15-alpine
+# 프로젝트 루트 디렉토리로 이동
+cd ~/projects/Agent-Platform-Development
 
-# Redis 시작
-docker run -d \
-  --name a2g-redis-dev \
-  -p 6379:6379 \
-  redis:7-alpine
+# 초기 데이터베이스 설정 (최초 1회만 실행)
+./start-dev.sh setup
 
-# 데이터베이스 생성
-docker exec -it a2g-postgres-dev psql -U dev_user -d postgres <<EOF
-CREATE DATABASE user_service_db;
-CREATE DATABASE agent_service_db;
-CREATE DATABASE chat_service_db;
-CREATE DATABASE tracing_service_db;
-CREATE DATABASE admin_service_db;
-EOF
+# 모든 서비스 시작
+./start-dev.sh full
 
-# Agent Service용 pgvector 활성화
-docker exec -it a2g-postgres-dev psql -U dev_user -d agent_service_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# 서비스 상태 확인
+docker ps
+
+# 로그 확인 (필요시)
+cd repos/infra
+docker compose -f docker-compose.dev.yml logs -f
 ```
+
+**start-dev.sh 명령어:**
+- `./start-dev.sh setup` - 데이터베이스 초기화 (처음 1회)
+- `./start-dev.sh full` - 모든 서비스 시작 (기본)
+- `./start-dev.sh minimal` - 최소 서비스 (Gateway + SSO + DB)
+- `./start-dev.sh gateway` - Gateway와 DB만
+- `./start-dev.sh stop` - 모든 서비스 중지
 
 ### 9.3 Frontend 실행
 

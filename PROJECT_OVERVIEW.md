@@ -229,14 +229,20 @@
 ### 7.1 빠른 시작
 
 ```bash
-# 1. 인프라 시작 (Docker)
-docker compose -f repos/infra/docker-compose.dev.yml up -d
+# 1. 초기 설정 (최초 1회만)
+./start-dev.sh setup
 
-# 2. Frontend 실행
+# 2. 모든 서비스 시작
+./start-dev.sh full
+
+# 3. Frontend 실행 (별도 터미널)
 cd frontend && npm install && npm run dev
 
-# 3. 접속
+# 4. 접속
 http://localhost:9060
+
+# 서비스 중지
+./start-dev.sh stop
 ```
 
 ### 7.2 환경별 설정

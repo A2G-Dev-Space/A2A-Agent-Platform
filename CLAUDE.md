@@ -6,18 +6,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Starting the Development Environment
 
+**IMPORTANT: Always use start-dev.sh script instead of direct docker compose commands.**
+
 ```bash
-# Quick start with Docker Compose (all services including API Gateway)
-docker compose -f repos/infra/docker-compose.dev.yml up -d
+# Initial setup (run once)
+./start-dev.sh setup
+
+# Start all services
+./start-dev.sh full
 cd frontend && npm install && npm run dev
 
 # Minimal setup (Frontend + API Gateway + Mock SSO)
-docker compose -f repos/infra/docker-compose.dev.yml up -d api-gateway mock-sso postgres redis
+./start-dev.sh minimal
 cd frontend && npm install && npm run dev
+
+# Stop all services
+./start-dev.sh stop
 
 # Frontend will be at http://localhost:9060
 # API Gateway will be at http://localhost:9050
 ```
+
+**Available start-dev.sh commands:**
+- `./start-dev.sh setup` - Initialize databases (first time only)
+- `./start-dev.sh full` - Start all services
+- `./start-dev.sh minimal` - Start minimal services (Gateway + SSO + DB)
+- `./start-dev.sh gateway` - Start Gateway + DB only
+- `./start-dev.sh stop` - Stop all services
 
 ### Running Tests
 
@@ -57,22 +72,16 @@ docker build -f Dockerfile -t a2g-{service-name}:latest .
 ### Database Migrations
 
 ```bash
-# For each backend service
+# Initialize all databases (first time setup)
+./start-dev.sh setup
+
+# For each backend service, run migrations
 cd repos/{service-name}
 alembic revision --autogenerate -m "Description"
 alembic upgrade head
 
-# Initialize databases in Docker
-docker exec -it a2g-postgres-dev psql -U dev_user -d postgres <<EOF
-CREATE DATABASE user_service_db;
-CREATE DATABASE agent_service_db;
-CREATE DATABASE chat_service_db;
-CREATE DATABASE tracing_service_db;
-CREATE DATABASE admin_service_db;
-EOF
-
-# Enable pgvector for Agent Service
-docker exec -it a2g-postgres-dev psql -U dev_user -d agent_service_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+# Manual database operations (if needed)
+docker exec -it a2g-postgres-dev psql -U dev_user -d {service}_db
 ```
 
 ## High-Level Architecture

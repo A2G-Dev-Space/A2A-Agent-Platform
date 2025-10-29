@@ -27,17 +27,39 @@ AI 에이전트를 개발, 테스트, 배포 및 모니터링할 수 있는 통�
 git clone --recursive https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
 cd Agent-Platform-Development
 
-# 2. Docker 서비스 시작
-docker compose -f repos/infra/docker-compose.dev.yml up -d
+# 2. 개발 환경 초기 설정 (최초 1회만 실행)
+./start-dev.sh setup
 
-# 3. Frontend 실행
+# 3. 모든 서비스 시작
+./start-dev.sh full
+
+# 4. Frontend 실행 (별도 터미널)
 cd frontend
 npm install
 npm run dev
 
-# 4. 브라우저에서 접속
+# 5. 브라우저에서 접속
 # Frontend: http://localhost:9060
 # API Gateway: http://localhost:9050
+```
+
+### 개발 환경 관리 명령어
+
+```bash
+# 초기 데이터베이스 설정 (처음 한번만)
+./start-dev.sh setup
+
+# 모든 서비스 시작
+./start-dev.sh full
+
+# 최소 서비스만 시작 (API Gateway + Mock SSO + DB)
+./start-dev.sh minimal
+
+# API Gateway와 데이터베이스만 시작
+./start-dev.sh gateway
+
+# 모든 서비스 중지
+./start-dev.sh stop
 ```
 
 ## 🏗️ 프로젝트 구조
