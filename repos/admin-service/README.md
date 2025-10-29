@@ -362,6 +362,27 @@ Request:
 }
 ```
 
+### [신규 추가된 API] LLM 모델 관리
+
+- **GET /api/v1/llm-models/**: 등록된 모든 LLM 모델 목록을 조회합니다.
+  - **Permission**: `ADMIN`
+  - **Response**: `List[LLMModelResponse]`
+
+- **POST /api/v1/llm-models/**: 새 LLM 모델을 등록합니다.
+  - **Permission**: `ADMIN`
+  - **Request Body**: `LLMModelCreate`
+  - **Response**: `LLMModelResponse`
+
+- **DELETE /api/v1/llm-models/{model_id}**: LLM 모델을 삭제합니다.
+    - **Permission**: `ADMIN`
+    - **Response**: `{"message": "LLM model deleted successfully"}`
+
+### [신규 추가된 API] 통계 조회
+
+- **GET /api/v1/statistics/**: 플랫폼 통계를 조회합니다.
+    - **Permission**: `ADMIN`
+    - **Response**: `StatisticsResponse`
+
 ---
 
 ## 데이터베이스 스키마

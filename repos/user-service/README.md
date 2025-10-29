@@ -263,6 +263,25 @@ Authorization: Bearer {access_token}
 }
 ```
 
+### [신규 추가된 API] 사용자 관리
+
+- **GET /api/v1/users/**: 모든 사용자 목록을 조회합니다.
+  - **Permission**: `ADMIN`
+  - **Response**: `List[UserManagementInfo]`
+
+- **POST /api/v1/users/invite/**: 신규 사용자를 초대합니다.
+  - **Permission**: `ADMIN`
+  - **Request Body**: `UserInvite`
+  - **Response**: `UserManagementInfo`
+
+- **PUT /api/v1/users/{user_id}/approve/**: 사용자의 등록을 승인합니다.
+  - **Permission**: `ADMIN`
+  - **Response**: `{"message": "User {user_id} approved successfully"}`
+
+- **PUT /api/v1/users/{user_id}/reject/**: 사용자의 등록을 거절합니다.
+  - **Permission**: `ADMIN`
+  - **Response**: `{"message": "User {user_id} rejected successfully"}`
+
 ### 3. API Key 관리 엔드포인트
 
 #### POST /api/users/me/api-keys

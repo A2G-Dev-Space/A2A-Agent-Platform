@@ -12,6 +12,11 @@ import { PrivateRoute } from '@/components/auth/PrivateRoute'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import { UserRole } from '@/types'
+import SettingsPage from '@/pages/Settings/SettingsPage'
+import GeneralSettingsPage from '@/pages/Settings/GeneralSettingsPage'
+import UserManagementPage from '@/pages/Settings/UserManagementPage'
+import LlmManagementPage from '@/pages/Settings/LlmManagementPage'
+import StatisticsPage from '@/pages/Settings/StatisticsPage'
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -66,7 +71,13 @@ function App() {
                 <Route path="/flow" element={<FlowDashboard />} />
 
                 {/* Settings */}
-                <Route path="/settings/*" element={<div>Settings Coming Soon</div>} />
+                <Route path="/settings" element={<SettingsPage />}>
+                  <Route index element={<Navigate to="general" replace />} />
+                  <Route path="general" element={<GeneralSettingsPage />} />
+                  <Route path="user-management" element={<UserManagementPage />} />
+                  <Route path="llm-management" element={<LlmManagementPage />} />
+                  <Route path="statistics" element={<StatisticsPage />} />
+                </Route>
 
                 {/* 404 */}
                 <Route path="*" element={<NotFoundPage />} />
