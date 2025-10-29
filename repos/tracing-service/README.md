@@ -10,27 +10,32 @@ Tracing Service는 플랫폼 전체의 로그를 수집하고, 에이전트 실�
 
 ## 🚀 빠른 시작
 
-### Prerequisites
+### 일반 사용 (권장)
 
-먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+`./start-dev.sh full`을 실행하면 이 서비스는 자동으로 Docker로 실행됩니다.
 
 ```bash
 # 프로젝트 루트 디렉토리에서
 ./start-dev.sh setup   # 최초 1회
-./start-dev.sh full    # 모든 서비스 시작
+./start-dev.sh full    # 모든 서비스 시작 (이 서비스 포함)
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+Tracing Service만 로컬에서 실행하고 싶을 때:
 
 ```bash
-# 1. 가상환경 생성
+# 1. Docker 컨테이너 중지
+docker stop a2g-tracing-service
+
+# 2. 로컬 환경 설정
 cd repos/tracing-service
 uv venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 uv sync
 
-# 2. 환경 변수 설정
-cat > .env.local <<EOF
+# 3. 환경 변수 설정
+cat > .env.local <<ENVEOF
 SERVICE_NAME=tracing-service
 SERVICE_PORT=8004
 DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/tracing_service_db
@@ -38,15 +43,15 @@ REDIS_URL=redis://localhost:6379/3
 JWT_SECRET_KEY=local-dev-secret-key
 JWT_ALGORITHM=HS256
 CORS_ORIGINS=["http://localhost:9060", "http://localhost:9050"]
-EOF
+ENVEOF
 
-# 3. 데이터베이스 마이그레이션
+# 4. 마이그레이션 실행
 alembic upgrade head
 
-# 4. 서비스 시작
+# 5. 로컬에서 실행
 uvicorn app.main:app --reload --port 8004
 
-# 5. 헬스 체크
+# 6. 헬스 체크
 curl http://localhost:8004/health
 ```
 

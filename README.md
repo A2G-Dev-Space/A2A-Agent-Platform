@@ -22,6 +22,10 @@ AI 에이전트를 개발, 테스트, 배포 및 모니터링할 수 있는 통�
 
 ## 🚀 빠른 시작
 
+### 일반 개발/테스트 (권장)
+
+모든 백엔드 서비스는 Docker로 실행되며, Frontend만 로컬에서 실행합니다.
+
 ```bash
 # 1. 프로젝트 클론
 git clone --recursive https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
@@ -30,10 +34,10 @@ cd Agent-Platform-Development
 # 2. 개발 환경 초기 설정 (최초 1회만 실행)
 ./start-dev.sh setup
 
-# 3. 모든 서비스 시작
+# 3. 모든 서비스 시작 (백엔드는 Docker로 자동 실행됨)
 ./start-dev.sh full
 
-# 4. Frontend 실행 (별도 터미널)
+# 4. Frontend만 로컬 실행 (별도 터미널)
 cd frontend
 npm install
 npm run dev
@@ -41,6 +45,29 @@ npm run dev
 # 5. 브라우저에서 접속
 # Frontend: http://localhost:9060
 # API Gateway: http://localhost:9050
+```
+
+### 특정 서비스 개발 시 (Backend 개발자)
+
+특정 서비스만 로컬에서 디버깅/개발하고 싶을 때:
+
+```bash
+# 1. 모든 서비스 시작
+./start-dev.sh full
+
+# 2. 개발할 서비스만 Docker에서 중지
+docker stop a2g-{service-name}
+
+# 3. 해당 서비스를 로컬에서 실행
+cd repos/{service-name}
+uv venv && source .venv/bin/activate
+uv sync
+uvicorn app.main:app --reload --port {port}
+
+# 예: chat-service 개발 시
+# docker stop a2g-chat-service
+# cd repos/chat-service
+# uvicorn app.main:app --reload --port 8003
 ```
 
 ### 개발 환경 관리 명령어

@@ -10,27 +10,32 @@ Worker Service는 Celery 기반 백그라운드 작업 처리 서비스로, 무�
 
 ## 🚀 빠른 시작
 
-### Prerequisites
+### 일반 사용 (권장)
 
-먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+`./start-dev.sh full`을 실행하면 이 서비스는 자동으로 Docker로 실행됩니다.
 
 ```bash
 # 프로젝트 루트 디렉토리에서
 ./start-dev.sh setup   # 최초 1회
-./start-dev.sh full    # 모든 서비스 시작
+./start-dev.sh full    # 모든 서비스 시작 (이 서비스 포함)
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+Worker Service만 로컬에서 실행하고 싶을 때:
 
 ```bash
-# 1. 가상환경 생성
+# 1. Docker 컨테이너 중지
+docker stop a2g-worker-service
+
+# 2. 로컬 환경 설정
 cd repos/worker-service
 uv venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 uv sync
 
-# 2. 환경 변수 설정
-cat > .env.local <<EOF
+# 3. 환경 변수 설정
+cat > .env.local <<ENVEOF
 SERVICE_NAME=worker-service
 
 # Redis (Celery Broker)
@@ -44,21 +49,19 @@ DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/admin_service_db
 # Celery 설정
 CELERY_TASK_TRACK_STARTED=True
 CELERY_TASK_TIME_LIMIT=300
-CELERY_TASK_SOFT_TIME_LIMIT=240
 CELERY_WORKER_CONCURRENCY=4
-CELERY_WORKER_PREFETCH_MULTIPLIER=2
 
 # OpenAI (LLM 작업용)
 OPENAI_API_KEY=your-api-key
-EOF
+ENVEOF
 
-# 3. Celery Worker 시작
+# 4. Celery Worker 로컬 실행
 celery -A app.worker worker --loglevel=info
 
-# 4. Celery Beat 시작 (별도 터미널)
+# 5. Celery Beat 실행 (별도 터미널)
 celery -A app.worker beat --loglevel=info
 
-# 5. Flower 모니터링 도구 시작 (선택사항)
+# 6. Flower 모니터링 (선택사항)
 celery -A app.worker flower --port=5555
 ```
 

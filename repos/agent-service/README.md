@@ -6,38 +6,42 @@
 
 ## 🚀 빠른 시작
 
-### Prerequisites
+### 일반 사용 (권장)
 
-먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+`./start-dev.sh full`을 실행하면 이 서비스는 자동으로 Docker로 실행됩니다.
 
 ```bash
 # 프로젝트 루트 디렉토리에서
 ./start-dev.sh setup   # 최초 1회 - 데이터베이스 및 pgvector 자동 설정
-./start-dev.sh full    # 모든 서비스 시작
+./start-dev.sh full    # 모든 서비스 시작 (이 서비스 포함)
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+Agent Service만 로컬에서 실행하고 싶을 때:
 
 ```bash
-# 1. 환경 설정
+# 1. Docker 컨테이너 중지
+docker stop a2g-agent-service
+
+# 2. 로컬 환경 설정
 cd repos/agent-service
 uv venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv sync
 
-# 2. 설정 파일 작성
+# 3. 설정 파일 작성
 cp .env.example .env.local
 # .env.local을 설정에 맞게 편집하세요
 
-# 3. 마이그레이션 실행
-alembic init alembic  # 첫 실행 시만
+# 4. 마이그레이션 실행
 alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
 
-# 4. 서비스 실행
+# 5. 로컬에서 실행
 uvicorn app.main:app --reload --port 8002
 
-# 5. 헬스 체크
+# 6. 헬스 체크
 curl http://localhost:8002/health
 ```
 

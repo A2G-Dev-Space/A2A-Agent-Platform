@@ -14,29 +14,34 @@ User Service는 A2G Platform의 인증, 권한부여, 사용자 관리를 담당
 
 ## Quick Start
 
-### Prerequisites
+### 일반 사용 (권장)
 
-먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+`./start-dev.sh full`을 실행하면 이 서비스는 자동으로 Docker로 실행됩니다.
 
 ```bash
 # 프로젝트 루트 디렉토리에서
 ./start-dev.sh setup   # 최초 1회
-./start-dev.sh full    # 모든 서비스 시작
+./start-dev.sh full    # 모든 서비스 시작 (이 서비스 포함)
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+User Service만 로컬에서 실행하고 싶을 때:
 
 ```bash
-# Install dependencies
+# 1. Docker 컨테이너 중지
+docker stop a2g-user-service
+
+# 2. 로컬 환경 설정
 cd repos/user-service
 uv venv
 source .venv/bin/activate
 uv sync
 
-# Set environment variables
+# 3. 환경 변수 설정
 cp .env.example .env.local
 
-# Run the service
+# 4. 로컬에서 실행
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 

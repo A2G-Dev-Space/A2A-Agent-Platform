@@ -28,20 +28,40 @@ The API Gateway is the centralized entry point for all A2G Platform backend serv
 
 ## Quick Start
 
-### Using start-dev.sh (Recommended)
+### 일반 사용 (권장)
+
+`./start-dev.sh full`을 실행하면 API Gateway가 자동으로 Docker로 실행됩니다.
 
 ```bash
-# From project root directory
-# Initial setup (first time only)
-./start-dev.sh setup
+# 프로젝트 루트 디렉토리에서
+./start-dev.sh setup   # 최초 1회
+./start-dev.sh full    # 모든 서비스 시작 (API Gateway 포함)
 
-# Start all services including API Gateway
-./start-dev.sh full
-
-# API Gateway will be available at http://localhost:9050
+# API Gateway: http://localhost:9050
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+API Gateway만 로컬에서 실행하고 싶을 때:
+
+```bash
+# 1. Docker 컨테이너 중지
+docker stop a2g-api-gateway
+
+# 2. 로컬 환경 설정
+cd repos/api-gateway
+uv venv
+source .venv/bin/activate
+uv sync
+
+# 3. 환경 변수 설정
+cp .env.example .env
+
+# 4. 로컬에서 실행
+uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload
+```
+
+### 추가 옵션
 
 ```bash
 # Install dependencies

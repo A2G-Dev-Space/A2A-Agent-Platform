@@ -10,27 +10,32 @@ Chat Service는 WebSocket을 이용한 실시간 채팅 및 메시지 스트리�
 
 ## 🚀 빠른 시작
 
-### Prerequisites
+### 일반 사용 (권장)
 
-먼저 프로젝트 루트에서 개발 환경을 시작하세요:
+`./start-dev.sh full`을 실행하면 이 서비스는 자동으로 Docker로 실행됩니다.
 
 ```bash
 # 프로젝트 루트 디렉토리에서
 ./start-dev.sh setup   # 최초 1회
-./start-dev.sh full    # 모든 서비스 시작
+./start-dev.sh full    # 모든 서비스 시작 (이 서비스 포함)
 ```
 
-### Local Development
+### 이 서비스만 로컬 개발 (디버깅/개발 시)
+
+Chat Service만 로컬에서 실행하고 싶을 때:
 
 ```bash
-# 1. 가상환경 생성
+# 1. Docker 컨테이너 중지
+docker stop a2g-chat-service
+
+# 2. 로컬 환경 설정
 cd repos/chat-service
 uv venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 uv sync
 
-# 2. 환경 변수 설정
-cat > .env.local <<EOF
+# 3. 환경 변수 설정
+cat > .env.local <<ENVEOF
 SERVICE_NAME=chat-service
 SERVICE_PORT=8003
 DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/chat_service_db
@@ -38,15 +43,15 @@ REDIS_URL=redis://localhost:6379/2
 JWT_SECRET_KEY=local-dev-secret-key
 JWT_ALGORITHM=HS256
 CORS_ORIGINS=["http://localhost:9060", "http://localhost:9050"]
-EOF
+ENVEOF
 
-# 3. 데이터베이스 마이그레이션
+# 4. 마이그레이션 실행
 alembic upgrade head
 
-# 4. 서비스 시작
+# 5. 로컬에서 실행
 uvicorn app.main:app --reload --port 8003
 
-# 5. 헬스 체크
+# 6. 헬스 체크
 curl http://localhost:8003/health
 ```
 
@@ -55,300 +60,7 @@ curl http://localhost:8003/health
 - WebSocket 연결 관리
 - 실시간 메시지 전송
 - 채팅 세션 관리
-- 메시지 히스토리 저장
 - Redis Pub/Sub 통합
-
-## 📡 API 엔드포인트
-
-### HTTP 엔드포인트
-
-| 엔드포인트 | 메서드 | 설명 |
-|-----------|--------|------|
-| `/api/chat/sessions/` | GET | 채팅 세션 목록 |
-| `/api/chat/sessions/` | POST | 새 채팅 생성 |
-| `/api/chat/sessions/{id}/` | GET | 채팅 세션 상세 정보 |
-| `/api/chat/sessions/{id}/` | DELETE | 채팅 세션 삭제 |
-| `/api/chat/sessions/{id}/messages/` | GET | 채팅 메시지 목록 조회 |
-| `/api/chat/sessions/{id}/messages/` | POST | 메시지 전송 |
-
-### WebSocket 엔드포인트
-
-```javascript
-// WebSocket 연결
-const ws = new WebSocket('ws://localhost:8003/ws/{session_id}?token=${token}');
-```
-
-## 🧪 Frontend 테스트
-
-### WebSocket 연결 테스트
-
-```javascript
-// http://localhost:9060 브라우저 콘솔에서 실행
-const testWebSocket = () => {
-  const token = localStorage.getItem('accessToken');
-  const sessionId = 'test-session-' + Date.now();
-
-  const ws = new WebSocket(`ws://localhost:8003/ws/${sessionId}?token=${token}`);
-
-  ws.onopen = () => {
-    console.log('✅ WebSocket 연결됨');
-
-    // 메시지 전송
-    ws.send(JSON.stringify({
-      type: 'message',
-      content: 'Hello from frontend!',
-      metadata: {
-        timestamp: new Date().toISOString()
-      }
-    }));
-  };
-
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('📨 메시지 수신:', data);
-  };
-
-  ws.onerror = (error) => {
-    console.error('❌ WebSocket 에러:', error);
-  };
-
-  ws.onclose = () => {
-    console.log('🔴 WebSocket 연결 종료');
-  };
-
-  return ws;
-};
-
-// 테스트 실행
-const ws = testWebSocket();
-
-// 메시지 추가 전송
-ws.send(JSON.stringify({
-  type: 'message',
-  content: 'Another message'
-}));
-
-// 연결 종료
-// ws.close();
-```
-
-### 세션 관리 테스트
-
-```javascript
-// 세션 생성
-const createSession = async () => {
-  const token = localStorage.getItem('accessToken');
-
-  const res = await fetch('/api/chat/sessions/', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      agent_id: 1,
-      title: '테스트 채팅'
-    })
-  });
-
-  const session = await res.json();
-  console.log('생성된 세션:', session);
-  return session.session_id;
-};
-
-// 메시지 히스토리 조회
-const getHistory = async (sessionId) => {
-  const token = localStorage.getItem('accessToken');
-
-  const res = await fetch(`/api/chat/sessions/${sessionId}/messages/`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-
-  const messages = await res.json();
-  console.table(messages);
-};
-
-// 테스트 실행
-const sessionId = await createSession();
-await getHistory(sessionId);
-```
-
-## 📝 WebSocket 메시지 형식
-
-### 클라이언트 → 서버
-
-```json
-{
-  "type": "message",
-  "content": "사용자 메시지",
-  "metadata": {
-    "timestamp": "2025-01-01T00:00:00Z"
-  }
-}
-```
-
-### 서버 → 클라이언트
-
-#### 스트리밍 시작
-```json
-{
-  "type": "stream_start",
-  "session_id": "session-123",
-  "agent_id": 1
-}
-```
-
-#### 토큰 전송
-```json
-{
-  "type": "token",
-  "content": "응답",
-  "index": 0
-}
-```
-
-#### Agent Transfer
-```json
-{
-  "type": "agent_transfer",
-  "from_agent": 1,
-  "to_agent": 2,
-  "reason": "전문 상담 필요"
-}
-```
-
-#### 스트리밍 종료
-```json
-{
-  "type": "stream_end",
-  "total_tokens": 150,
-  "execution_time": 2.34
-}
-```
-
-#### 에러
-```json
-{
-  "type": "error",
-  "code": "WS_ERROR_001",
-  "message": "Connection lost",
-  "reconnect": true,
-  "retry_after": 5
-}
-```
-
-## 🔧 Redis Pub/Sub 통합
-
-여러 서버 인스턴스 간 WebSocket 메시지를 브로드캐스트합니다.
-
-```python
-# app/services/pubsub_service.py
-import redis.asyncio as redis
-import json
-
-class PubSubService:
-    def __init__(self):
-        self.redis = redis.from_url("redis://localhost:6379/2")
-        self.pubsub = self.redis.pubsub()
-
-    async def publish(self, channel: str, message: dict):
-        """메시지 발행"""
-        await self.redis.publish(
-            channel,
-            json.dumps(message)
-        )
-
-    async def subscribe(self, channel: str):
-        """채널 구독"""
-        await self.pubsub.subscribe(channel)
-        async for message in self.pubsub.listen():
-            if message['type'] == 'message':
-                yield json.loads(message['data'])
-```
-
-## 🗄️ 프로젝트 구조
-
-```
-chat-service/
-├── app/
-│   ├── main.py                    # FastAPI 앱
-│   ├── api/
-│   │   └── v1/
-│   │       ├── sessions.py        # 세션 관리 API
-│   │       └── messages.py        # 메시지 API
-│   ├── websocket/
-│   │   ├── manager.py            # WebSocket 연결 관리
-│   │   ├── handlers.py           # 메시지 핸들러
-│   │   └── streaming.py          # 스트리밍 응답
-│   ├── models/
-│   │   ├── session.py            # 세션 모델
-│   │   └── message.py            # 메시지 모델
-│   ├── services/
-│   │   ├── session_service.py    # 세션 비즈니스 로직
-│   │   ├── message_service.py    # 메시지 비즈니스 로직
-│   │   └── pubsub_service.py     # Redis Pub/Sub
-│   └── utils/
-│       └── auth.py               # JWT 인증
-├── tests/
-│   ├── test_sessions.py
-│   ├── test_messages.py
-│   └── test_websocket.py
-├── alembic/
-├── .env.local
-├── pyproject.toml
-└── README.md
-```
-
-## 🧪 테스트
-
-```bash
-# 전체 테스트
-pytest tests/
-
-# WebSocket 테스트
-pytest tests/test_websocket.py -v
-
-# 부하 테스트 (WebSocket)
-python tests/load_test_ws.py
-```
-
-## 🛠️ 환경 변수
-
-```bash
-# 서비스
-SERVICE_NAME=chat-service
-SERVICE_PORT=8003
-
-# 데이터베이스
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/chat_service_db
-
-# Redis (채널 2번 사용)
-REDIS_URL=redis://localhost:6379/2
-
-# JWT
-JWT_SECRET_KEY=local-dev-secret-key
-JWT_ALGORITHM=HS256
-
-# WebSocket
-WS_HEARTBEAT_INTERVAL=30
-WS_MAX_CONNECTIONS=1000
-
-# CORS
-CORS_ORIGINS=["http://localhost:9060", "http://localhost:9050"]
-```
-
-## 🎯 향후 개선사항
-
-- Connection pooling 최적화
-- Message batching 구현
-- Redis를 통한 메시지 캐싱
-- 재연결 로직 개선
-
-## 📚 관련 문서
-
-- [FastAPI WebSocket](https://fastapi.tiangolo.com/advanced/websockets/)
-- [Redis Pub/Sub](https://redis.io/docs/manual/pubsub/)
-- [프로젝트 가이드](../../PROJECT_INTEGRATED_GUIDE.md)
 
 ---
 
