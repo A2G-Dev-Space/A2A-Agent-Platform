@@ -11,11 +11,12 @@ const Header: React.FC = () => {
       <div className="flex items-center gap-4">
         {user ? (
           <div
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 cursor-pointer"
-            style={{ backgroundImage: `url(${user.avatar_url})` }}
+            className="flex items-center justify-center size-10 bg-primary/20 dark:bg-primary/30 rounded-full cursor-pointer"
             onClick={() => navigate('/settings')}
             title="Go to settings"
-          />
+          >
+            <span className="text-lg font-semibold text-primary">{user.username_kr.charAt(0)}</span>
+          </div>
         ) : (
           <div className="bg-gray-300 rounded-full size-10" />
         )}

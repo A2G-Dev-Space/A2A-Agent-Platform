@@ -81,7 +81,10 @@
             "department": "부서",
             "role": "역할",
             "status": "상태",
-            "actions": "작업"
+            "actions": "작업",
+            "statusPending": "승인 대기",
+            "statusActive": "활성",
+            "statusInactive": "비활성"
         },
         "llmManagement": {
             "title": "사용 가능한 LLM 모델",
@@ -111,6 +114,15 @@
             "topConsumers": "상위 LLM 토큰 소비자",
             "agentUsage": "에이전트 사용 빈도"
         }
+    },
+    "roles": {
+      "admin": "관리자",
+      "user": "사용자",
+      "pending": "대기중"
+    },
+    "actions": {
+      "approve": "승인",
+      "reject": "거절"
     }
   }
 }

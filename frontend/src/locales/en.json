@@ -81,7 +81,10 @@
             "department": "Department",
             "role": "Role",
             "status": "Status",
-            "actions": "Actions"
+            "actions": "Actions",
+            "statusPending": "Pending Approval",
+            "statusActive": "Active",
+            "statusInactive": "Inactive"
         },
         "llmManagement": {
             "title": "Available LLM Models",
@@ -111,6 +114,15 @@
             "topConsumers": "Top LLM Token Consumers",
             "agentUsage": "Agent Usage Frequency"
         }
+    },
+    "roles": {
+      "admin": "Admin",
+      "user": "User",
+      "pending": "Pending"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject"
     }
   }
 }

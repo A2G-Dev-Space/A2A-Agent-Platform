@@ -1,49 +1,45 @@
-import { apiClient } from './api'
-import { type Agent, type AgentStatus, type AgentFramework, type RecommendationRequest, type AgentRecommendation } from '@/types'
+import api from './api';
+import { type Agent, type AgentStatus, type AgentFramework } from '@/types';
 
-const AGENT_BASE = '/agents'
+export interface AgentSearchResponse {
+    agents: Agent[];
+    count: number;
+    query: string;
+}
+
+export interface GetAgentsResponse {
+    agents: Agent[];
+    total: number;
+}
 
 export const agentService = {
-  // Get agents with optional filters (including Access Control)
   getAgents: async (filters?: {
-    status?: AgentStatus
-    framework?: AgentFramework
-    department?: string
-    visibility?: 'public' | 'private' | 'team'
-    only_mine?: boolean
-  }): Promise<{ agents: Agent[], total: number }> => {
-    const params = new URLSearchParams()
-    if (filters?.status) params.append('status', filters.status)
-    if (filters?.framework) params.append('framework', filters.framework)
-    if (filters?.department) params.append('department', filters.department)
-    if (filters?.visibility) params.append('visibility', filters.visibility)
-    if (filters?.only_mine) params.append('only_mine', 'true')
-
-    return apiClient.get(`${AGENT_BASE}/?${params.toString()}`)
+    status?: AgentStatus;
+    framework?: AgentFramework;
+    department?: string;
+    visibility?: 'public' | 'private' | 'team';
+    only_mine?: boolean;
+  }): Promise<GetAgentsResponse> => {
+    return await api.get<GetAgentsResponse>('/agents/', { params: filters });
   },
 
-  // Get single agent by ID
   getAgentById: async (id: number): Promise<Agent> => {
-    return apiClient.get(`${AGENT_BASE}/${id}/`)
+    return await api.get<Agent>(`/agents/${id}/`);
   },
 
-  // Create new agent
   createAgent: async (data: Partial<Agent>): Promise<Agent> => {
-    return apiClient.post(`${AGENT_BASE}/`, data)
+    return await api.post<Agent>('/agents/', data);
   },
 
-  // Update agent (includes status update)
   updateAgent: async (id: number, data: Partial<Agent>): Promise<Agent> => {
-    return apiClient.patch(`${AGENT_BASE}/${id}/`, data)
+    return await api.patch<Agent>(`/agents/${id}/`, data);
   },
 
-  // Delete agent
   deleteAgent: async (id: number): Promise<void> => {
-    return apiClient.delete(`${AGENT_BASE}/${id}/`)
+    await api.delete<void>(`/agents/${id}/`);
   },
 
-  // Get AI-powered recommendations (Top-K similarity search)
-  getRecommendations: async (request: RecommendationRequest): Promise<{ recommendations: AgentRecommendation[] }> => {
-    return apiClient.post(`${AGENT_BASE}/recommend/`, request)
+  searchAgents: async (query: string): Promise<AgentSearchResponse> => {
+    return await api.post<AgentSearchResponse>('/agents/search', { query });
   },
-}
+};

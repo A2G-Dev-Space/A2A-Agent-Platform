@@ -33,12 +33,12 @@ class CallbackResponse(BaseModel):
 class LogoutResponse(BaseModel):
     message: str
 
-@router.post("/login/", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse)
 async def initiate_login(request: LoginRequest):
     """Initiate SSO login process"""
     # In development, redirect to mock SSO
     sso_url = f"{settings.IDP_ENTITY_ID}?redirect_uri={request.redirect_uri}"
-    
+
     return LoginResponse(sso_login_url=sso_url)
 
 async def get_db():
@@ -49,9 +49,9 @@ async def get_db():
         finally:
             await session.close()
 
-@router.post("/callback/", response_model=CallbackResponse)
+@router.post("/callback", response_model=CallbackResponse)
 async def handle_callback(
-    request: Optional[CallbackRequest] = None, 
+    request: Optional[CallbackRequest] = None,
     id_token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
@@ -143,7 +143,7 @@ async def handle_callback(
             detail="Invalid ID token"
         )
 
-@router.post("/logout/", response_model=LogoutResponse)
+@router.post("/logout", response_model=LogoutResponse)
 async def logout():
     """Logout user (token invalidation would be handled by client)"""
     return LogoutResponse(message="Successfully logged out")

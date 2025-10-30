@@ -59,6 +59,28 @@ curl http://localhost:8002/health
 | `/api/agents/{id}/` | PUT | 에이전트 수정 (status 포함) |
 | `/api/agents/{id}/` | DELETE | 에이전트 삭제 |
 
+### 검색 및 추천 엔드포인트
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/agents/search` | POST | 쿼리를 기반으로 에이전트 검색 (추천 기능으로 활용) |
+
+**Search Request Body:**
+```json
+{
+  "query": "your search query"
+}
+```
+
+**Search Response Body:**
+```json
+{
+  "agents": [ /* array of Agent objects */ ],
+  "count": 0,
+  "query": "your search query"
+}
+```
+
 ### Access Control 필터 파라미터
 
 GET `/api/agents/`에서 사용 가능한 필터:

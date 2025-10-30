@@ -2,6 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Table of Contents
+
+1. [Common Development Tasks](#common-development-tasks)
+   - [Starting the Development Environment](#starting-the-development-environment)
+   - [Hybrid Development](#hybrid-development-run-specific-service-locally)
+   - [Python Package Management with UV](#python-package-management-with-uv)
+   - [Running Tests](#running-tests)
+   - [Building for Production](#building-for-production)
+   - [Database Migrations](#database-migrations)
+   - [Common Issues and Troubleshooting](#common-issues-and-troubleshooting)
+
+2. [High-Level Architecture](#high-level-architecture)
+   - [System Overview](#system-overview)
+   - [Core Components](#core-components)
+   - [A2A Protocol](#a2a-agent-to-agent-protocol)
+   - [Service Communication Flow](#service-communication-flow)
+   - [Authentication Flow](#authentication-flow)
+   - [Development Workflow](#development-workflow)
+   - [Key Architectural Decisions](#key-architectural-decisions)
+
+3. [Frontend Development Guidelines](#frontend-development-guidelines)
+   - [Performance Optimization](#performance-optimization)
+   - [Accessibility (WCAG 2.1 AA)](#accessibility-wcag-21-aa)
+   - [Rendering Strategy](#rendering-strategy)
+   - [Performance Monitoring](#performance-monitoring)
+   - [Pre-Launch Checklist](#pre-launch-checklist)
+
+---
+
 ## Common Development Tasks
 
 ### Starting the Development Environment
@@ -429,3 +458,216 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/7
 - 800X: Backend services (8001-8005)
 - 5432: PostgreSQL
 - 6379: Redis
+
+## Frontend Development Guidelines
+
+### Performance Optimization
+
+**IMPORTANT: This is an internal web application (intranet, desktop-only). Focus on performance and accessibility, not SEO or mobile optimization.**
+
+#### Core Web Vitals Targets
+- **LCP (Largest Contentful Paint)**: < 2.5s
+- **INP (Interaction to Next Paint)**: < 200ms
+- **CLS (Cumulative Layout Shift)**: < 0.1
+- **FCP (First Contentful Paint)**: < 1.8s
+
+#### Image Optimization
+```typescript
+// Use Next.js Image component or similar optimization
+import Image from 'next/image';
+
+<Image
+  src="/charts/sales-report.png"
+  alt="Sales report chart"
+  width={1200}
+  height={600}
+  priority  // Only for LCP images
+  loading="lazy"  // For below-the-fold images
+/>
+```
+
+**Guidelines:**
+- Use WebP format (30% smaller than JPEG)
+- Lazy load images below the fold
+- Specify explicit width/height to prevent CLS
+- Alt text for all images (accessibility)
+
+#### Font Optimization
+```html
+<!-- index.html: Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+```
+
+```css
+/* Tailwind CSS configuration */
+@layer base {
+  body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+```
+
+**Guidelines:**
+- Use Google Fonts with `display=swap` parameter (automatically applied)
+- preconnect to reduce DNS lookup time
+- Load only required font-weights (400, 500, 700)
+- System font fallback for better performance
+
+#### JavaScript Optimization
+```typescript
+// Dynamic imports for heavy components
+import dynamic from 'next/dynamic';
+
+const SalesChart = dynamic(() => import('@/components/SalesChart'), {
+  loading: () => <p>Loading chart...</p>,
+  ssr: false
+});
+```
+
+**Guidelines:**
+- Code splitting by route
+- Dynamic imports for heavy components (charts, tables)
+- Tree-shaking enabled
+- Bundle size < 500KB for first load
+- All assets hosted internally (no external CDN)
+
+### Accessibility (WCAG 2.1 AA)
+
+#### Semantic HTML
+```tsx
+<html lang="ko">
+  <body>
+    <header>
+      <nav aria-label="Main navigation">
+        {/* Navigation */}
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <article>
+        <h1>Page Title</h1>  {/* Exactly one H1 per page */}
+        <h2>Section</h2>     {/* Hierarchical structure */}
+      </article>
+    </main>
+
+    <aside aria-label="Sidebar">
+      {/* Secondary content */}
+    </aside>
+
+    <footer>
+      {/* Footer */}
+    </footer>
+  </body>
+</html>
+```
+
+#### Keyboard Navigation
+```tsx
+// Accessible Modal Example
+function Modal({ isOpen, onClose }) {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      modalRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') onClose();
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      ref={modalRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
+      {/* Modal content */}
+    </div>
+  );
+}
+```
+
+**Guidelines:**
+- Tab navigation for all interactive elements
+- Enter/Space to activate buttons
+- Escape to close modals
+- Visible focus indicators
+- aria-labels for screen readers
+- Color contrast 4.5:1 for text
+
+### Rendering Strategy
+
+| Strategy | Use Case | Performance |
+|----------|----------|-------------|
+| **SSG** | Company policies, announcements | Fastest |
+| **SSR** | Admin pages, reports (server auth) | Moderate |
+| **CSR** | Dashboards, real-time data | Fast interaction |
+
+```typescript
+// Next.js App Router examples
+
+// SSG: Static pages
+export const revalidate = false;
+
+// SSR: Server authentication required
+export const dynamic = 'force-dynamic';
+
+// CSR: Client-side rendering
+'use client';
+```
+
+### Performance Monitoring
+
+```bash
+# Run Lighthouse audit (target: 90+)
+npm run build
+npx lighthouse http://localhost:9060 --view
+
+# Bundle analyzer
+ANALYZE=true npm run build
+```
+
+**Tools:**
+- Lighthouse (Chrome DevTools)
+- Bundle Analyzer
+- Web Vitals library
+
+### Pre-Launch Checklist
+
+#### Performance
+- [ ] LCP < 2.5s
+- [ ] INP < 200ms
+- [ ] CLS < 0.1
+- [ ] Images: WebP + lazy loading
+- [ ] Fonts: WOFF2 + preload
+- [ ] JavaScript bundle < 500KB
+
+#### Accessibility
+- [ ] WCAG 2.1 AA compliance
+- [ ] Keyboard navigation complete
+- [ ] Screen reader tested
+- [ ] Color contrast 4.5:1
+- [ ] Focus indicators visible
+
+#### Code Quality
+- [ ] Semantic HTML structure
+- [ ] Exactly one H1 per page
+- [ ] aria-labels properly used
+- [ ] No console errors
+- [ ] TypeScript strict mode
+
+#### Security
+- [ ] HTTPS (internal certificate)
+- [ ] CSP headers
+- [ ] No XSS vulnerabilities
+- [ ] SSO integration complete

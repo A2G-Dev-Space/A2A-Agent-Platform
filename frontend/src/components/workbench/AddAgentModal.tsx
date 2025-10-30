@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { useAgentStore } from '@/stores/agentStore';
 import { AgentFramework } from '@/types';
 
 interface AddAgentModalProps {
@@ -22,7 +21,9 @@ const cardColors = [
 
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const { createAgent, isLoading } = useAgentStore();
+  // TODO: Replace this with useMutation for createAgent
+  const [isLoading] = useState(false); // Read-only placeholder
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [framework, setFramework] = useState<AgentFramework | ''>('');

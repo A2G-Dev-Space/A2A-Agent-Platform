@@ -6,13 +6,15 @@ const AgentCard: React.FC<{ agent: Agent }> = ({ agent }) => {
     <div className="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
       <div className="flex items-center gap-4 mb-3">
         <div className="size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-          <img src={agent.avatar_url} alt={agent.name} className="size-8" />
+          {/* Use logo_url which exists on the Agent type */}
+          <img src={agent.logo_url} alt={agent.name} className="size-8" />
         </div>
         <p className="text-slate-900 dark:text-white font-bold">{agent.name}</p>
       </div>
       <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">{agent.description}</p>
       <div className="flex items-center gap-2 mb-4">
-        {agent.tags?.map((tag) => (
+        {/* Use capabilities.skills instead of tags, and provide a type for the 'tag' parameter */}
+        {agent.capabilities?.skills?.map((tag: string) => (
           <span key={tag} className="text-xs font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/50 px-2 py-1 rounded-full">
             {tag}
           </span>

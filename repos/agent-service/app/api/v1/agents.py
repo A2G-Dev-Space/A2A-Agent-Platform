@@ -59,6 +59,9 @@ class AgentListResponse(BaseModel):
     page: int
     limit: int
 
+class AgentSearchRequest(BaseModel):
+    query: str
+
 @router.get("/", response_model=AgentListResponse)
 async def get_agents(
     status: Optional[AgentStatus] = Query(None),
@@ -328,3 +331,53 @@ async def delete_agent(
     
     return {"message": "Agent deleted successfully"}
 
+# This is a dummy in-memory storage for the search endpoint.
+# In a real implementation, this would be a database query with vector search.
+DUMMY_AGENTS_FOR_SEARCH = [
+    {
+        "id": 101, "name": "Customer Support Bot", "description": "A friendly bot to help with customer questions.",
+        "framework": AgentFramework.LANGCHAIN, "status": AgentStatus.PRODUCTION, "a2a_endpoint": "http://dummy-host:8101/agent",
+        "capabilities": {"skills": ["chat", "faq"]}, "owner_id": "syngha.han", "department": "Customer Service",
+        "is_public": True, "visibility": "public", "allowed_users": [], "health_status": HealthStatus.HEALTHY,
+        "last_health_check": datetime.utcnow(), "created_at": datetime.utcnow(), "updated_at": datetime.utcnow(),
+        "logo_url": "/assets/dummy_logo_1.png"
+    },
+    {
+        "id": 102, "name": "Data Analysis Agent", "description": "An agent that can analyze sales data and generate reports.",
+        "framework": AgentFramework.CUSTOM, "status": AgentStatus.PRODUCTION, "a2a_endpoint": "http://dummy-host:8102/agent",
+        "capabilities": {"skills": ["analyze", "report", "sql"]}, "owner_id": "byungju.lee", "department": "Business Intelligence",
+        "is_public": False, "visibility": "team", "allowed_users": [], "health_status": HealthStatus.HEALTHY,
+        "last_health_check": datetime.utcnow(), "created_at": datetime.utcnow(), "updated_at": datetime.utcnow(),
+        "logo_url": "/assets/dummy_logo_2.png"
+    },
+    {
+        "id": 103, "name": "Code Generation Assistant", "description": "Helps developers write boilerplate code.",
+        "framework": AgentFramework.AGNO, "status": AgentStatus.DEVELOPMENT, "a2a_endpoint": "http://dummy-host:8103/agent",
+        "capabilities": {"skills": ["generate_code", "python", "javascript"]}, "owner_id": "junhyung.ahn", "department": "AI Platform Team",
+        "is_public": False, "visibility": "private", "allowed_users": [], "health_status": HealthStatus.UNKNOWN,
+        "last_health_check": datetime.utcnow(), "created_at": datetime.utcnow(), "updated_at": datetime.utcnow(),
+        "logo_url": "/assets/dummy_logo_3.png"
+    },
+]
+
+@router.post("/search", response_model=dict[str, Any])
+async def search_agents(request: AgentSearchRequest) -> dict[str, Any]:
+    """
+    DUMMY IMPLEMENTATION: Search for agents based on a query string.
+    This is a temporary in-memory search.
+    """
+    query = request.query.lower()
+    if not query:
+        return {"agents": DUMMY_AGENTS_FOR_SEARCH, "count": len(DUMMY_AGENTS_FOR_SEARCH), "query": request.query}
+
+    # Dummy search logic
+    filtered_agents = [
+        agent for agent in DUMMY_AGENTS_FOR_SEARCH
+        if query in agent["name"].lower() or query in agent["description"].lower()
+    ]
+
+    return {
+        "agents": filtered_agents,
+        "count": len(filtered_agents),
+        "query": request.query,
+    }

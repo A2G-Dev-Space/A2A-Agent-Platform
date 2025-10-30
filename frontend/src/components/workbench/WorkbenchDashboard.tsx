@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, MoreVertical, RefreshCw, Send } from 'lucide-react';
-import { useAgentStore } from '@/stores/agentStore';
-import { type Agent } from '@/types';
+import { agentService, type GetAgentsResponse } from '@/services/agentService';
+import { type Agent, AgentStatus } from '@/types';
 import AddAgentModal from './AddAgentModal';
 
 const AgentListItem: React.FC<{ agent: Agent; selected: boolean; onClick: () => void }> = ({ agent, selected, onClick }) => {
@@ -67,11 +68,15 @@ const TraceView: React.FC = () => {
 
 export const WorkbenchDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { agents, isLoading } = useAgentStore();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const developmentAgents = agents.filter(agent => agent.status === 'DEVELOPMENT');
+  // Fetch development agents using React Query
+  const { data: developmentAgents, isLoading } = useQuery({
+    queryKey: ['developmentAgents'],
+    queryFn: () => agentService.getAgents({ status: AgentStatus.DEVELOPMENT }),
+    select: (data: GetAgentsResponse) => data.agents,
+  });
 
   return (
     <div className="grid flex-1 grid-cols-1 gap-px overflow-y-auto bg-border-light dark:bg-border-dark md:grid-cols-3 lg:grid-cols-4">
@@ -95,7 +100,7 @@ export const WorkbenchDashboard: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto p-2">
             {isLoading ? <p>Loading agents...</p> :
-                developmentAgents.map(agent => (
+                developmentAgents?.map((agent: Agent) => (
                     <AgentListItem
                         key={agent.id}
                         agent={agent}

@@ -265,6 +265,10 @@ Authorization: Bearer {access_token}
 
 ### [신규 추가된 API] 사용자 관리
 
+> **[NOTE]**
+> 이 `v1` API는 새로운 Frontend 사용자 관리 페이지를 위해 추가되었습니다.
+> 신규 기능 개발 시, 아래의 `4. 관리자 전용 엔드포인트`에 있는 기존 API(`GET /api/admin/users`)보다 이 `v1` API 사용을 권장합니다.
+
 - **GET /api/v1/users/**: 모든 사용자 목록을 조회합니다.
   - **Permission**: `ADMIN`
   - **Response**: `List[UserManagementInfo]`
