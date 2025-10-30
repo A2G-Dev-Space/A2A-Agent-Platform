@@ -1,53 +1,40 @@
-import { apiClient } from './api'
-import { type LoginResponse, type User } from '@/types'
+import api from './api';
+// Import official types from the central types file
+import type { LoginResponse } from '@/types';
 
-const AUTH_BASE = '/auth'
-
+/**
+ * Service for handling authentication flows (SSO Login, Callback, Logout).
+ */
 export const authService = {
-  // Initiate SSO login
-  initiateLogin: async () => {
-    const redirectUri = `${window.location.origin}/callback`
-    console.log('Initiating login with redirect_uri:', redirectUri)
-    const result = await apiClient.post(`${AUTH_BASE}/login/`, { redirect_uri: redirectUri })
-    console.log('Login initiation result:', result)
-    return result
+  /**
+   * Initiates the SSO login process by getting the SSO login URL from the backend.
+   * Corresponds to: POST /api/auth/login
+   * @param {string} redirectUri - The URI to redirect to after successful SSO login.
+   * @returns {Promise<{ sso_login_url: string; session_id: string }>} The URL for the SSO provider.
+   */
+  initiateLogin: (redirectUri: string) => {
+    return api.post<{ sso_login_url: string; session_id: string }>('/auth/login', {
+      redirect_uri: redirectUri,
+    });
   },
 
-  // Handle SSO callback
-  handleCallback: async (idToken: string): Promise<LoginResponse> => {
-    return apiClient.post(`${AUTH_BASE}/callback/`, { id_token: idToken })
+  /**
+   * Handles the callback from the SSO provider.
+   * Sends the ID token to the backend to get a JWT access token.
+   * Corresponds to: POST /api/auth/callback
+   * @param {string} idToken - The ID token provided by the SSO callback.
+   * @returns {Promise<LoginResponse>} The access token and user info.
+   */
+  handleCallback: (idToken: string) => {
+    return api.post<LoginResponse>('/auth/callback', { id_token: idToken });
   },
 
-  // Logout
-  logout: async () => {
-    return apiClient.post(`${AUTH_BASE}/logout/`)
+  /**
+   * Logs the user out by invalidating the session/token on the backend.
+   * Corresponds to: POST /api/auth/logout
+   * @returns {Promise<{ message: string }>} A success message.
+   */
+  logout: () => {
+    return api.post<{ message: string }>('/auth/logout');
   },
-
-  // Refresh token
-  refreshToken: async () => {
-    return apiClient.post(`${AUTH_BASE}/refresh/`)
-  },
-
-  // Get current user
-  getCurrentUser: async (): Promise<User> => {
-    return apiClient.get('/users/me/')
-  },
-
-  // Update user profile
-  updateProfile: async (data: Partial<User>): Promise<User> => {
-    return apiClient.patch('/users/me/', data)
-  },
-
-  // API Key management
-  getApiKeys: async () => {
-    return apiClient.get('/users/me/api-keys/')
-  },
-
-  createApiKey: async (name: string) => {
-    return apiClient.post('/users/me/api-keys/', { name })
-  },
-
-  deleteApiKey: async (id: number) => {
-    return apiClient.delete(`/users/me/api-keys/${id}/`)
-  },
-}
+};

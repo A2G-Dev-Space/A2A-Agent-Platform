@@ -41,24 +41,17 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
+      originalRequest._retry = true; // Mark to prevent infinite retry loops
 
-      try {
-        // Try to refresh token
-        const authStore = await import('@/stores/authStore').then(m => m.useAuthStore.getState())
-        await authStore.refreshToken()
-
-        // Retry original request
-        const token = localStorage.getItem('accessToken')
-        originalRequest.headers.Authorization = `Bearer ${token}`
-        return api(originalRequest)
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        const authStore = await import('@/stores/authStore').then(m => m.useAuthStore.getState())
-        authStore.clearAuth()
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
-      }
+      // No refresh token logic, simply log out the user.
+      console.error("Authentication error (401). Logging out.");
+      const authStore = await import('@/stores/authStore').then(m => m.useAuthStore.getState());
+      authStore.clearAuth();
+      // Redirecting is handled by clearAuth or should be handled by the UI layer
+      // window.location.href = '/login';
+      
+      // Reject the promise to prevent the original failed request from proceeding
+      return Promise.reject(error);
     }
 
     // Handle other errors
