@@ -19,15 +19,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Service routing configuration
+# NOTE: Order matters! More specific routes must come first
 SERVICE_ROUTES = {
+    # Authentication & Users (User Service)
     '/api/auth': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
     '/api/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
+    '/api/v1/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
+
+    # Admin - User Management (User Service) - Must be before /api/admin
+    '/api/admin/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
+
+    # Admin - LLM & Statistics (Admin Service)
+    '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+    '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+
+    # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
     '/api/chat': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
     '/api/tracing': os.getenv('TRACING_SERVICE_URL', 'http://tracing-service:8004'),
-    '/api/admin': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
-    '/api/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
-    '/api/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
 }
 
 # WebSocket routes

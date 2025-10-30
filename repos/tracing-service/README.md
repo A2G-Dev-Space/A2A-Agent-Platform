@@ -503,4 +503,118 @@ tracing-service:
 
 ---
 
+
+---
+
+## 📦 데이터베이스 관리
+
+### Alembic 마이그레이션 시스템
+
+이 서비스는 **Alembic**을 사용하여 데이터베이스 스키마를 관리합니다. 모든 스키마 변경은 마이그레이션 파일로 추적됩니다.
+
+### 기본 규칙
+
+1. **절대 수동으로 테이블을 생성/수정하지 마세요** ❌
+   - ~~CREATE TABLE~~
+   - ~~ALTER TABLE~~
+   - ~~DROP TABLE~~
+
+2. **모든 스키마 변경은 Alembic 마이그레이션으로만 수행합니다** ✅
+   ```bash
+   # 모델 변경 후 마이그레이션 생성
+   uv run alembic revision --autogenerate -m "Add new field"
+
+   # 마이그레이션 적용
+   uv run alembic upgrade head
+   ```
+
+3. **팀원과 동기화**
+   ```bash
+   # 코드 받은 후
+   git pull origin main
+
+   # 루트 디렉토리에서 한 번에 모든 서비스 DB 동기화!
+   ./start-dev.sh update
+   ```
+
+### 워크플로우
+
+#### 스키마 변경이 필요한 개발자 (코드 작성자)
+
+```bash
+# 1. 모델 변경
+vim app/core/database.py  # 모델에 필드 추가
+
+# 2. 마이그레이션 파일 생성
+docker exec a2g-tracing-service uv run alembic revision --autogenerate -m "Add new field"
+
+# 3. 생성된 파일 확인 및 검토
+ls alembic/versions/  # 새로 생성된 파일 확인
+vim alembic/versions/00X_*.py  # 내용 검토
+
+# 4. 로컬에서 테스트
+docker exec a2g-tracing-service uv run alembic upgrade head
+
+# 5. 정상 작동 확인 후 커밋
+git add app/core/database.py
+git add alembic/versions/00X_*.py
+git commit -m "Add new field to model"
+git push
+```
+
+#### 스키마 변경을 받는 팀원 (코드 받는 사람)
+
+```bash
+# 1. 코드 받기
+git pull origin main
+
+# 2. 단 한 줄로 모든 서비스 DB 동기화!
+./start-dev.sh update
+```
+
+### 자주 사용하는 명령어
+
+```bash
+# 현재 마이그레이션 상태 확인
+docker exec a2g-tracing-service uv run alembic current
+
+# 마이그레이션 히스토리 확인
+docker exec a2g-tracing-service uv run alembic history
+
+# 특정 버전으로 롤백 (신중하게!)
+docker exec a2g-tracing-service uv run alembic downgrade <revision>
+
+# 최신 상태로 업그레이드
+docker exec a2g-tracing-service uv run alembic upgrade head
+```
+
+### 주의사항
+
+⚠️ **운영(Production) 환경에서는**:
+1. 마이그레이션 전 반드시 데이터 백업
+2. Down-time이 필요한 변경인지 확인
+3. 롤백 계획 수립
+4. 테스트 환경에서 먼저 검증
+
+⚠️ **충돌 발생 시**:
+- 여러 명이 동시에 마이그레이션 생성 시 충돌 가능
+- 해결: revision 파일의 down_revision을 올바르게 수정
+
+### 문제 해결
+
+```bash
+# Q: "Target database is not up to date" 에러
+# A: 현재 버전 확인 후 upgrade
+docker exec a2g-tracing-service uv run alembic current
+docker exec a2g-tracing-service uv run alembic upgrade head
+
+# Q: "Table already exists" 에러
+# A: 마이그레이션 stamp (이미 테이블이 있는 경우)
+docker exec a2g-tracing-service uv run alembic stamp head
+
+# Q: 모든 서비스를 한 번에 업데이트하고 싶어요
+# A: 루트 디렉토리에서
+./start-dev.sh update
+```
+
 **© 2025 A2G Platform Team - Tracing Service**

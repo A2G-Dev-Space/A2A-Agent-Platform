@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from app.core.config import settings
-from app.core.security import create_access_token, verify_token
+from app.core.security import create_access_token, verify_token, get_db
 from app.core.database import async_session_maker, User
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,14 +40,6 @@ async def initiate_login(request: LoginRequest):
     sso_url = f"{settings.IDP_ENTITY_ID}?redirect_uri={request.redirect_uri}"
 
     return LoginResponse(sso_login_url=sso_url)
-
-async def get_db():
-    """Get database session"""
-    async with async_session_maker() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
 
 @router.post("/callback", response_model=CallbackResponse)
 async def handle_callback(
@@ -115,12 +107,17 @@ async def handle_callback(
                 email=email,
                 department_kr=department_kr,
                 department_en=department_en,
-                role="USER"
+                role="USER",
+                last_login=datetime.utcnow()
             )
             db.add(user)
             await db.commit()
             await db.refresh(user)
-        
+        else:
+            # Update last login
+            user.last_login = datetime.utcnow()
+            await db.commit()
+
         # Create access token
         access_token = create_access_token(data={"sub": username})
         

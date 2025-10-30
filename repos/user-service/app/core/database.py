@@ -21,14 +21,16 @@ class Base(DeclarativeBase):
 class User(Base):
     """User model"""
     __tablename__ = "users"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     username_kr: Mapped[Optional[str]] = mapped_column(String(255))
+    username_en: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     department_kr: Mapped[Optional[str]] = mapped_column(String(255))
     department_en: Mapped[Optional[str]] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(50), default="PENDING")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -36,12 +38,13 @@ class User(Base):
 class APIKey(Base):
     """API Key model"""
     __tablename__ = "api_keys"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, index=True)
     name: Mapped[str] = mapped_column(String(100))
     key_hash: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_used: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

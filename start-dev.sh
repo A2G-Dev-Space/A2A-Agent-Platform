@@ -53,7 +53,7 @@ case $MODE in
             exit 1
         fi
 
-        # Map service names to container names
+        # Map service names to container names (all services with database)
         declare -A SERVICE_CONTAINERS=(
             ["user-service"]="a2g-user-service"
             ["agent-service"]="a2g-agent-service"
@@ -204,34 +204,10 @@ case $MODE in
         echo "🏗️  Creating service databases..."
         docker exec a2g-postgres-dev psql -U dev_user -d postgres -f /docker-entrypoint-initdb.d/init.sql
 
-        # Note: agent_service_db schema is managed by Alembic migrations
+        # Note: All service database schemas are managed by Alembic migrations
         # Tables will be created when services start and run migrations
 
-        # Create initial schema for user_service_db
-        echo "🔧 Setting up user_service_db..."
-        docker exec a2g-postgres-dev psql -U dev_user -d user_service_db -c "
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            username_kr VARCHAR(255),
-            email VARCHAR(255) UNIQUE NOT NULL,
-            role VARCHAR(50) DEFAULT 'PENDING',
-            department_kr VARCHAR(255),
-            department_en VARCHAR(255),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_login TIMESTAMP
-        );
-        
-        INSERT INTO users (username, username_kr, email, role, department_kr, department_en)
-        VALUES
-            ('syngha.han', '한승하', 'syngha.han@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team'),
-            ('byungju.lee', '이병주', 'byungju.lee@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team'),
-            ('youngsub.kim', '김영섭', 'youngsub.kim@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team'),
-            ('junhyung.ahn', '안준형', 'junhyung.ahn@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team'),
-            ('test.user', '테스트유저', 'test.user@company.com', 'USER', 'Test Team', 'Test Team')
-        ON CONFLICT (username) DO NOTHING;
-        "
+        echo "✅ Empty databases created. Tables will be created by Alembic migrations."
         
         if [ $? -eq 0 ]; then
             echo "✅ Database setup completed successfully!"
@@ -252,24 +228,41 @@ case $MODE in
             echo "⏳ Waiting for services to start..."
             sleep 10
 
-            # Run migrations for services
+            # Run migrations for all services
             echo "📝 Running database migrations..."
 
-            # Run agent-service migrations (creates tables via Alembic)
-            if docker ps --format '{{.Names}}' | grep -q "a2g-agent-service"; then
-                if [ -f "../agent-service/alembic.ini" ]; then
-                    echo "   Running agent-service migrations..."
-                    docker exec a2g-agent-service uv run alembic upgrade head 2>/dev/null && echo "   ✅ agent-service migrations applied" || echo "   ⚠️  Could not run agent-service migrations"
-                fi
-            fi
+            # Define services with Alembic support
+            SERVICES_WITH_MIGRATIONS=("user-service" "agent-service" "chat-service" "tracing-service" "admin-service")
 
-            # Stamp user-service migrations (tables created manually above)
-            if docker ps --format '{{.Names}}' | grep -q "a2g-user-service"; then
-                if [ -f "../user-service/alembic.ini" ]; then
-                    echo "   Stamping user-service migrations..."
-                    docker exec a2g-user-service uv run alembic stamp head 2>/dev/null && echo "   ✅ user-service migrations stamped" || echo "   ⚠️  Could not stamp user-service"
+            for service in "${SERVICES_WITH_MIGRATIONS[@]}"; do
+                CONTAINER_NAME="a2g-$service"
+
+                if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+                    if [ -f "../$service/alembic.ini" ]; then
+                        echo "   Running $service migrations..."
+                        if docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>/dev/null; then
+                            echo "   ✅ $service migrations applied"
+                        else
+                            echo "   ⚠️  Could not run $service migrations"
+                        fi
+                    fi
+                else
+                    echo "   ⏭️  $service container not running, skipping..."
                 fi
-            fi
+            done
+
+            # Create initial admin users for user-service
+            echo "👥 Creating initial admin users..."
+            docker exec a2g-postgres-dev psql -U dev_user -d user_service_db -c "
+            INSERT INTO users (username, username_kr, username_en, email, role, department_kr, department_en, is_active)
+            VALUES
+                ('syngha.han', '한승하', 'Syngha Han', 'syngha.han@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
+                ('byungju.lee', '이병주', 'Byungju Lee', 'byungju.lee@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
+                ('youngsub.kim', '김영섭', 'Youngsub Kim', 'youngsub.kim@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
+                ('junhyung.ahn', '안준형', 'Junhyung Ahn', 'junhyung.ahn@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
+                ('test.user', '테스트유저', 'Test User', 'test.user@company.com', 'PENDING', 'Test Team', 'Test Team', true)
+            ON CONFLICT (username) DO NOTHING;
+            " && echo "   ✅ Initial users created" || echo "   ⚠️  Could not create initial users"
 
             echo ""
             echo "✅ Database migrations completed!"

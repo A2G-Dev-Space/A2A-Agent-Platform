@@ -45,53 +45,574 @@ curl http://localhost:8002/health
 
 ## 📚 API 문서
 
-실행 후 다음을 방문하세요: http://localhost:8002/docs
+> **Base URL**: `http://localhost:8002` (개발) | `https://api.company.com/agents` (운영)
 
-## 🔌 주요 엔드포인트
+### 목차
+1. [에이전트 Registry API](#1-에이전트-registry-api) - A2A 에이전트 등록/조회/검색
+2. [Extensions API](#2-extensions-api) - A2A 확장 기능 관리
 
-### 기본 CRUD 엔드포인트
+**Interactive API Docs**: http://localhost:8002/docs
 
-| 엔드포인트 | 메서드 | 설명 |
-|-----------|--------|------|
-| `/api/agents/` | GET | 에이전트 목록 조회 (Access Control 필터링 포함) |
-| `/api/agents/` | POST | 새 에이전트 생성 |
-| `/api/agents/{id}/` | GET | 에이전트 상세정보 조회 |
-| `/api/agents/{id}/` | PUT | 에이전트 수정 (status 포함) |
-| `/api/agents/{id}/` | DELETE | 에이전트 삭제 |
+---
 
-### 검색 및 추천 엔드포인트
+### 1. 에이전트 Registry API
 
-| 엔드포인트 | 메서드 | 설명 |
-|-----------|--------|------|
-| `/api/agents/search` | POST | 쿼리를 기반으로 에이전트 검색 (추천 기능으로 활용) |
+#### `POST /api/agents`
+**A2A 에이전트 등록 (AgentCard 형식)**
 
-**Search Request Body:**
+**Permission**: Authenticated
+
+**Request:**
 ```json
 {
-  "query": "your search query"
+  "agent_card": {
+    "name": "Customer Support Bot",
+    "description": "AI agent for customer support",
+    "url": "http://localhost:8100/agent",
+    "version": "1.0.0",
+    "protocol_version": "1.0",
+    "capabilities": {
+      "skills": ["customer-support", "chat", "ticketing"]
+    },
+    "visibility": "public",
+    "preferred_transport": "JSONRPC"
+  }
 }
 ```
 
-**Search Response Body:**
+**Response (200):**
 ```json
 {
-  "agents": [ /* array of Agent objects */ ],
-  "count": 0,
-  "query": "your search query"
+  "success": true,
+  "agent_id": "Customer Support Bot",
+  "message": "Agent registered successfully",
+  "extensions_processed": 0
 }
 ```
 
-### Access Control 필터 파라미터
+**Error (400 - Missing required fields):**
+```json
+{
+  "detail": "Missing required field: version"
+}
+```
 
-GET `/api/agents/`에서 사용 가능한 필터:
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+curl -X POST http://localhost:8002/api/agents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_card": {
+      "name": "My Test Agent",
+      "description": "A test agent",
+      "url": "http://localhost:8100/agent",
+      "version": "1.0.0",
+      "protocol_version": "1.0",
+      "visibility": "public"
+    }
+  }'
+```
 
-| 파라미터 | 타입 | 설명 | 예시 |
-|---------|------|------|------|
-| `status` | string | 에이전트 상태 필터 | `DEVELOPMENT`, `PRODUCTION` |
-| `framework` | string | 프레임워크 필터 | `Langchain`, `Agno` |
-| `department` | string | 부서 필터 | `AI Platform Team` |
-| `visibility` | string | 공개 범위 | `public`, `private`, `team` |
-| `only_mine` | boolean | 내 에이전트만 조회 | `true`, `false` |
+**AgentCard Required Fields:**
+- `name`: Unique agent name
+- `description`: Agent description
+- `url`: Agent A2A endpoint URL
+- `version`: Agent version (semantic versioning)
+- `protocol_version`: A2A protocol version (currently "1.0")
+
+**AgentCard Optional Fields:**
+- `capabilities`: Agent capabilities including skills
+- `preferred_transport`: Transport protocol (default: "JSONRPC")
+- `visibility`: "public", "private", or "team" (default: "public")
+- `provider`: Provider information
+- `documentation_url`: Link to agent documentation
+
+---
+
+#### `GET /api/agents`
+**에이전트 목록 조회 (Access Control 필터링)**
+
+**Permission**: Authenticated
+
+**Query Parameters:**
+- `visibility` (선택): public | private | team
+- `department` (선택): 부서명
+- `only_mine` (선택): true | false (내 에이전트만)
+
+**Default Behavior (no filters):**
+- All public agents
+- User's own agents (any visibility)
+- Team agents from user's department
+
+**Response (200):**
+```json
+{
+  "agents": [
+    {
+      "name": "Customer Support Bot",
+      "description": "AI agent for customer support",
+      "url": "http://localhost:8100/agent",
+      "version": "1.0.0",
+      "protocol_version": "1.0",
+      "capabilities": {
+        "skills": ["customer-support", "chat"]
+      },
+      "visibility": "public",
+      "owner_id": "syngha.han",
+      "department": "AI Platform Team"
+    },
+    {
+      "name": "Data Analysis Agent",
+      "description": "Analyzes data and creates visualizations",
+      "url": "http://localhost:8101/agent",
+      "version": "1.2.0",
+      "protocol_version": "1.0",
+      "capabilities": {
+        "skills": ["data-analysis", "visualization", "python"]
+      },
+      "visibility": "team",
+      "owner_id": "byungju.lee",
+      "department": "AI Platform Team"
+    }
+  ],
+  "count": 2
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+
+# 전체 접근 가능한 에이전트 조회
+curl http://localhost:8002/api/agents \
+  -H "Authorization: Bearer $TOKEN"
+
+# public 에이전트만 조회
+curl "http://localhost:8002/api/agents?visibility=public" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 내 에이전트만 조회
+curl "http://localhost:8002/api/agents?only_mine=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 특정 부서의 team 에이전트 조회
+curl "http://localhost:8002/api/agents?visibility=team&department=AI%20Platform%20Team" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `GET /api/agents/{agent_id}`
+**에이전트 상세 조회**
+
+**Permission**: Authenticated (Access Control 적용)
+
+**Response (200):**
+```json
+{
+  "agent_card": {
+    "name": "Customer Support Bot",
+    "description": "AI agent for customer support",
+    "url": "http://localhost:8100/agent",
+    "version": "1.0.0",
+    "protocol_version": "1.0",
+    "capabilities": {
+      "skills": ["customer-support", "chat", "ticketing"],
+      "extensions": [
+        {
+          "uri": "urn:a2a:extension:langchain",
+          "description": "Langchain integration",
+          "required": false
+        }
+      ]
+    },
+    "visibility": "public",
+    "owner_id": "syngha.han",
+    "department": "AI Platform Team",
+    "created_at": "2025-10-15T09:00:00Z",
+    "updated_at": "2025-10-30T10:00:00Z"
+  }
+}
+```
+
+**Error (404):**
+```json
+{
+  "detail": "Agent not found or access denied"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+AGENT_ID="Customer Support Bot"
+
+curl "http://localhost:8002/api/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `DELETE /api/agents/{agent_id}`
+**에이전트 등록 해제**
+
+**Permission**: Owner only
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Agent unregistered successfully",
+  "extensions_cleaned": 2
+}
+```
+
+**Error (404 - Not found or no permission):**
+```json
+{
+  "detail": "Agent not found or access denied"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+AGENT_ID="My Test Agent"
+
+curl -X DELETE "http://localhost:8002/api/agents/$AGENT_ID" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `POST /api/agents/search`
+**에이전트 검색 (이름, 설명, 스킬)**
+
+**Permission**: Authenticated
+
+**Request:**
+```json
+{
+  "query": "python data analysis"
+}
+```
+
+**Response (200):**
+```json
+{
+  "agents": [
+    {
+      "name": "Python Coding Agent",
+      "description": "Helps with Python programming",
+      "url": "http://localhost:8102/agent",
+      "version": "1.0.0",
+      "protocol_version": "1.0",
+      "capabilities": {
+        "skills": ["python", "coding", "debugging"]
+      },
+      "visibility": "public",
+      "owner_id": "youngsub.kim"
+    },
+    {
+      "name": "Data Analysis Agent",
+      "description": "Analyzes data and creates visualizations",
+      "url": "http://localhost:8101/agent",
+      "version": "1.2.0",
+      "protocol_version": "1.0",
+      "capabilities": {
+        "skills": ["data-analysis", "visualization", "python"]
+      },
+      "visibility": "public",
+      "owner_id": "byungju.lee"
+    }
+  ],
+  "count": 2,
+  "query": "python data analysis"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+
+curl -X POST http://localhost:8002/api/agents/search \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "customer support chat"}'
+```
+
+**Access Control:**
+- Public agents: Visible to all
+- Private agents: Only visible to owner
+- Team agents: Only visible to department members
+
+---
+
+### 2. Extensions API
+
+#### `GET /api/extensions`
+**등록된 Extension 목록 조회**
+
+**Permission**: None (Public)
+
+**Query Parameters:**
+- `uri_pattern` (선택): URI 패턴 필터
+- `declaring_agents` (선택): 선언한 에이전트 필터
+- `trust_levels` (선택): 신뢰 수준 필터
+- `page_size` (선택): 페이지당 항목 수 (기본: 100, 최대: 1000)
+- `page_token` (선택): 페이지네이션 토큰
+
+**Response (200):**
+```json
+{
+  "extensions": [
+    {
+      "uri": "urn:a2a:extension:langchain",
+      "description": "Langchain framework integration",
+      "required": false,
+      "params": {
+        "version": "0.1.0"
+      },
+      "declaring_agents": ["Customer Support Bot", "Data Analysis Agent"],
+      "trust_level": "verified"
+    },
+    {
+      "uri": "urn:a2a:extension:custom-search",
+      "description": "Custom search capability",
+      "required": true,
+      "params": {},
+      "declaring_agents": ["Search Agent"],
+      "trust_level": "unverified"
+    }
+  ],
+  "count": 2,
+  "total_count": 2,
+  "next_page_token": null
+}
+```
+
+**cURL 예제:**
+```bash
+# 전체 Extension 조회
+curl http://localhost:8002/api/extensions
+
+# URI 패턴으로 필터링
+curl "http://localhost:8002/api/extensions?uri_pattern=langchain"
+
+# 페이지네이션
+curl "http://localhost:8002/api/extensions?page_size=50&page_token=abc123"
+```
+
+---
+
+#### `GET /api/extensions/{uri:path}`
+**특정 Extension 정보 조회**
+
+**Permission**: None (Public)
+
+**Response (200):**
+```json
+{
+  "extension_info": {
+    "uri": "urn:a2a:extension:langchain",
+    "description": "Langchain framework integration",
+    "required": false,
+    "params": {
+      "version": "0.1.0",
+      "features": ["chains", "agents", "memory"]
+    },
+    "declaring_agents": [
+      "Customer Support Bot",
+      "Data Analysis Agent",
+      "Python Coding Agent"
+    ],
+    "trust_level": "verified",
+    "usage_count": 3
+  },
+  "found": true
+}
+```
+
+**Error (404):**
+```json
+{
+  "detail": "Extension not found"
+}
+```
+
+**cURL 예제:**
+```bash
+# URI는 URL 인코딩 필요
+URI="urn:a2a:extension:langchain"
+ENCODED_URI=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$URI', safe=''))")
+
+curl "http://localhost:8002/api/extensions/$ENCODED_URI"
+```
+
+---
+
+#### `GET /api/agents/{agent_id}/extensions`
+**에이전트가 사용하는 Extension 목록**
+
+**Permission**: Authenticated (Access Control 적용)
+
+**Response (200):**
+```json
+{
+  "agent_id": "Customer Support Bot",
+  "extensions": [
+    {
+      "uri": "urn:a2a:extension:langchain",
+      "description": "Langchain integration",
+      "required": false,
+      "params": {
+        "version": "0.1.0"
+      }
+    },
+    {
+      "uri": "urn:a2a:extension:vector-store",
+      "description": "Vector database for RAG",
+      "required": true,
+      "params": {
+        "provider": "pinecone"
+      }
+    }
+  ],
+  "count": 2
+}
+```
+
+**Error (404):**
+```json
+{
+  "detail": "Agent not found or access denied"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="user-jwt-token"
+AGENT_ID="Customer Support Bot"
+
+curl "http://localhost:8002/api/agents/$AGENT_ID/extensions" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## 🧪 API 테스트 시나리오
+
+### 시나리오 1: 에이전트 라이프사이클 관리
+
+```bash
+TOKEN="user-jwt-token"
+
+# 1. 새 에이전트 등록
+curl -X POST http://localhost:8002/api/agents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_card": {
+      "name": "My New Agent",
+      "description": "Test agent for development",
+      "url": "http://localhost:8100/agent",
+      "version": "1.0.0",
+      "protocol_version": "1.0",
+      "capabilities": {
+        "skills": ["chat", "search"],
+        "extensions": [
+          {
+            "uri": "urn:a2a:extension:langchain",
+            "description": "Langchain support",
+            "required": false
+          }
+        ]
+      },
+      "visibility": "private"
+    }
+  }'
+
+# 2. 내 에이전트 확인
+curl "http://localhost:8002/api/agents?only_mine=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 3. 에이전트 상세 조회
+curl "http://localhost:8002/api/agents/My%20New%20Agent" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. 에이전트가 사용하는 Extension 확인
+curl "http://localhost:8002/api/agents/My%20New%20Agent/extensions" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. 테스트 완료 후 삭제
+curl -X DELETE "http://localhost:8002/api/agents/My%20New%20Agent" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 시나리오 2: 에이전트 검색 및 발견
+
+```bash
+TOKEN="user-jwt-token"
+
+# 1. 전체 public 에이전트 조회
+curl "http://localhost:8002/api/agents?visibility=public" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 2. 키워드로 에이전트 검색
+curl -X POST http://localhost:8002/api/agents/search \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "customer support chat"}'
+
+# 3. 팀 에이전트 확인 (같은 부서)
+curl "http://localhost:8002/api/agents?visibility=team" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Extension 생태계 탐색
+curl http://localhost:8002/api/extensions
+
+# 5. 특정 Extension 사용하는 에이전트 찾기
+curl "http://localhost:8002/api/extensions?uri_pattern=langchain"
+```
+
+### 시나리오 3: Access Control 테스트
+
+```bash
+USER1_TOKEN="user1-jwt-token"
+USER2_TOKEN="user2-jwt-token"
+
+# USER1: private 에이전트 생성
+curl -X POST http://localhost:8002/api/agents \
+  -H "Authorization: Bearer $USER1_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_card": {
+      "name": "Private Agent",
+      "description": "Only I can see this",
+      "url": "http://localhost:8100/agent",
+      "version": "1.0.0",
+      "protocol_version": "1.0",
+      "visibility": "private"
+    }
+  }'
+
+# USER1: 확인 가능
+curl "http://localhost:8002/api/agents/Private%20Agent" \
+  -H "Authorization: Bearer $USER1_TOKEN"
+# → 200 OK
+
+# USER2: 접근 불가
+curl "http://localhost:8002/api/agents/Private%20Agent" \
+  -H "Authorization: Bearer $USER2_TOKEN"
+# → 404 Not Found (access denied)
+
+# USER2: 목록에도 나타나지 않음
+curl "http://localhost:8002/api/agents" \
+  -H "Authorization: Bearer $USER2_TOKEN"
+# → Private Agent 없음
+```
 
 ## 🧪 Frontend에서 테스트
 
@@ -417,3 +938,116 @@ FROM agents;
 - **담당자**: DEV4 (안준형)
 - **Slack**: #a2g-platform-dev
 - **이메일**: junhyung.ahn@company.com
+
+---
+
+## 📦 데이터베이스 관리
+
+### Alembic 마이그레이션 시스템
+
+이 서비스는 **Alembic**을 사용하여 데이터베이스 스키마를 관리합니다. 모든 스키마 변경은 마이그레이션 파일로 추적됩니다.
+
+### 기본 규칙
+
+1. **절대 수동으로 테이블을 생성/수정하지 마세요** ❌
+   - ~~CREATE TABLE~~
+   - ~~ALTER TABLE~~
+   - ~~DROP TABLE~~
+
+2. **모든 스키마 변경은 Alembic 마이그레이션으로만 수행합니다** ✅
+   ```bash
+   # 모델 변경 후 마이그레이션 생성
+   uv run alembic revision --autogenerate -m "Add new field"
+
+   # 마이그레이션 적용
+   uv run alembic upgrade head
+   ```
+
+3. **팀원과 동기화**
+   ```bash
+   # 코드 받은 후
+   git pull origin main
+
+   # 루트 디렉토리에서 한 번에 모든 서비스 DB 동기화!
+   ./start-dev.sh update
+   ```
+
+### 워크플로우
+
+#### 스키마 변경이 필요한 개발자 (코드 작성자)
+
+```bash
+# 1. 모델 변경
+vim app/core/database.py  # 모델에 필드 추가
+
+# 2. 마이그레이션 파일 생성
+docker exec a2g-agent-service uv run alembic revision --autogenerate -m "Add new field"
+
+# 3. 생성된 파일 확인 및 검토
+ls alembic/versions/  # 새로 생성된 파일 확인
+vim alembic/versions/00X_*.py  # 내용 검토
+
+# 4. 로컬에서 테스트
+docker exec a2g-agent-service uv run alembic upgrade head
+
+# 5. 정상 작동 확인 후 커밋
+git add app/core/database.py
+git add alembic/versions/00X_*.py
+git commit -m "Add new field to model"
+git push
+```
+
+#### 스키마 변경을 받는 팀원 (코드 받는 사람)
+
+```bash
+# 1. 코드 받기
+git pull origin main
+
+# 2. 단 한 줄로 모든 서비스 DB 동기화!
+./start-dev.sh update
+```
+
+### 자주 사용하는 명령어
+
+```bash
+# 현재 마이그레이션 상태 확인
+docker exec a2g-agent-service uv run alembic current
+
+# 마이그레이션 히스토리 확인
+docker exec a2g-agent-service uv run alembic history
+
+# 특정 버전으로 롤백 (신중하게!)
+docker exec a2g-agent-service uv run alembic downgrade <revision>
+
+# 최신 상태로 업그레이드
+docker exec a2g-agent-service uv run alembic upgrade head
+```
+
+### 주의사항
+
+⚠️ **운영(Production) 환경에서는**:
+1. 마이그레이션 전 반드시 데이터 백업
+2. Down-time이 필요한 변경인지 확인
+3. 롤백 계획 수립
+4. 테스트 환경에서 먼저 검증
+
+⚠️ **충돌 발생 시**:
+- 여러 명이 동시에 마이그레이션 생성 시 충돌 가능
+- 해결: revision 파일의 down_revision을 올바르게 수정
+
+### 문제 해결
+
+```bash
+# Q: "Target database is not up to date" 에러
+# A: 현재 버전 확인 후 upgrade
+docker exec a2g-agent-service uv run alembic current
+docker exec a2g-agent-service uv run alembic upgrade head
+
+# Q: "Table already exists" 에러
+# A: 마이그레이션 stamp (이미 테이블이 있는 경우)
+docker exec a2g-agent-service uv run alembic stamp head
+
+# Q: 모든 서비스를 한 번에 업데이트하고 싶어요
+# A: 루트 디렉토리에서
+./start-dev.sh update
+```
