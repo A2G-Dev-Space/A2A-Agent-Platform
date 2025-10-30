@@ -146,12 +146,25 @@ session:{session_id} = {
 
 ---
 
-## API 명세
+## 📡 API 명세
 
-### 1. 인증 엔드포인트
+> **Base URL**: `http://localhost:8001` (개발) | `https://api.company.com` (운영)
 
-#### POST /api/auth/login
-SSO 로그인 프로세스 시작
+### 목차
+1. [인증 API](#1-인증-api) - SSO 로그인/로그아웃
+2. [사용자 프로필 API](#2-사용자-프로필-api) - 내 정보 조회/수정
+3. [API Key 관리 API](#3-api-key-관리-api) - API Key 생성/조회/삭제
+4. [사용자 관리 API (v1)](#4-사용자-관리-api-v1) - 사용자 초대/승인 (ADMIN)
+5. [관리자 API](#5-관리자-api) - 전체 사용자 조회/권한 변경 (ADMIN)
+
+---
+
+### 1. 인증 API
+
+#### `POST /api/auth/login`
+**SSO 로그인 프로세스 시작**
+
+**Permission**: None (공개)
 
 **Request:**
 ```json
@@ -164,7 +177,7 @@ SSO 로그인 프로세스 시작
 ```json
 {
   "sso_login_url": "http://localhost:9999/mock-sso/login?redirect_uri=http://localhost:9060/callback",
-  "session_id": "temp-session-12345"
+  "session_id": "temp-session-abc123"
 }
 ```
 
@@ -175,35 +188,67 @@ curl -X POST http://localhost:8001/api/auth/login \
   -d '{"redirect_uri": "http://localhost:9060/callback"}'
 ```
 
-#### POST /api/auth/callback
-SSO 콜백 처리 및 JWT 발급
+**사용 방법:**
+1. Frontend에서 이 API를 호출하여 SSO URL 받기
+2. 사용자를 `sso_login_url`로 리다이렉트
+3. SSO에서 로그인 후 `redirect_uri`로 콜백
+
+---
+
+#### `POST /api/auth/callback`
+**SSO 콜백 처리 및 JWT 토큰 발급**
+
+**Permission**: None (공개)
 
 **Request:**
 ```json
 {
-  "id_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "id_token": "mock-id-token-dev1"
 }
 ```
 
 **Response (200):**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW5naGEuaGFuIiwicm9sZSI6IkFETUlOIiwiZXhwIjoxNzMwMjgwMDAwfQ.signature",
   "token_type": "Bearer",
   "expires_in": 43200,
   "user": {
     "id": 1,
     "username": "syngha.han",
     "username_kr": "한승하",
+    "username_en": "Syngha Han",
     "email": "syngha.han@company.com",
     "role": "ADMIN",
-    "department": "AI Platform Team"
+    "department_kr": "AI Platform Team",
+    "department_en": "AI Platform Team",
+    "is_active": true,
+    "last_login": "2025-10-30T10:30:00Z"
   }
 }
 ```
 
-#### POST /api/auth/logout
-사용자 로그아웃
+**Error Response (401):**
+```json
+{
+  "detail": "Invalid SSO token"
+}
+```
+
+**cURL 예제:**
+```bash
+# Mock SSO 개발 환경
+curl -X POST http://localhost:8001/api/auth/callback \
+  -H "Content-Type: application/json" \
+  -d '{"id_token": "mock-id-token-dev1"}'
+```
+
+---
+
+#### `POST /api/auth/logout`
+**사용자 로그아웃 (세션 무효화)**
+
+**Permission**: Authenticated
 
 **Request Headers:**
 ```
@@ -217,10 +262,21 @@ Authorization: Bearer {access_token}
 }
 ```
 
-### 2. 사용자 관리 엔드포인트
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token-here"
+curl -X POST http://localhost:8001/api/auth/logout \
+  -H "Authorization: Bearer $TOKEN"
+```
 
-#### GET /api/users/me
-현재 사용자 정보 조회
+---
+
+### 2. 사용자 프로필 API
+
+#### `GET /api/users/me`
+**현재 로그인한 사용자 정보 조회**
+
+**Permission**: Authenticated
 
 **Request Headers:**
 ```
@@ -233,23 +289,50 @@ Authorization: Bearer {access_token}
   "id": 1,
   "username": "syngha.han",
   "username_kr": "한승하",
-  "username_en": "Seungha Han",
+  "username_en": "Syngha Han",
   "email": "syngha.han@company.com",
   "role": "ADMIN",
-  "department_kr": "AI 플랫폼팀",
+  "department_kr": "AI Platform Team",
   "department_en": "AI Platform Team",
   "is_active": true,
-  "last_login": "2025-10-29T10:30:00Z",
+  "last_login": "2025-10-30T10:30:00Z",
   "created_at": "2025-10-01T09:00:00Z"
 }
 ```
 
-#### PUT /api/users/me
-사용자 정보 업데이트
+**Error (401 Unauthorized):**
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+**Error (403 Forbidden - PENDING 사용자):**
+```json
+{
+  "detail": "User access required. Your account may be pending approval."
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token"
+curl http://localhost:8001/api/users/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `PUT /api/users/me`
+**사용자 프로필 정보 업데이트**
+
+**Permission**: Authenticated (USER or ADMIN)
 
 **Request:**
 ```json
 {
+  "username_kr": "한승하",
+  "username_en": "Seungha Han",
   "department_kr": "플랫폼개발팀",
   "department_en": "Platform Development Team"
 }
@@ -258,43 +341,45 @@ Authorization: Bearer {access_token}
 **Response (200):**
 ```json
 {
-  "message": "User updated successfully",
-  "user": { ... }
+  "id": 1,
+  "username": "syngha.han",
+  "username_kr": "한승하",
+  "username_en": "Seungha Han",
+  "email": "syngha.han@company.com",
+  "role": "ADMIN",
+  "department_kr": "플랫폼개발팀",
+  "department_en": "Platform Development Team",
+  "is_active": true,
+  "last_login": "2025-10-30T10:30:00Z",
+  "created_at": "2025-10-01T09:00:00Z"
 }
 ```
 
-### [신규 추가된 API] 사용자 관리
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token"
+curl -X PUT http://localhost:8001/api/users/me \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "department_kr": "플랫폼개발팀",
+    "department_en": "Platform Development Team"
+  }'
+```
 
-> **[NOTE]**
-> 이 `v1` API는 새로운 Frontend 사용자 관리 페이지를 위해 추가되었습니다.
-> 신규 기능 개발 시, 아래의 `4. 관리자 전용 엔드포인트`에 있는 기존 API(`GET /api/admin/users`)보다 이 `v1` API 사용을 권장합니다.
+---
 
-- **GET /api/v1/users/**: 모든 사용자 목록을 조회합니다.
-  - **Permission**: `ADMIN`
-  - **Response**: `List[UserManagementInfo]`
+### 3. API Key 관리 API
 
-- **POST /api/v1/users/invite/**: 신규 사용자를 초대합니다.
-  - **Permission**: `ADMIN`
-  - **Request Body**: `UserInvite`
-  - **Response**: `UserManagementInfo`
+#### `POST /api/users/me/api-keys`
+**새 API Key 생성**
 
-- **PUT /api/v1/users/{user_id}/approve/**: 사용자의 등록을 승인합니다.
-  - **Permission**: `ADMIN`
-  - **Response**: `{"message": "User {user_id} approved successfully"}`
-
-- **PUT /api/v1/users/{user_id}/reject/**: 사용자의 등록을 거절합니다.
-  - **Permission**: `ADMIN`
-  - **Response**: `{"message": "User {user_id} rejected successfully"}`
-
-### 3. API Key 관리 엔드포인트
-
-#### POST /api/users/me/api-keys
-새 API Key 생성
+**Permission**: Authenticated
 
 **Request:**
 ```json
 {
-  "name": "Agent Service Key",
+  "name": "Agent Service API Key",
   "expires_in_days": 365
 }
 ```
@@ -303,34 +388,76 @@ Authorization: Bearer {access_token}
 ```json
 {
   "id": 1,
-  "name": "Agent Service Key",
-  "api_key": "sk_live_a2g_1234567890abcdef",  // 이 값은 한번만 표시됨
-  "expires_at": "2026-10-29T10:30:00Z",
-  "created_at": "2025-10-29T10:30:00Z"
+  "name": "Agent Service API Key",
+  "api_key": "sk_live_a2g_1a2b3c4d5e6f7g8h9i0j",
+  "expires_at": "2026-10-30T10:30:00Z",
+  "is_active": true,
+  "created_at": "2025-10-30T10:30:00Z",
+  "last_used": null
 }
 ```
 
-#### GET /api/users/me/api-keys
-API Key 목록 조회
+> ⚠️ **중요**: `api_key` 값은 **단 한 번만** 반환됩니다. 반드시 안전한 곳에 저장하세요!
+
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token"
+curl -X POST http://localhost:8001/api/users/me/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Production Key",
+    "expires_in_days": 365
+  }'
+```
+
+---
+
+#### `GET /api/users/me/api-keys`
+**내 API Key 목록 조회**
+
+**Permission**: Authenticated
 
 **Response (200):**
 ```json
-{
-  "api_keys": [
-    {
-      "id": 1,
-      "name": "Agent Service Key",
-      "last_used": "2025-10-29T09:00:00Z",
-      "expires_at": "2026-10-29T10:30:00Z",
-      "is_active": true,
-      "created_at": "2025-10-29T10:30:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": 1,
+    "name": "Agent Service API Key",
+    "last_used": "2025-10-30T09:15:00Z",
+    "expires_at": "2026-10-30T10:30:00Z",
+    "is_active": true,
+    "created_at": "2025-10-30T10:30:00Z"
+  },
+  {
+    "id": 2,
+    "name": "CLI Key",
+    "last_used": null,
+    "expires_at": "2026-10-30T11:00:00Z",
+    "is_active": true,
+    "created_at": "2025-10-30T11:00:00Z"
+  }
+]
 ```
 
-#### DELETE /api/users/me/api-keys/{key_id}
-API Key 삭제
+> **Note**: 보안을 위해 실제 API Key 값은 조회되지 않습니다.
+
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token"
+curl http://localhost:8001/api/users/me/api-keys \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `DELETE /api/users/me/api-keys/{key_id}`
+**API Key 삭제**
+
+**Permission**: Authenticated
+
+**Path Parameters:**
+- `key_id`: API Key ID (정수)
 
 **Response (200):**
 ```json
@@ -339,16 +466,227 @@ API Key 삭제
 }
 ```
 
-### 4. 관리자 전용 엔드포인트
+**Error (404):**
+```json
+{
+  "detail": "API key not found"
+}
+```
 
-#### GET /api/admin/users
-모든 사용자 목록 조회 (ADMIN only)
+**cURL 예제:**
+```bash
+TOKEN="your-jwt-token"
+KEY_ID=1
+curl -X DELETE http://localhost:8001/api/users/me/api-keys/$KEY_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+### 4. 사용자 관리 API (v1)
+
+> 💡 **새로운 Frontend 사용자 관리 페이지용 API**
+>
+> 이 v1 API는 Admin 페이지의 "설정 > 사용자 관리" 기능을 위해 추가되었습니다.
+
+#### `GET /api/v1/users`
+**모든 사용자 목록 조회**
+
+**Permission**: ADMIN only
+
+**Response (200):**
+```json
+[
+  {
+    "id": 1,
+    "username": "syngha.han",
+    "username_kr": "한승하",
+    "username_en": "Syngha Han",
+    "email": "syngha.han@company.com",
+    "role": "ADMIN",
+    "department_kr": "AI Platform Team",
+    "department_en": "AI Platform Team",
+    "is_active": true,
+    "last_login": "2025-10-30T10:30:00Z",
+    "created_at": "2025-10-01T09:00:00Z",
+    "updated_at": "2025-10-30T10:30:00Z"
+  },
+  {
+    "id": 5,
+    "username": "test.user",
+    "username_kr": "테스트유저",
+    "username_en": "Test User",
+    "email": "test.user@company.com",
+    "role": "PENDING",
+    "department_kr": "Test Team",
+    "department_en": "Test Team",
+    "is_active": true,
+    "last_login": null,
+    "created_at": "2025-10-29T15:00:00Z",
+    "updated_at": "2025-10-29T15:00:00Z"
+  }
+]
+```
+
+**Error (403):**
+```json
+{
+  "detail": "Admin access required"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+curl http://localhost:8001/api/v1/users \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `POST /api/v1/users/invite`
+**신규 사용자 초대**
+
+**Permission**: ADMIN only
+
+**Request:**
+```json
+{
+  "email": "newuser@company.com",
+  "username_kr": "신규사용자",
+  "username_en": "New User",
+  "department_kr": "개발팀",
+  "department_en": "Development Team"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": 6,
+  "username": "newuser",
+  "username_kr": "신규사용자",
+  "username_en": "New User",
+  "email": "newuser@company.com",
+  "role": "PENDING",
+  "department_kr": "개발팀",
+  "department_en": "Development Team",
+  "is_active": true,
+  "last_login": null,
+  "created_at": "2025-10-30T11:00:00Z",
+  "updated_at": "2025-10-30T11:00:00Z"
+}
+```
+
+**Error (400 - 이미 존재하는 이메일):**
+```json
+{
+  "detail": "User with email newuser@company.com already exists"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+curl -X POST http://localhost:8001/api/v1/users/invite \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@company.com",
+    "username_kr": "신규사용자",
+    "username_en": "New User",
+    "department_kr": "개발팀",
+    "department_en": "Development Team"
+  }'
+```
+
+---
+
+#### `PUT /api/v1/users/{user_id}/approve`
+**사용자 승인 (PENDING → USER)**
+
+**Permission**: ADMIN only
+
+**Path Parameters:**
+- `user_id`: 사용자 ID (정수)
+
+**Response (200):**
+```json
+{
+  "message": "User 5 approved successfully"
+}
+```
+
+**Error (404):**
+```json
+{
+  "detail": "User with id 999 not found"
+}
+```
+
+**Error (400 - 이미 승인된 사용자):**
+```json
+{
+  "detail": "User is already approved"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+USER_ID=5
+curl -X PUT http://localhost:8001/api/v1/users/$USER_ID/approve \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**워크플로우 예시:**
+```
+1. 신규 사용자 SSO 로그인 → 자동으로 PENDING 상태로 생성
+2. 관리자가 GET /api/v1/users로 PENDING 사용자 확인
+3. 관리자가 PUT /api/v1/users/{user_id}/approve로 승인
+4. 사용자 role이 PENDING → USER로 변경
+5. 이제 사용자는 에이전트 생성/실행 가능
+```
+
+---
+
+#### `PUT /api/v1/users/{user_id}/reject`
+**사용자 등록 거절 (is_active = false)**
+
+**Permission**: ADMIN only
+
+**Path Parameters:**
+- `user_id`: 사용자 ID (정수)
+
+**Response (200):**
+```json
+{
+  "message": "User 5 rejected successfully"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+USER_ID=5
+curl -X PUT http://localhost:8001/api/v1/users/$USER_ID/reject \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+### 5. 관리자 API
+
+#### `GET /api/admin/users`
+**전체 사용자 조회 (페이지네이션 지원)**
+
+**Permission**: ADMIN only
 
 **Query Parameters:**
-- `role`: 역할별 필터 (PENDING/USER/ADMIN)
-- `department`: 부서별 필터
-- `page`: 페이지 번호 (기본: 1)
-- `limit`: 페이지당 항목 수 (기본: 20)
+- `role` (선택): 역할 필터 (PENDING | USER | ADMIN)
+- `department` (선택): 부서 필터
+- `page` (선택): 페이지 번호 (기본: 1)
+- `limit` (선택): 페이지당 항목 수 (기본: 20, 최대: 100)
 
 **Response (200):**
 ```json
@@ -358,35 +696,185 @@ API Key 삭제
       "id": 1,
       "username": "syngha.han",
       "username_kr": "한승하",
+      "username_en": "Syngha Han",
       "email": "syngha.han@company.com",
       "role": "ADMIN",
-      "department": "AI Platform Team",
+      "department_kr": "AI Platform Team",
+      "department_en": "AI Platform Team",
       "is_active": true,
-      "last_login": "2025-10-29T10:30:00Z"
+      "last_login": "2025-10-30T10:30:00Z",
+      "created_at": "2025-10-01T09:00:00Z"
     }
   ],
-  "total": 100,
+  "total": 150,
   "page": 1,
-  "pages": 5
+  "pages": 8
 }
 ```
 
-#### PUT /api/admin/users/{user_id}/role
-사용자 권한 변경 (ADMIN only)
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+
+# 전체 사용자 조회
+curl "http://localhost:8001/api/admin/users" \
+  -H "Authorization: Bearer $TOKEN"
+
+# PENDING 사용자만 필터링
+curl "http://localhost:8001/api/admin/users?role=PENDING" \
+  -H "Authorization: Bearer $TOKEN"
+
+# AI Platform Team 사용자만 조회
+curl "http://localhost:8001/api/admin/users?department=AI%20Platform%20Team" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 페이지네이션 (2페이지, 50개씩)
+curl "http://localhost:8001/api/admin/users?page=2&limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+#### `PUT /api/admin/users/{user_id}/role`
+**사용자 권한 변경**
+
+**Permission**: ADMIN only
+
+**Path Parameters:**
+- `user_id`: 사용자 ID (정수)
 
 **Request:**
 ```json
 {
-  "role": "USER"
+  "role": "ADMIN"
 }
 ```
+
+**Allowed roles:**
+- `PENDING`: 승인 대기 (로그인만 가능)
+- `USER`: 일반 사용자 (에이전트 생성/실행)
+- `ADMIN`: 관리자 (전체 권한)
 
 **Response (200):**
 ```json
 {
   "message": "User role updated successfully",
-  "user": { ... }
+  "user": {
+    "id": 3,
+    "username": "youngsub.kim",
+    "role": "ADMIN",
+    "updated_at": "2025-10-30T11:30:00Z"
+  }
 }
+```
+
+**Error (400 - 잘못된 role):**
+```json
+{
+  "detail": "Invalid role. Allowed values: PENDING, USER, ADMIN"
+}
+```
+
+**cURL 예제:**
+```bash
+TOKEN="admin-jwt-token"
+USER_ID=3
+
+# USER를 ADMIN으로 승격
+curl -X PUT http://localhost:8001/api/admin/users/$USER_ID/role \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "ADMIN"}'
+
+# PENDING을 USER로 승인
+curl -X PUT http://localhost:8001/api/admin/users/$USER_ID/role \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "USER"}'
+```
+
+---
+
+## 🧪 API 테스트 시나리오
+
+### 시나리오 1: 신규 사용자 온보딩
+
+```bash
+# 1. SSO 로그인 (신규 사용자가 처음 로그인)
+curl -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"redirect_uri": "http://localhost:9060/callback"}'
+
+# 2. 사용자가 Mock SSO에서 로그인 후 콜백
+curl -X POST http://localhost:8001/api/auth/callback \
+  -H "Content-Type: application/json" \
+  -d '{"id_token": "mock-id-token-test-user"}'
+# → role: "PENDING" 상태로 생성됨
+
+# 3. 관리자가 PENDING 사용자 확인
+curl "http://localhost:8001/api/v1/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 4. 관리자가 사용자 승인
+curl -X PUT http://localhost:8001/api/v1/users/5/approve \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+# → role: "PENDING" → "USER"
+
+# 5. 사용자가 다시 로그인하면 이제 에이전트 사용 가능
+```
+
+### 시나리오 2: API Key 관리
+
+```bash
+# 1. 사용자 로그인
+TOKEN="user-jwt-token"
+
+# 2. API Key 생성
+curl -X POST http://localhost:8001/api/users/me/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Production Key", "expires_in_days": 365}'
+# → api_key: "sk_live_a2g_..." 저장 필수!
+
+# 3. API Key 목록 확인
+curl http://localhost:8001/api/users/me/api-keys \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. 불필요한 API Key 삭제
+curl -X DELETE http://localhost:8001/api/users/me/api-keys/1 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 시나리오 3: 관리자 작업
+
+```bash
+ADMIN_TOKEN="admin-jwt-token"
+
+# 1. 전체 사용자 통계 확인
+curl "http://localhost:8001/api/admin/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 2. PENDING 사용자만 필터링
+curl "http://localhost:8001/api/admin/users?role=PENDING" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 3. 우수 사용자를 ADMIN으로 승격
+curl -X PUT http://localhost:8001/api/admin/users/10/role \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "ADMIN"}'
+
+# 4. 신규 사용자 직접 초대
+curl -X POST http://localhost:8001/api/v1/users/invite \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "new.dev@company.com",
+    "username_kr": "신규개발자",
+    "username_en": "New Developer",
+    "department_kr": "개발팀",
+    "department_en": "Development Team"
+  }'
 ```
 
 ---
@@ -822,6 +1310,149 @@ CORS_ORIGINS=["http://localhost:9060", "http://localhost:9050"]
 - [JWT.io](https://jwt.io/)
 - [SQLAlchemy 2.0](https://docs.sqlalchemy.org/)
 - [Redis Py](https://redis-py.readthedocs.io/)
+
+---
+
+## 📦 데이터베이스 관리
+
+### Alembic 마이그레이션 시스템
+
+이 서비스는 **Alembic**을 사용하여 데이터베이스 스키마를 관리합니다. 모든 스키마 변경은 마이그레이션 파일로 추적됩니다.
+
+### 기본 규칙
+
+1. **절대 수동으로 테이블을 생성/수정하지 마세요** ❌
+   - ~~CREATE TABLE~~
+   - ~~ALTER TABLE~~
+   - ~~DROP TABLE~~
+
+2. **모든 스키마 변경은 Alembic 마이그레이션으로만 수행합니다** ✅
+   ```bash
+   # 모델 변경 후 마이그레이션 생성
+   uv run alembic revision --autogenerate -m "Add profile_image to users"
+
+   # 마이그레이션 적용
+   uv run alembic upgrade head
+   ```
+
+3. **팀원과 동기화**
+   ```bash
+   # 코드 받은 후
+   git pull origin main
+
+   # 루트 디렉토리에서 한 번에 모든 서비스 DB 동기화!
+   ./start-dev.sh update
+   ```
+
+### 워크플로우
+
+#### 스키마 변경이 필요한 개발자 (코드 작성자)
+
+```bash
+# 1. 모델 변경
+vim app/core/database.py  # User 모델에 필드 추가
+
+# 2. 마이그레이션 파일 생성
+docker exec a2g-user-service uv run alembic revision --autogenerate -m "Add profile_image field"
+
+# 3. 생성된 파일 확인 및 검토
+ls alembic/versions/  # 새로 생성된 파일 확인
+vim alembic/versions/00X_add_profile_image_field.py  # 내용 검토
+
+# 4. 로컬에서 테스트
+docker exec a2g-user-service uv run alembic upgrade head
+
+# 5. 정상 작동 확인 후 커밋
+git add app/core/database.py
+git add alembic/versions/00X_add_profile_image_field.py
+git commit -m "Add profile_image field to User model"
+git push origin feature/add-profile-image
+```
+
+#### 스키마 변경을 받는 팀원 (코드 받는 사람)
+
+```bash
+# 1. 코드 받기
+git pull origin main
+
+# 2. 단 한 줄로 모든 서비스 DB 동기화!
+./start-dev.sh update
+```
+
+**출력 예시:**
+```
+🔄 Updating all service databases with latest migrations...
+
+📦 user-service: Checking for migrations...
+   Current: 001_add_missing_columns
+   Running: docker exec a2g-user-service uv run alembic upgrade head
+   ✅ user-service migrations applied
+
+📦 agent-service: Checking for migrations...
+   ✅ agent-service migrations applied
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Migration Update Summary:
+   ✅ Success: 5
+   ⏭️  Skipped: 0
+   ❌ Failed:  0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 All migrations completed successfully!
+```
+
+### 자주 사용하는 명령어
+
+```bash
+# 현재 마이그레이션 상태 확인
+docker exec a2g-user-service uv run alembic current
+
+# 마이그레이션 히스토리 확인
+docker exec a2g-user-service uv run alembic history
+
+# 특정 버전으로 롤백 (신중하게!)
+docker exec a2g-user-service uv run alembic downgrade <revision>
+
+# 최신 상태로 업그레이드
+docker exec a2g-user-service uv run alembic upgrade head
+
+# 다음 마이그레이션 하나만 적용
+docker exec a2g-user-service uv run alembic upgrade +1
+```
+
+### 주의사항
+
+⚠️ **운영(Production) 환경에서는**:
+1. 마이그레이션 전 반드시 데이터 백업
+2. Down-time이 필요한 변경인지 확인
+3. 롤백 계획 수립
+4. 테스트 환경에서 먼저 검증
+
+⚠️ **충돌 발생 시**:
+```bash
+# 여러 명이 동시에 마이그레이션 생성 시 충돌 가능
+# 해결: revision 파일의 down_revision을 올바르게 수정
+
+# 또는 마이그레이션 순서 재정렬
+docker exec a2g-user-service uv run alembic merge <rev1> <rev2>
+```
+
+### 문제 해결
+
+```bash
+# Q: "Target database is not up to date" 에러
+# A: 현재 버전 확인 후 upgrade
+docker exec a2g-user-service uv run alembic current
+docker exec a2g-user-service uv run alembic upgrade head
+
+# Q: "Table already exists" 에러
+# A: 마이그레이션 stamp (이미 테이블이 있는 경우)
+docker exec a2g-user-service uv run alembic stamp head
+
+# Q: 모든 서비스를 한 번에 업데이트하고 싶어요
+# A: 루트 디렉토리에서
+./start-dev.sh update
+```
 
 ---
 
