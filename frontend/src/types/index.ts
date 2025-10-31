@@ -188,10 +188,6 @@ export enum AppMode {
   FLOW = 'flow',
 }
 
-export interface AppTheme {
-  mode: 'light' | 'dark' | 'system'
-  primaryColor: string
-}
 
 // WebSocket types
 export interface WebSocketMessage {

@@ -162,20 +162,169 @@
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "agent.execute",
+  "method": "sendMessage",
   "params": {
-    "task": "고객 문의 분석",
-    "context": {"user_id": "test.user", "session_id": "session-123"}
+    "message": {
+      "messageId": "msg-123",
+      "role": "user",
+      "parts": [{"kind": "text", "text": "고객 문의 분석"}],
+      "kind": "message"
+    },
+    "configuration": {"blocking": true}
   },
   "id": "request-001"
 }
 ```
 
-**지원 프레임워크:**
-- **Agno**: 삼성 내부 에이전트 프레임워크
-- **ADK**: Agent Development Kit
-- **Langchain**: LangChain 기반 에이전트
-- **Custom**: 사용자 정의 에이전트
+**지원 프레임워크 (3가지 유형):**
+
+플랫폼은 Framework를 **3가지 유형**으로 분류하여 다르게 처리합니다:
+
+---
+
+### 1️⃣ A2A Native Frameworks (Direct A2A Call - Proxy 불필요) ⭐
+
+**개념**: A2A Protocol을 네이티브로 지원하는 프레임워크입니다.
+
+**특징**:
+- ✅ **Proxy 불필요**: 플랫폼 proxy를 거치지 않고 직접 A2A endpoint 호출
+- ✅ **표준 준수**: `.well-known/agent-card.json`을 통한 Agent Card Discovery 지원
+- ✅ **최적의 성능**: 중간 변환 없이 직접 통신
+
+**호출 흐름**:
+```
+Frontend → Agent A2A Endpoint (Direct)
+```
+
+**지원 프레임워크**:
+
+| Framework | A2A Endpoint 패턴 | 예시 | 상태 |
+|-----------|------------------|------|------|
+| **Google ADK** | `{base_url}/.well-known/agent-card.json` | `http://localhost:8080/.well-known/agent-card.json` | ✅ 현재 지원 |
+| **Agno OS** | `{base_url}/.well-known/agent-card.json` | `http://localhost:7777/.well-known/agent-card.json` | 🚧 미래 지원 예정 |
+
+**사용자 입력 예시 (Google ADK)**:
+```typescript
+{
+  framework: "Google ADK",
+  base_url: "http://localhost:8080",
+  agent_id: "my-adk-agent"  // Optional
+}
+
+// 시스템 동작
+// 1. Agent Card Discovery: GET http://localhost:8080/.well-known/agent-card.json
+// 2. 플랫폼 DB에 메타데이터 저장 (검색용)
+// 3. Frontend가 직접 A2A endpoint 호출 (Proxy 불필요!)
+```
+
+---
+
+### 2️⃣ Well-known Non-A2A Frameworks (Proxy 필요) 🔄
+
+**개념**: 표준 endpoint 패턴은 있지만 A2A를 네이티브로 지원하지 않는 프레임워크입니다.
+
+**특징**:
+- ✅ **Base URL + Agent ID만 입력**: 시스템이 자동으로 endpoint 생성
+- 🔄 **Proxy 필요**: 플랫폼 proxy가 프로토콜 변환 수행
+- 🔄 **프로토콜 변환**: A2A Protocol ←→ Framework Protocol
+
+**호출 흐름**:
+```
+Frontend → A2A Proxy → Framework Adapter → Agent Endpoint
+         (A2A)      (변환)              (Framework Protocol)
+```
+
+**지원 프레임워크**:
+
+| Framework | 원본 Endpoint 패턴 | 예시 | 상태 |
+|-----------|-------------------|------|------|
+| **Agno OS** | `{base_url}/agents/{agent_id}/runs` | `http://localhost:7777/agents/my-agent-123/runs` | ✅ 현재 지원 |
+
+**사용자 입력 예시 (Agno OS)**:
+```typescript
+{
+  framework: "Agno OS",
+  base_url: "http://localhost:7777",
+  agent_id: "my-agent-123"
+}
+
+// 시스템 동작
+// 1. 원본 endpoint 생성: http://localhost:7777/agents/my-agent-123/runs
+// 2. Proxy endpoint 생성: /api/a2a/proxy/1/tasks/send
+// 3. Frontend → Proxy → Agno Adapter → Agno Endpoint
+//    (A2A Protocol을 Agno Protocol로 변환)
+```
+
+**📝 참고**: Agno OS가 향후 A2A를 네이티브로 지원하면 **1️⃣ A2A Native**로 전환됩니다.
+
+---
+
+### 3️⃣ Custom Frameworks (Proxy 필요) 🔧
+
+**개념**: 표준 패턴이 없는 프레임워크입니다.
+
+**특징**:
+- ✏️ **전체 URL 입력**: 사용자가 완전한 endpoint URL을 직접 입력
+- 🔄 **Proxy 필요**: 플랫폼 proxy가 프로토콜 변환 수행
+- 🔧 **유연성**: 어떤 endpoint든 등록 가능
+
+**호출 흐름**:
+```
+Frontend → A2A Proxy → Custom/Langchain Adapter → Agent Endpoint
+         (A2A)      (변환)                   (Framework Protocol)
+```
+
+**지원 프레임워크**:
+
+| Framework | 입력 방식 | 예시 |
+|-----------|----------|------|
+| **Langchain** | 전체 URL | `http://my-server.com/langchain/invoke` |
+| **Custom** | 전체 URL | `http://my-custom-agent.com/api/v1/chat` |
+
+**사용자 입력 예시 (Custom)**:
+```typescript
+{
+  framework: "Custom",
+  original_endpoint: "http://my-server.com/api/v1/chat"
+}
+
+// 시스템 동작
+// 1. Proxy endpoint 생성: /api/a2a/proxy/2/tasks/send
+// 2. Frontend → Proxy → Custom Adapter → Custom Endpoint
+//    (A2A Protocol을 Custom Protocol로 변환)
+```
+
+---
+
+### 🔄 Framework 간 차이점 요약
+
+| 항목 | A2A Native | Well-known | Custom |
+|------|-----------|-----------|--------|
+| **A2A 지원** | ✅ 네이티브 지원 | ❌ 지원 안 함 | ❌ 지원 안 함 |
+| **Proxy 필요** | ❌ 불필요 | ✅ 필요 | ✅ 필요 |
+| **입력 방식** | Base URL | Base URL + Agent ID | 전체 URL |
+| **프로토콜 변환** | ❌ 불필요 | ✅ 필요 | ✅ 필요 |
+| **성능** | ⚡ 최고 (직접 호출) | 🔄 중간 (1회 변환) | 🔄 중간 (1회 변환) |
+| **플랫폼 역할** | 메타데이터 저장 | 프록시 + 변환 | 프록시 + 변환 |
+
+**Universal A2A Proxy (신규 기능):**
+
+Agent Service에 구축된 범용 A2A 프록시 서버로, 다양한 프레임워크로 구축된 에이전트들을 단일 A2A Protocol 인터페이스로 통합합니다:
+
+- **Framework Adapter 패턴**: 각 프레임워크별 request/response 변환 (Agno, ADK, Langchain, Custom)
+- **Agent Card Discovery**: `.well-known/agent-card.json` 표준 지원
+- **A2A JS SDK 호환**: 프론트엔드에서 표준 SDK로 모든 에이전트 접근
+- **통합 Access Control**: 프록시 레이어에서 visibility 검증 (public/private/team)
+- **Streaming 지원**: Server-Sent Events (SSE) 기반 실시간 응답 스트리밍 (`blocking: false`)
+
+**주요 엔드포인트:**
+- `GET /a2a/proxy/{agent_id}/.well-known/agent-card.json` - Agent Card 발견
+- `POST /a2a/proxy/{agent_id}/tasks/send` - 메시지 전송 (blocking/streaming 모두 지원)
+- `GET /a2a/proxy/{agent_id}/tasks/{task_id}` - 작업 상태 (향후 지원)
+
+**Workbench 테스트 모드:**
+- **Proxy Endpoint**: A2A 표준 프로토콜 사용 (권장)
+- **Direct Endpoint**: 프레임워크 네이티브 프로토콜 직접 테스트 (디버깅용)
 
 ### 5.2 Top-K 에이전트 추천
 
@@ -330,6 +479,13 @@ uvicorn app.main:app --reload --port 8001
   - 백엔드/프론트엔드 구현 패턴
   - API 명세 및 테스트 가이드
   - 배포 및 트러블슈팅
+
+- **[A2A_INTEGRATION_DESIGN.md](./A2A_INTEGRATION_DESIGN.md)** - A2A 통합 설계 문서 (신규)
+  - Universal A2A Proxy 아키텍처
+  - Framework Adapter 패턴
+  - Agent Card 관리 시스템
+  - Frontend 통합 가이드 (Workbench, Hub, Flow)
+  - 구현 로드맵 및 테스트 전략
 
 - **[WSL_DEVELOPMENT_SETUP.md](./WSL_DEVELOPMENT_SETUP.md)** - WSL 환경 설정
   - WSL2 설치 및 설정

@@ -348,16 +348,57 @@ The platform implements a standardized JSON-RPC 2.0 based protocol for agent com
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "agent.execute",
+  "method": "sendMessage",
   "params": {
-    "task": "Task description",
-    "context": {"user_id": "user.id"}
+    "message": {
+      "messageId": "msg-123",
+      "role": "user",
+      "parts": [{"kind": "text", "text": "Task description"}],
+      "kind": "message"
+    },
+    "configuration": {"blocking": true}
   },
   "id": "request-001"
 }
 ```
 
-Supported frameworks: Agno, ADK, Langchain, Custom
+**Supported frameworks (3가지 유형)**:
+
+**1️⃣ A2A Native Frameworks (Direct Call - Proxy 불필요) ⭐**
+- **Google ADK**: A2A Protocol 네이티브 지원
+  - Input: Base URL only (`http://your-server:8080`)
+  - Agent Card Discovery: `{base_url}/.well-known/agent-card.json`
+  - Call Flow: Frontend → Agent A2A Endpoint (Direct)
+  - **No Proxy Required** → Optimal performance
+
+**2️⃣ Well-known Non-A2A Frameworks (Proxy 필요) 🔄**
+- **Agno OS**: Standard endpoint pattern, protocol translation required
+  - Input: Base URL + Agent ID
+  - Pattern: `{base_url}/agents/{agent_id}/runs`
+  - Call Flow: Frontend → A2A Proxy → Protocol Translation → Agent
+
+**3️⃣ Custom Frameworks (Proxy 필요) 🔧**
+- **Langchain**: User provides full URL (`http://my-server.com/langchain/invoke`)
+- **Custom**: User provides full URL for custom A2A-compliant agents
+  - Call Flow: Frontend → A2A Proxy → Protocol Translation → Agent
+
+**💡 Note**: Agno OS will transition to A2A Native once A2A Protocol support is complete.
+
+---
+
+**Universal A2A Proxy**: Agent Service provides a unified A2A interface for **Non-A2A frameworks only** (Agno OS, Langchain, Custom):
+- **A2A Native Bypass**: Google ADK agents are called directly without proxy
+- **Agent Card Discovery**: Standard `.well-known/agent-card.json` endpoint for metadata
+- **Framework Adapters**: Automatic protocol translation for Non-A2A frameworks
+- **A2A JS SDK Compatible**: Frontend can use standard A2A JS SDK to communicate with any agent
+- **Unified Access Control**: Visibility rules (public/private/team) enforced at proxy layer
+- **Streaming Support**: Server-Sent Events (SSE) for real-time responses (`blocking: false`)
+
+Key endpoints:
+- `GET /api/a2a/proxy/{agent_id}/.well-known/agent-card.json` - Agent Card discovery (metadata)
+- `POST /api/a2a/proxy/{agent_id}/tasks/send` - Send message (Non-A2A frameworks only)
+- **Workbench Testing**: Supports both A2A Proxy endpoint and Direct Original endpoint
+- See [A2A_INTEGRATION_DESIGN.md](./A2A_INTEGRATION_DESIGN.md) for detailed architecture
 
 ### Service Communication Flow
 

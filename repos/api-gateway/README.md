@@ -16,15 +16,21 @@ The API Gateway is the centralized entry point for all A2G Platform backend serv
 
 ## Service Routing
 
-| Path Pattern | Target Service | Port |
-|-------------|---------------|------|
-| `/api/auth/*` | User Service | 8001 |
-| `/api/users/*` | User Service | 8001 |
-| `/api/agents/*` | Agent Service | 8002 |
-| `/api/chat/*` | Chat Service | 8003 |
-| `/api/tracing/*` | Tracing Service | 8004 |
-| `/api/admin/*` | Admin Service | 8005 |
-| `/ws/*` | WebSocket Services | Various |
+| Path Pattern | Target Service | Port | Description |
+|-------------|---------------|------|-------------|
+| `/api/auth/*` | User Service | 8001 | Authentication, JWT |
+| `/api/users/*` | User Service | 8001 | User management |
+| `/api/agents/*` | Agent Service | 8002 | Agent CRUD, Registry |
+| `/api/a2a/proxy/*` | Agent Service | 8002 | **A2A Universal Proxy** (신규) |
+| `/api/chat/*` | Chat Service | 8003 | Chat sessions |
+| `/api/tracing/*` | Tracing Service | 8004 | Log tracing |
+| `/api/admin/*` | Admin Service | 8005 | Admin operations |
+| `/ws/*` | WebSocket Services | Various | Real-time connections |
+
+**Note**: The A2A Universal Proxy provides a unified A2A Protocol interface for agents built with different frameworks:
+- **Well-known Frameworks** (Agno OS, Google ADK): Base URL + Agent ID → Auto-generates standard endpoint
+- **Custom Frameworks** (Langchain, Custom): Full endpoint URL provided by user
+- See [Agent Service README](../agent-service/README.md#3-a2a-universal-proxy-api) for details
 
 ## Quick Start
 
