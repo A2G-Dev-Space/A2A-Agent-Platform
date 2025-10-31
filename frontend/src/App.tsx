@@ -10,7 +10,7 @@ import { CallbackPage } from '@/pages/CallbackPage'
 import { PendingApprovalPage } from '@/pages/PendingApprovalPage'
 import { PrivateRoute } from '@/components/auth/PrivateRoute'
 import { useAuthStore } from '@/stores/authStore'
-import { useAppStore } from '@/stores/appStore'
+import { useThemeStore } from '@/stores/themeStore'
 import { UserRole } from '@/types'
 import SettingsPage from '@/pages/Settings/SettingsPage'
 import GeneralSettingsPage from '@/pages/Settings/GeneralSettingsPage'
@@ -30,17 +30,12 @@ const queryClient = new QueryClient({
 
 function App() {
   const { user } = useAuthStore()
-  const { theme } = useAppStore()
+  const { initTheme } = useThemeStore()
 
-  // Apply theme
+  // Initialize theme
   useEffect(() => {
-    if (theme.mode === 'dark' ||
-        (theme.mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [theme])
+    initTheme()
+  }, [initTheme])
 
   return (
     <QueryClientProvider client={queryClient}>
