@@ -535,3 +535,543 @@ cd frontend && npm run dev
 ---
 
 **© 2025 A2A-Agent-Platform Development Team**
+
+---
+
+# 🚀 A2A-Agent-Platform
+
+An integrated A2A (Agent-to-Agent) platform for developing, testing, deploying, and monitoring AI agents
+
+## ✨ Key Features
+
+- **🔄 Universal A2A Proxy**: Integrates various LLM frameworks (Google ADK, Agno OS, Langchain, Custom) into a single A2A protocol
+- **⭐ A2A Native Support**: Google ADK directly calls A2A endpoints without proxy (optimal performance)
+- **🤖 Well-known Framework Support**: Automatic endpoint pattern generation for frameworks like Agno OS
+- **🎯 A2A (Agent-to-Agent) Protocol**: JSON-RPC 2.0 based standard communication
+- **📡 Real-time Streaming**: Real-time responses via Server-Sent Events (SSE)
+- **🎨 3 Modes**: Workbench (development), Hub (usage), Flow (workflow)
+- **🔐 Integrated Authentication**: SSO + JWT-based Access Control (public/private/team)
+
+## 🎯 User Journey
+
+A2A-Agent-Platform supports the entire lifecycle of AI agents through **3 operating modes**.
+
+### 1️⃣ Workbench Mode: Agent Development & Testing 🔧
+
+**Purpose**: Development environment for registering, configuring, and testing agents
+
+**Key Features**:
+
+#### Agent Registration
+- **Framework Selection**: Choose from Google ADK, Agno OS, Langchain, or Custom
+- **Automatic Endpoint Generation**:
+  - A2A Native (Google ADK): Enter Base URL only → Agent Card Discovery automatic
+  - Well-known (Agno OS): Enter Base URL + Agent ID → Endpoint auto-generated
+  - Custom: Manually enter full URL
+- **Agent Card Configuration**:
+  - Name, description, version
+  - Card color (branding)
+  - Capabilities (streaming, tools, memory, etc.)
+  - Tags and categories
+
+#### Agent Configuration
+- **Access Control Settings**:
+  - Public: Accessible to all users
+  - Private: Only owner can access
+  - Team: Only specific teams/departments can access
+- **Framework Settings**:
+  - Authentication information (API keys, tokens)
+  - Custom headers
+  - Timeout settings
+
+#### Real-time Testing
+- **Dual Endpoint Testing**:
+  - **A2A Proxy Endpoint**: Test through platform proxy (same as production)
+  - **Original Endpoint**: Direct call testing (for debugging)
+- **Interactive Chat Interface**:
+  - Test message sending/receiving
+  - Verify streaming responses
+  - Confirm context retention
+- **Real-time Tracing**:
+  - View request/response logs in real-time
+  - Measure latency
+  - Debug errors
+
+#### Agent Management
+- **Version Management**: Agent version history
+- **Health Check**: Endpoint status monitoring
+- **Usage Statistics**: Call count, average response time, etc.
+
+---
+
+### 2️⃣ Hub Mode: Agent Usage & Collaboration 🤝
+
+**Purpose**: Production environment for searching, selecting, and using registered agents
+
+**Key Features**:
+
+#### Agent Discovery (Search & Discovery)
+- **Top-K Semantic Search**:
+  - Search agents with natural language queries
+  - Vector-based semantic matching
+  - Utilizing OpenAI Embeddings
+  - Example: "Find an agent that can help with data analysis"
+- **Filtering**:
+  - Filter by framework
+  - Filter by category/tags
+  - Filter by access level (only shows accessible agents)
+- **Agent Card Preview**:
+  - Name, description, capabilities
+  - Usage statistics (popularity, ratings)
+  - Framework and version information
+
+#### Interactive Chat
+- **A2A Protocol-based Conversation**:
+  - Standardized communication via A2A JS SDK
+  - Same interaction method for all framework agents
+- **Real-time Streaming**:
+  - Server-Sent Events (SSE) based
+  - Display responses with typing effect
+  - Render immediately in chunks
+- **Context Management**:
+  - Maintain conversation history
+  - Session-based context
+  - Multi-turn conversation support
+- **Rich Content Support**:
+  - Text, code, images
+  - Display tool call results
+  - Render artifacts
+
+#### Agent Collaboration
+- **Multi-Agent Session**:
+  - Multiple agents participating in one conversation (future feature)
+  - Agent-to-agent collaboration
+- **History & Bookmarks**:
+  - Save conversation history
+  - Bookmark important conversations
+  - Export conversations
+
+#### Usage Analytics
+- **Personal Usage Statistics**:
+  - Agent usage frequency
+  - Average response time
+  - Satisfaction feedback
+
+---
+
+### 3️⃣ Flow Mode: Multi-Agent Workflow Orchestration 🔀
+
+**Purpose**: Advanced feature for composing complex workflows by combining multiple agents
+
+**Current Status**: UI ready, waiting for RemoteA2aAgent support in A2A JS SDK
+
+**Planned Features**:
+
+#### Workflow Design
+- **Visual Flow Builder**:
+  - Connect agents via drag and drop
+  - Conditional branching
+  - Parallel execution
+- **Sub-Agent Configuration**:
+  - Define root agent
+  - Add agents registered as sub-agents
+  - Configure data transfer between agents
+
+#### Orchestration
+- **Intelligent Routing**:
+  - Root agent selects appropriate sub-agents
+  - Context-based routing
+  - Designate fallback agents
+- **State Management**:
+  - Manage overall workflow state
+  - Share data between agents
+  - Store intermediate results
+
+#### Execution & Monitoring
+- **Real-time Workflow Execution**:
+  - Visualize each agent's execution status
+  - Stream logs in real-time
+  - Automatic retry on errors
+- **Workflow History**:
+  - Save execution history
+  - Analyze success/failure
+  - Identify bottlenecks
+
+---
+
+### 4️⃣ Admin Features: Platform Management (Admin Only) 👨‍💼
+
+**Purpose**: Resource management and monitoring for the entire platform
+
+**Key Features**:
+
+#### LLM Model Management
+- **Model Pool Management**:
+  - Register available LLM models (GPT-4, Claude, Gemini, etc.)
+  - Manage API keys per model
+  - Set rate limits
+- **Model Assignment**:
+  - Assign models per team/user
+  - Manage usage quotas
+
+#### Platform Statistics
+- **Overall Usage Statistics**:
+  - Daily/weekly/monthly usage
+  - Top 10 most popular agents
+  - Framework distribution
+  - Average response time
+- **User Activity**:
+  - Active users statistics
+  - Usage per team
+  - Anomaly pattern detection
+
+#### Agent Monitoring
+- **Health Dashboard**:
+  - View all agent statuses at a glance
+  - Endpoint connection status
+  - Error rate monitoring
+- **Performance Metrics**:
+  - Average response time per agent
+  - Success/failure rates
+  - Timeout frequency
+
+---
+
+### 5️⃣ Cross-Cutting Features: Available in All Modes 🌐
+
+#### Integrated Authentication (SSO)
+- **Single Sign-On**:
+  - Login with company SSO account
+  - JWT-based session management
+  - Automatic token refresh
+- **Role-Based Access Control**:
+  - User, Developer, Admin roles
+  - Function access control by role
+
+#### Real-time Tracing
+- **Track All Requests**:
+  - View request/response logs in real-time
+  - Correlation ID-based tracking
+  - Error stack traces
+- **Debugging Tools**:
+  - Replay requests
+  - Compare responses (Diff)
+  - Performance profiling
+
+#### Notifications
+- **Real-time Alerts**:
+  - Agent status change notifications
+  - Error occurrence alerts (Slack integration)
+  - System maintenance announcements
+
+---
+
+## 💼 Use Cases
+
+### Case 1: AI Developer - Agent Development & Deployment
+```
+1. Register Langchain Agent in Workbench
+   - Framework: Langchain
+   - Original Endpoint: http://my-server:8080/agent
+   - Access: Private (during development)
+
+2. Real-time testing in Workbench
+   - Send messages to A2A Proxy Endpoint
+   - Verify streaming responses
+   - Measure latency with tracing logs
+
+3. Change to Public after testing
+   - Switch Access Control to Public
+   - Automatically exposed in Hub
+
+4. Use your own agent in Hub
+   - Search and find agent
+   - Utilize in actual work
+```
+
+### Case 2: General User - Agent Search & Usage
+```
+1. Search "code review" in Hub
+   - Check Top-K Semantic Search results
+   - Select most suitable agent
+
+2. Conversation via Interactive Chat
+   - Paste code
+   - View review results immediately via streaming
+
+3. Satisfied with results → Bookmark
+   - Quick reuse next time
+```
+
+### Case 3: Team Leader - Multi-Agent Workflow Composition (Future)
+```
+1. Create "Data Analysis Pipeline" Workflow in Flow
+   - Root Agent: Orchestrator
+   - Sub-Agent 1: Data Fetcher
+   - Sub-Agent 2: Analyzer
+   - Sub-Agent 3: Report Generator
+
+2. Execute Workflow
+   - Root agent automatically coordinates sub-agents
+   - Monitor real-time progress
+
+3. Generate result report
+   - Save entire workflow results
+   - Share with team members
+```
+
+### Case 4: Administrator - Platform Operations
+```
+1. Check overall status in Admin Dashboard
+   - Today's Active Users: 150
+   - Most used Agent: "Code Assistant"
+   - Average response time: 2.3s
+
+2. Add new LLM Model
+   - Register GPT-4o model
+   - Set API Key
+   - Assign to development team first
+
+3. Monitor Agent Health
+   - Detect agents with connection failures
+   - Send alerts to responsible developers
+```
+
+---
+
+## 📚 Project Documentation
+
+### Core Documents
+- **[PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)** - Overall project overview (read this first!)
+- **[PROJECT_INTEGRATED_GUIDE.md](./PROJECT_INTEGRATED_GUIDE.md)** - Detailed integrated guide
+- **[A2A_INTEGRATION_DESIGN.md](./A2A_INTEGRATION_DESIGN.md)** - A2A Universal Proxy design document (must read)
+- **[WSL_DEVELOPMENT_SETUP.md](./WSL_DEVELOPMENT_SETUP.md)** - WSL development environment setup guide
+
+### Framework Support (3 Types)
+
+**1️⃣ A2A Native Frameworks (Direct Call - No Proxy Required) ⭐**
+- **Google ADK**: Native A2A Protocol support
+  - Input: Base URL only (`http://your-server:8080`)
+  - Call: Frontend → Agent A2A Endpoint (Direct)
+  - **No Proxy Required** → Optimal performance
+
+**2️⃣ Well-known Non-A2A Frameworks (Proxy Required) 🔄**
+- **Agno OS**: Standard endpoint pattern, requires protocol conversion
+  - Input: Base URL + Agent ID
+  - Pattern: `{base_url}/agents/{agent_id}/runs`
+  - Call: Frontend → A2A Proxy → Protocol Conversion → Agent
+
+**3️⃣ Custom Frameworks (Proxy Required) 🔧**
+- **Langchain, Custom**: Directly enter full endpoint URL
+  - Input: Full URL (`http://my-server.com/langchain/invoke`)
+  - Call: Frontend → A2A Proxy → Protocol Conversion → Agent
+
+**💡 Note**: Agno OS will transition to A2A Native once A2A support is complete
+
+### Service Development Guides
+Refer to README.md in each service folder for detailed development guides:
+
+- [API Gateway](./repos/api-gateway/README.md) - Port 9050
+- [User Service](./repos/user-service/README.md) - Port 8001
+- [Agent Service](./repos/agent-service/README.md) - Port 8002
+- [Chat Service](./repos/chat-service/README.md) - Port 8003
+- [Tracing Service](./repos/tracing-service/README.md) - Port 8004
+- [Admin Service](./repos/admin-service/README.md) - Port 8005
+- [Worker Service](./repos/worker-service/README.md) - Background Worker
+
+## 🚀 Quick Start
+
+### General Development/Testing (Recommended)
+
+All backend services run in Docker, while only the Frontend runs locally.
+
+```bash
+# 1. Clone project
+git clone --recursive https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
+cd Agent-Platform-Development
+
+# 2. Initial development environment setup (run once)
+./start-dev.sh setup
+
+# 3. Start all services (backend automatically runs in Docker)
+./start-dev.sh full
+
+# 4. Run Frontend locally (separate terminal)
+cd frontend
+npm install
+npm run dev
+
+# 5. Access in browser
+# Frontend: http://localhost:9060
+# API Gateway: http://localhost:9050
+```
+
+### Specific Service Development (Backend Developers)
+
+When you want to debug/develop only a specific service locally:
+
+```bash
+# 1. Start all services
+./start-dev.sh full
+
+# 2. Stop only the service you want to develop
+docker stop a2g-{service-name}
+
+# 3. Run that service locally
+cd repos/{service-name}
+uv venv && source .venv/bin/activate
+uv sync
+uvicorn app.main:app --reload --port {port}
+
+# Example: Developing chat-service
+# docker stop a2g-chat-service
+# cd repos/chat-service
+# uvicorn app.main:app --reload --port 8003
+```
+
+### Development Environment Management Commands
+
+```bash
+# Initial database setup (once at the beginning)
+./start-dev.sh setup
+
+# Update database migrations (after git pull)
+./start-dev.sh update
+
+# Start all services
+./start-dev.sh full
+
+# Start minimal services only (API Gateway + Mock SSO + DB)
+./start-dev.sh minimal
+
+# Start only API Gateway and database
+./start-dev.sh gateway
+
+# Stop all services
+./start-dev.sh stop
+```
+
+## 🏗️ Project Structure
+
+```
+Agent-Platform-Development/
+├── frontend/               # React 19 + TypeScript Frontend
+├── repos/                  # Backend microservices
+│   ├── api-gateway/       # API Gateway
+│   ├── user-service/      # User authentication service
+│   ├── agent-service/     # Agent management service
+│   ├── chat-service/      # Chat service
+│   ├── tracing-service/   # Log tracing service
+│   ├── admin-service/     # Admin service
+│   ├── worker-service/    # Background worker service
+│   ├── infra/            # Docker Compose and infrastructure settings
+│   └── shared/           # Shared libraries
+├── PROJECT_OVERVIEW.md    # Project overview
+├── PROJECT_INTEGRATED_GUIDE.md  # Integrated guide
+├── WSL_DEVELOPMENT_SETUP.md     # WSL setup guide
+└── README.md             # This file
+
+```
+
+## 👥 Team Composition
+
+| Developer | Responsibility | Contact |
+|--------|-----------|-----------|
+| **Han Seungha** | Frontend + Infra | syngha.han@company.com |
+| **Lee Byungju** | Admin/Worker Service | byungju.lee@company.com |
+| **Kim Youngsub** | Chat/Tracing Service | youngsub.kim@company.com |
+| **Ahn Junhyung** | Agent Service | junhyung.ahn@company.com |
+
+## 👥 Team Development Workflow
+
+### After Git Pull
+
+When other team members add database migrations:
+
+```bash
+# 1. Pull code
+git pull origin main
+
+# 2. Automatically update all service migrations
+./start-dev.sh update
+
+# Output example:
+# 🔄 Updating all service databases with latest migrations...
+#
+# 📦 user-service: Checking for migrations...
+#    Current: 001
+#    Running: alembic upgrade head...
+#    ✅ Already up to date (001)
+#
+# 📦 agent-service: Checking for migrations...
+#    Current: 001
+#    Running: alembic upgrade head...
+#    ✅ Updated to: 002
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 Migration Update Summary:
+#    ✅ Success: 2
+#    ⏭️  Skipped: 3
+#    ❌ Failed:  0
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 🎉 All migrations completed successfully!
+```
+
+**⚠️ Warning:**
+- Not running `./start-dev.sh update` will cause DB schema and code mismatches, leading to errors
+- PostgreSQL must be running (run `./start-dev.sh setup` or `full` first)
+
+### Creating New Migrations
+
+When changing schemas, create migrations in the respective service:
+
+```bash
+# 1. Navigate to service directory
+cd repos/agent-service
+
+# 2. Change model (app/core/database.py, etc.)
+
+# 3. Create migration
+alembic revision --autogenerate -m "Add user_preferences table"
+
+# 4. Review generated file
+# alembic/versions/002_add_user_preferences_table.py
+
+# 5. Test locally
+alembic upgrade head
+
+# 6. Commit and push
+git add alembic/versions/002_*.py
+git commit -m "feat: add user_preferences table migration"
+git push
+
+# 7. Notify team members
+# Slack: "Added new migration to agent-service. Please run ./start-dev.sh update after pulling!"
+```
+
+### General Workflow
+
+```bash
+# Starting work every morning
+git pull origin main
+./start-dev.sh update    # Apply new migrations
+./start-dev.sh full      # Start services
+cd frontend && npm run dev
+
+# During work
+# 1. Make code changes
+# 2. Test
+# 3. Commit & push
+
+# When ending work
+./start-dev.sh stop
+```
+
+## 📞 Support
+
+- **GitHub**: https://github.com/A2G-Dev-Space/A2A-Agent-Platform
+
+---
+
+**© 2025 A2A-Agent-Platform Development Team**
