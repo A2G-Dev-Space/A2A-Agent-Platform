@@ -1,13 +1,332 @@
-# 🚀 A2G Agent Platform Development
+# 🚀 A2A-Agent-Platform
 
-AI 에이전트를 개발, 테스트, 배포 및 모니터링할 수 있는 통합 플랫폼
+AI 에이전트를 개발, 테스트, 배포 및 모니터링할 수 있는 통합 A2A (Agent-to-Agent) 플랫폼
+
+## ✨ 주요 특징
+
+- **🔄 Universal A2A Proxy**: 다양한 LLM 프레임워크(Google ADK, Agno OS, Langchain, Custom)를 단일 A2A 프로토콜로 통합
+- **⭐ A2A Native 지원**: Google ADK는 Proxy 없이 직접 A2A endpoint 호출 (최적 성능)
+- **🤖 Well-known Framework 지원**: Agno OS 등 표준 endpoint 패턴 자동 생성
+- **🎯 A2A (Agent-to-Agent) Protocol**: JSON-RPC 2.0 기반 표준 통신
+- **📡 Real-time Streaming**: Server-Sent Events (SSE) 기반 실시간 응답
+- **🎨 3가지 모드**: Workbench (개발), Hub (사용), Flow (워크플로우)
+- **🔐 통합 인증**: SSO + JWT 기반 Access Control (public/private/team)
+
+## 🎯 사용자 경험 (User Journey)
+
+A2A-Agent-Platform은 **3가지 운영 모드**로 AI 에이전트의 전체 라이프사이클을 지원합니다.
+
+### 1️⃣ Workbench Mode: 에이전트 개발 및 테스트 🔧
+
+**목적**: 에이전트를 등록하고, 설정하고, 테스트하는 개발 환경
+
+**주요 기능**:
+
+#### Agent 등록
+- **프레임워크 선택**: Google ADK, Agno OS, Langchain, Custom 중 선택
+- **자동 Endpoint 생성**:
+  - A2A Native (Google ADK): Base URL만 입력 → Agent Card Discovery 자동
+  - Well-known (Agno OS): Base URL + Agent ID 입력 → Endpoint 자동 생성
+  - Custom: 전체 URL 직접 입력
+- **Agent Card 설정**:
+  - 이름, 설명, 버전
+  - 카드 색상 (브랜딩)
+  - Capabilities (streaming, tools, memory 등)
+  - 태그 및 카테고리
+
+#### Agent 구성
+- **Access Control 설정**:
+  - Public: 모든 사용자 접근 가능
+  - Private: 본인만 접근 가능
+  - Team: 특정 팀/부서만 접근 가능
+- **Framework 설정**:
+  - Authentication 정보 (API keys, tokens)
+  - Custom headers 추가
+  - Timeout 설정
+
+#### 실시간 테스트
+- **Dual Endpoint Testing**:
+  - **A2A Proxy Endpoint**: 플랫폼 Proxy를 통한 테스트 (프로덕션과 동일)
+  - **Original Endpoint**: 직접 호출 테스트 (디버깅용)
+- **Interactive Chat Interface**:
+  - 메시지 송수신 테스트
+  - Streaming 응답 확인
+  - Context 유지 확인
+- **Real-time Tracing**:
+  - 요청/응답 로그 실시간 확인
+  - Latency 측정
+  - 에러 디버깅
+
+#### Agent 관리
+- **버전 관리**: Agent 버전별 히스토리
+- **Health Check**: Endpoint 상태 모니터링
+- **Usage Statistics**: 호출 횟수, 평균 응답 시간 등
+
+---
+
+### 2️⃣ Hub Mode: 에이전트 사용 및 협업 🤝
+
+**목적**: 등록된 에이전트를 검색하고, 선택하고, 실제로 사용하는 프로덕션 환경
+
+**주요 기능**:
+
+#### Agent Discovery (검색 및 발견)
+- **Top-K Semantic Search**:
+  - 자연어 쿼리로 Agent 검색
+  - 벡터 기반 의미론적 매칭
+  - OpenAI Embeddings 활용
+  - 예: "데이터 분석을 도와줄 수 있는 에이전트를 찾아줘"
+- **필터링**:
+  - Framework별 필터
+  - 카테고리/태그별 필터
+  - Access Level별 필터 (본인 접근 가능한 것만 표시)
+- **Agent Card 미리보기**:
+  - 이름, 설명, Capabilities
+  - 사용 통계 (인기도, 평점)
+  - Framework 및 버전 정보
+
+#### Interactive Chat
+- **A2A Protocol 기반 대화**:
+  - A2A JS SDK를 통한 표준화된 통신
+  - 모든 Framework 에이전트와 동일한 방식으로 대화
+- **실시간 Streaming**:
+  - Server-Sent Events (SSE) 기반
+  - 타이핑 효과로 응답 표시
+  - 청크 단위로 즉시 렌더링
+- **Context Management**:
+  - 대화 히스토리 유지
+  - Session 기반 Context
+  - Multi-turn Conversation 지원
+- **Rich Content Support**:
+  - 텍스트, 코드, 이미지
+  - Tool 호출 결과 표시
+  - Artifacts 렌더링
+
+#### Agent Collaboration
+- **Multi-Agent Session**:
+  - 하나의 대화에 여러 Agent 참여 (미래 기능)
+  - Agent 간 협업
+- **History & Bookmarks**:
+  - 대화 히스토리 저장
+  - 중요한 대화 북마크
+  - 대화 내보내기 (Export)
+
+#### Usage Analytics
+- **개인 사용 통계**:
+  - Agent별 사용 빈도
+  - 평균 응답 시간
+  - 만족도 피드백
+
+---
+
+### 3️⃣ Flow Mode: Multi-Agent 워크플로우 오케스트레이션 🔀
+
+**목적**: 여러 에이전트를 조합하여 복잡한 워크플로우를 구성하는 고급 기능
+
+**현재 상태**: UI 준비 완료, A2A JS SDK의 RemoteA2aAgent 지원 대기 중
+
+**계획된 기능**:
+
+#### Workflow Design
+- **Visual Flow Builder**:
+  - 드래그 앤 드롭으로 Agent 연결
+  - 조건부 분기 (Conditional Flow)
+  - 병렬 실행 (Parallel Execution)
+- **Sub-Agent 구성**:
+  - Root Agent 정의
+  - Sub-Agent로 등록된 Agent 추가
+  - Agent 간 데이터 전달 설정
+
+#### Orchestration
+- **Intelligent Routing**:
+  - Root Agent가 적절한 Sub-Agent 선택
+  - Context 기반 라우팅
+  - Fallback Agent 지정
+- **State Management**:
+  - 전체 워크플로우 상태 관리
+  - Agent 간 데이터 공유
+  - 중간 결과 저장
+
+#### Execution & Monitoring
+- **실시간 워크플로우 실행**:
+  - 각 Agent 실행 상태 시각화
+  - 실시간 로그 스트리밍
+  - 에러 발생 시 자동 재시도
+- **Workflow History**:
+  - 실행 히스토리 저장
+  - 성공/실패 분석
+  - 병목 구간 식별
+
+---
+
+### 4️⃣ Admin Features: 플랫폼 관리 (관리자 전용) 👨‍💼
+
+**목적**: 플랫폼 전체의 리소스 관리 및 모니터링
+
+**주요 기능**:
+
+#### LLM Model Management
+- **Model Pool 관리**:
+  - 사용 가능한 LLM 모델 등록 (GPT-4, Claude, Gemini 등)
+  - 모델별 API Key 관리
+  - Rate Limit 설정
+- **Model Assignment**:
+  - 팀/사용자별 모델 할당
+  - 사용량 쿼터 관리
+
+#### Platform Statistics
+- **전체 사용 통계**:
+  - 일별/주별/월별 사용량
+  - 가장 인기 있는 Agent Top 10
+  - Framework별 분포
+  - 응답 시간 평균
+- **User Activity**:
+  - Active Users 통계
+  - 팀별 사용량
+  - 비정상 패턴 감지
+
+#### Agent Monitoring
+- **Health Dashboard**:
+  - 모든 Agent의 상태 한눈에 확인
+  - Endpoint 연결 상태
+  - 에러율 모니터링
+- **Performance Metrics**:
+  - Agent별 평균 응답 시간
+  - 성공률/실패율
+  - Timeout 발생 빈도
+
+---
+
+### 5️⃣ Cross-Cutting Features: 모든 모드에서 사용 가능 🌐
+
+#### 통합 인증 (SSO)
+- **싱글 사인온**:
+  - 회사 SSO 계정으로 로그인
+  - JWT 기반 세션 관리
+  - 자동 토큰 갱신
+- **Role-Based Access Control**:
+  - User, Developer, Admin 역할
+  - 역할별 기능 접근 제어
+
+#### Real-time Tracing
+- **모든 요청 추적**:
+  - 요청/응답 로그 실시간 조회
+  - Correlation ID 기반 추적
+  - 에러 스택 트레이스
+- **Debugging Tools**:
+  - 요청 재실행 (Replay)
+  - 응답 비교 (Diff)
+  - 성능 프로파일링
+
+#### Notifications
+- **실시간 알림**:
+  - Agent 상태 변경 알림
+  - 에러 발생 알림 (Slack 연동)
+  - 시스템 점검 공지
+
+---
+
+## 💼 사용 사례 (Use Cases)
+
+### 사례 1: AI 개발자 - Agent 개발 및 배포
+```
+1. Workbench에서 Langchain Agent 등록
+   - Framework: Langchain
+   - Original Endpoint: http://my-server:8080/agent
+   - Access: Private (개발 중)
+
+2. Workbench에서 실시간 테스트
+   - A2A Proxy Endpoint로 메시지 전송
+   - Streaming 응답 확인
+   - Tracing 로그로 Latency 측정
+
+3. 테스트 완료 후 Public으로 변경
+   - Access Control을 Public으로 전환
+   - Hub에 자동으로 노출됨
+
+4. Hub에서 본인의 Agent 사용
+   - 검색하여 Agent 찾기
+   - 실제 업무에 활용
+```
+
+### 사례 2: 일반 사용자 - Agent 검색 및 사용
+```
+1. Hub에서 "코드 리뷰" 검색
+   - Top-K Semantic Search 결과 확인
+   - 가장 적합한 Agent 선택
+
+2. Interactive Chat으로 대화
+   - 코드 붙여넣기
+   - Streaming으로 리뷰 결과 즉시 확인
+
+3. 만족스러운 결과 → 북마크 저장
+   - 다음에 빠르게 재사용
+```
+
+### 사례 3: 팀 리더 - Multi-Agent Workflow 구성 (미래)
+```
+1. Flow에서 "데이터 분석 파이프라인" Workflow 생성
+   - Root Agent: Orchestrator
+   - Sub-Agent 1: Data Fetcher
+   - Sub-Agent 2: Analyzer
+   - Sub-Agent 3: Report Generator
+
+2. Workflow 실행
+   - Root Agent가 자동으로 Sub-Agent 조율
+   - 실시간 진행 상황 확인
+
+3. 결과 리포트 생성
+   - 전체 워크플로우 결과 저장
+   - 팀원들과 공유
+```
+
+### 사례 4: 관리자 - 플랫폼 운영
+```
+1. Admin Dashboard에서 전체 현황 확인
+   - 오늘 Active Users: 150명
+   - 가장 많이 사용된 Agent: "Code Assistant"
+   - 평균 응답 시간: 2.3초
+
+2. 새로운 LLM Model 추가
+   - GPT-4o 모델 등록
+   - API Key 설정
+   - 개발팀에만 우선 할당
+
+3. Agent Health 모니터링
+   - 연결 실패한 Agent 발견
+   - 담당 개발자에게 알림 전송
+```
+
+---
 
 ## 📚 프로젝트 문서
 
 ### 핵심 문서
 - **[PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md)** - 프로젝트 전체 개요 (먼저 읽으세요!)
 - **[PROJECT_INTEGRATED_GUIDE.md](./PROJECT_INTEGRATED_GUIDE.md)** - 상세 통합 가이드
+- **[A2A_INTEGRATION_DESIGN.md](./A2A_INTEGRATION_DESIGN.md)** - A2A Universal Proxy 설계 문서 (필독)
 - **[WSL_DEVELOPMENT_SETUP.md](./WSL_DEVELOPMENT_SETUP.md)** - WSL 개발환경 설정 가이드
+
+### Framework 지원 (3가지 유형)
+
+**1️⃣ A2A Native Frameworks (Direct Call - Proxy 불필요) ⭐**
+- **Google ADK**: A2A Protocol 네이티브 지원
+  - 입력: Base URL만 (`http://your-server:8080`)
+  - 호출: Frontend → Agent A2A Endpoint (Direct)
+  - **Proxy 불필요** → 최적의 성능
+
+**2️⃣ Well-known Non-A2A Frameworks (Proxy 필요) 🔄**
+- **Agno OS**: 표준 endpoint 패턴 보유, 프로토콜 변환 필요
+  - 입력: Base URL + Agent ID
+  - 패턴: `{base_url}/agents/{agent_id}/runs`
+  - 호출: Frontend → A2A Proxy → Protocol 변환 → Agent
+
+**3️⃣ Custom Frameworks (Proxy 필요) 🔧**
+- **Langchain, Custom**: 전체 endpoint URL 직접 입력
+  - 입력: 전체 URL (`http://my-server.com/langchain/invoke`)
+  - 호출: Frontend → A2A Proxy → Protocol 변환 → Agent
+
+**💡 참고**: Agno OS는 향후 A2A 지원 완료 시 A2A Native로 전환 예정
 
 ### 서비스별 개발 가이드
 각 서비스의 상세 개발 가이드는 해당 서비스 폴더의 README.md를 참조하세요:
@@ -211,9 +530,8 @@ cd frontend && npm run dev
 
 ## 📞 지원
 
-- **Slack**: #a2g-platform-dev
-- **GitHub**: https://github.com/A2G-Dev-Space
+- **GitHub**: https://github.com/A2G-Dev-Space/A2A-Agent-Platform
 
 ---
 
-**© 2025 A2G Platform Development Team**
+**© 2025 A2A-Agent-Platform Development Team**

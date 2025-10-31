@@ -1,13 +1,13 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAppStore } from '@/stores/appStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 const GeneralSettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { theme, setTheme } = useAppStore();
+  const { theme, setTheme } = useThemeStore();
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTheme({ ...theme, mode: e.target.value as 'light' | 'dark' | 'system' });
+    setTheme(e.target.value as 'light' | 'dark' | 'system');
   };
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -21,7 +21,7 @@ const GeneralSettingsPage: React.FC = () => {
         <p className="mt-1 text-slate-500 text-sm dark:text-slate-400">{t('settings.general.themeSubtitle')}</p>
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
           {/* Light Theme */}
-          <div className={`flex flex-1 items-center gap-4 rounded-lg border p-4 ${theme.mode === 'light' ? 'border-primary/50 bg-primary/10' : 'border-slate-200/80'}`}>
+          <div className={`flex flex-1 items-center gap-4 rounded-lg border p-4 ${theme === 'light' ? 'border-primary/50 bg-primary/10' : 'border-slate-200/80'}`}>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10">
               <span className="material-symbols-outlined text-slate-700 dark:text-slate-300">light_mode</span>
             </div>
@@ -29,10 +29,10 @@ const GeneralSettingsPage: React.FC = () => {
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.general.lightTheme')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('settings.general.lightThemeDesc')}</p>
             </div>
-            <input type="radio" name="theme-option" value="light" checked={theme.mode === 'light'} onChange={handleThemeChange} className="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700" />
+            <input type="radio" name="theme-option" value="light" checked={theme === 'light'} onChange={handleThemeChange} className="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700" />
           </div>
           {/* Dark Theme */}
-          <div className={`flex flex-1 items-center gap-4 rounded-lg border p-4 ${theme.mode === 'dark' ? 'border-primary/50 bg-primary/10' : 'border-slate-200/80'}`}>
+          <div className={`flex flex-1 items-center gap-4 rounded-lg border p-4 ${theme === 'dark' ? 'border-primary/50 bg-primary/10' : 'border-slate-200/80'}`}>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10">
               <span className="material-symbols-outlined text-slate-700 dark:text-slate-300">dark_mode</span>
             </div>
@@ -40,7 +40,7 @@ const GeneralSettingsPage: React.FC = () => {
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.general.darkTheme')}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('settings.general.darkThemeDesc')}</p>
             </div>
-            <input type="radio" name="theme-option" value="dark" checked={theme.mode === 'dark'} onChange={handleThemeChange} className="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700" />
+            <input type="radio" name="theme-option" value="dark" checked={theme === 'dark'} onChange={handleThemeChange} className="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700" />
           </div>
         </div>
       </section>

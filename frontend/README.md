@@ -277,27 +277,593 @@ export function AgentCard({ agent, mode }: AgentCardProps) {
 ```
 
 #### AddAgentModal
+
+**Well-known vs Custom Framework 선택 로직 포함**
+
 ```tsx
 // src/components/agent/AddAgentModal.tsx
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+
+type Framework = 'Google ADK' | 'Agno OS' | 'Langchain' | 'Custom';
+
+interface FrameworkConfig {
+  name: Framework;
+  label: string;
+  type: 'a2a_native' | 'well_known' | 'custom';  // 3가지 유형 구분
+  endpointPattern?: string;
+  a2aEndpointPattern?: string;
+  requiresProxy: boolean;
+  requiresAgentId: boolean;
+}
+
+// 1. A2A Native Frameworks (Direct A2A Call - Proxy 불필요)
+const A2A_NATIVE_FRAMEWORKS: FrameworkConfig[] = [
+  {
+    name: 'Google ADK',
+    label: 'Google ADK (A2A Native)',
+    type: 'a2a_native',
+    endpointPattern: '{base_url}',  // Original endpoint pattern
+    a2aEndpointPattern: '{base_url}/.well-known/agent-card.json',  // A2A discovery
+    requiresProxy: false,  // Proxy 불필요!
+    requiresAgentId: true
+  }
+];
+
+// 2. Well-known Non-A2A Frameworks (Proxy 필요)
+const WELL_KNOWN_FRAMEWORKS: FrameworkConfig[] = [
+  {
+    name: 'Agno OS',
+    label: 'Agno OS (Well-known)',
+    type: 'well_known',
+    endpointPattern: '{base_url}/agents/{agent_id}/runs',
+    requiresProxy: true,  // Proxy 필요
+    requiresAgentId: true
+  }
+];
+
+// 3. Custom Frameworks (Proxy 필요)
+const CUSTOM_FRAMEWORKS: FrameworkConfig[] = [
+  {
+    name: 'Langchain',
+    label: 'Langchain',
+    type: 'custom',
+    requiresProxy: true,
+    requiresAgentId: false
+  },
+  {
+    name: 'Custom',
+    label: 'Custom (A2A-compliant)',
+    type: 'custom',
+    requiresProxy: true,
+    requiresAgentId: false
+  }
+];
+
+// 전체 프레임워크 목록
+const ALL_FRAMEWORKS = [
+  ...A2A_NATIVE_FRAMEWORKS,
+  ...WELL_KNOWN_FRAMEWORKS,
+  ...CUSTOM_FRAMEWORKS
+];
+
 export function AddAgentModal({ isOpen, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    framework: 'Agno',
-    card_color: '#E9D5FF'
+    framework: 'Google ADK' as Framework,  // 기본값: A2A Native
+    card_color: '#E9D5FF',
+    // A2A Native / Well-known framework fields
+    base_url: '',
+    agent_id: '',
+    // Custom framework fields
+    original_endpoint: ''
   });
 
+  // 현재 선택된 framework 정보
+  const currentFramework = ALL_FRAMEWORKS.find(f => f.name === formData.framework);
+  const isA2ANative = currentFramework?.type === 'a2a_native';
+  const isWellKnown = currentFramework?.type === 'well_known';
+  const isCustom = currentFramework?.type === 'custom';
+
+  const handleSubmit = () => {
+    let requestData: any = {
+      title: formData.title,
+      description: formData.description,
+      framework: formData.framework,
+      card_color: formData.card_color
+    };
+
+    if (isA2ANative && currentFramework) {
+      // A2A Native: Agent Card Discovery endpoint 생성
+      const a2aEndpoint = currentFramework.a2aEndpointPattern!
+        .replace('{base_url}', formData.base_url);
+
+      requestData.a2a_endpoint = a2aEndpoint;  // A2A Discovery endpoint
+      requestData.base_url = formData.base_url;
+      requestData.agent_id = formData.agent_id;
+      requestData.requires_proxy = false;  // Proxy 불필요!
+    } else if (isWellKnown && currentFramework) {
+      // Well-known: 자동 endpoint 생성 (Proxy 필요)
+      const generatedEndpoint = currentFramework.endpointPattern!
+        .replace('{base_url}', formData.base_url)
+        .replace('{agent_id}', formData.agent_id);
+
+      requestData.original_endpoint = generatedEndpoint;
+      requestData.base_url = formData.base_url;
+      requestData.agent_id = formData.agent_id;
+      requestData.requires_proxy = true;  // Proxy 필요
+    } else if (isCustom) {
+      // Custom: 사용자가 입력한 전체 URL (Proxy 필요)
+      requestData.original_endpoint = formData.original_endpoint;
+      requestData.requires_proxy = true;  // Proxy 필요
+    }
+
+    onSubmit(requestData);
+  };
+
   return (
-    <motion.div>
-      {/* 모달 컨텐츠 */}
-      <input placeholder="Agent 이름" />
-      <textarea placeholder="설명" />
-      <select>{/* 프레임워크 */}</select>
-      <button onClick={() => onSubmit(formData)}>생성</button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="modal-overlay"
+    >
+      <div className="modal-content">
+        <h2>새 에이전트 등록</h2>
+
+        {/* 기본 정보 */}
+        <input
+          placeholder="Agent 이름"
+          value={formData.title}
+          onChange={e => setFormData({ ...formData, title: e.target.value })}
+        />
+        <textarea
+          placeholder="설명"
+          value={formData.description}
+          onChange={e => setFormData({ ...formData, description: e.target.value })}
+        />
+
+        {/* Framework 선택 */}
+        <label>Framework</label>
+        <select
+          value={formData.framework}
+          onChange={e => setFormData({
+            ...formData,
+            framework: e.target.value as Framework
+          })}
+        >
+          <optgroup label="Well-known Frameworks">
+            {WELL_KNOWN_FRAMEWORKS.map(f => (
+              <option key={f.name} value={f.name}>
+                {f.label} (자동 endpoint 생성)
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Custom Frameworks">
+            {CUSTOM_FRAMEWORKS.map(f => (
+              <option key={f} value={f}>
+                {f} (수동 endpoint 입력)
+              </option>
+            ))}
+          </optgroup>
+        </select>
+
+        {/* Well-known Framework 입력 필드 */}
+        {isWellKnown && wellKnownInfo && (
+          <div className="well-known-fields">
+            <label>Base URL</label>
+            <input
+              placeholder="http://localhost:7777"
+              value={formData.base_url}
+              onChange={e => setFormData({ ...formData, base_url: e.target.value })}
+            />
+
+            {wellKnownInfo.requiresAgentId && (
+              <>
+                <label>Agent ID</label>
+                <input
+                  placeholder="my-agent-123"
+                  value={formData.agent_id}
+                  onChange={e => setFormData({ ...formData, agent_id: e.target.value })}
+                />
+              </>
+            )}
+
+            {/* 자동 생성 endpoint 미리보기 */}
+            {formData.base_url && formData.agent_id && (
+              <div className="endpoint-preview">
+                <label>생성될 Endpoint (자동)</label>
+                <code>
+                  {wellKnownInfo.endpointPattern
+                    .replace('{base_url}', formData.base_url)
+                    .replace('{agent_id}', formData.agent_id)}
+                </code>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Custom Framework 입력 필드 */}
+        {!isWellKnown && (
+          <div className="custom-fields">
+            <label>Endpoint URL</label>
+            <input
+              placeholder="http://my-server.com/api/v1/chat"
+              value={formData.original_endpoint}
+              onChange={e => setFormData({ ...formData, original_endpoint: e.target.value })}
+            />
+            <p className="text-sm text-gray-500">
+              전체 endpoint URL을 입력하세요
+            </p>
+          </div>
+        )}
+
+        {/* 제출 버튼 */}
+        <div className="modal-actions">
+          <button onClick={onClose}>취소</button>
+          <button onClick={handleSubmit}>생성</button>
+        </div>
+      </div>
     </motion.div>
   );
 }
 ```
+
+### Workbench Playground Component
+
+**Endpoint 모드 선택 및 Streaming 지원**
+
+Workbench Playground는 에이전트를 실시간으로 테스트할 수 있는 인터페이스입니다. **A2A Proxy Endpoint**와 **Direct Original Endpoint** 양쪽을 선택하여 테스트할 수 있으며, **Streaming 응답**을 완벽 지원합니다.
+
+```tsx
+// src/pages/Workbench/PlaygroundPage.tsx
+import { useState, useRef, useEffect } from 'react';
+import api from '@/services/api';
+
+type EndpointMode = 'proxy' | 'direct';
+type StreamingMode = 'blocking' | 'streaming';
+
+interface Agent {
+  id: number;
+  title: string;
+  framework: string;
+  original_endpoint: string;
+}
+
+export function PlaygroundPage({ agent }: { agent: Agent }) {
+  const [mode, setMode] = useState<EndpointMode>('proxy');
+  const [streamingMode, setStreamingMode] = useState<StreamingMode>('streaming');
+  const [message, setMessage] = useState('');
+  const [response, setResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Endpoint URL 결정
+  const getEndpointUrl = () => {
+    if (mode === 'proxy') {
+      return `/api/a2a/proxy/${agent.id}/tasks/send`;
+    } else {
+      return agent.original_endpoint;
+    }
+  };
+
+  // A2A 프로토콜 요청 생성 (Proxy 모드)
+  const buildA2ARequest = (messageText: string) => {
+    return {
+      jsonrpc: "2.0",
+      method: "sendMessage",
+      params: {
+        message: {
+          messageId: `msg-${Date.now()}`,
+          role: "user",
+          parts: [
+            {
+              kind: "text",
+              text: messageText
+            }
+          ],
+          kind: "message",
+          contextId: `ctx-${Date.now()}`,
+          taskId: `task-${Date.now()}`
+        },
+        configuration: {
+          blocking: streamingMode === 'blocking',  // false = streaming
+          acceptedOutputModes: ["text/plain"]
+        }
+      },
+      id: `request-${Date.now()}`
+    };
+  };
+
+  // Framework 네이티브 요청 생성 (Direct 모드)
+  const buildNativeRequest = (messageText: string) => {
+    switch (agent.framework) {
+      case 'Agno':
+        return {
+          input: messageText,
+          session_id: `session-${Date.now()}`,
+          stream: streamingMode === 'streaming'
+        };
+      case 'Langchain':
+        return {
+          input: { question: messageText },
+          config: { metadata: { session_id: `session-${Date.now()}` } }
+        };
+      default:
+        // Custom: A2A 프로토콜 사용
+        return buildA2ARequest(messageText);
+    }
+  };
+
+  // Blocking 모드: 전체 응답 한 번에 받기
+  const sendBlockingMessage = async () => {
+    setIsLoading(true);
+    setResponse('');
+
+    try {
+      const endpoint = getEndpointUrl();
+      const requestBody = mode === 'proxy'
+        ? buildA2ARequest(message)
+        : buildNativeRequest(message);
+
+      const res = await api.post(endpoint, requestBody);
+
+      // A2A 응답 파싱 (Proxy 모드)
+      if (mode === 'proxy') {
+        const result = res.data.result;
+        const text = result.parts
+          .filter((p: any) => p.kind === 'text')
+          .map((p: any) => p.text)
+          .join('');
+        setResponse(text);
+      } else {
+        // Framework 네이티브 응답 파싱
+        if (agent.framework === 'Agno') {
+          setResponse(res.data.output || JSON.stringify(res.data));
+        } else if (agent.framework === 'Langchain') {
+          setResponse(res.data.output || JSON.stringify(res.data));
+        } else {
+          setResponse(JSON.stringify(res.data, null, 2));
+        }
+      }
+    } catch (error: any) {
+      setResponse(`Error: ${error.message}\n${JSON.stringify(error.response?.data, null, 2)}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Streaming 모드: Server-Sent Events (SSE)로 청크 단위 수신
+  const sendStreamingMessage = async () => {
+    setIsLoading(true);
+    setResponse('');
+
+    // Abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const endpoint = getEndpointUrl();
+      const requestBody = mode === 'proxy'
+        ? buildA2ARequest(message)
+        : buildNativeRequest(message);
+
+      const res = await fetch(`${api.defaults.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify(requestBody),
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      }
+
+      // SSE 스트림 읽기
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // 청크를 텍스트로 디코딩
+        buffer += decoder.decode(value, { stream: true });
+
+        // 줄 단위로 분리
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';  // 마지막 불완전한 줄은 buffer에 보관
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data: ')) continue;
+
+          const data = line.slice(6);  // "data: " 제거
+
+          // [DONE] 신호
+          if (data.trim() === '[DONE]') {
+            setIsLoading(false);
+            return;
+          }
+
+          try {
+            const chunk = JSON.parse(data);
+
+            // A2A 프로토콜 응답 파싱 (Proxy 모드)
+            if (mode === 'proxy') {
+              const result = chunk.result;
+              if (result && result.parts) {
+                const text = result.parts
+                  .filter((p: any) => p.kind === 'text')
+                  .map((p: any) => p.text)
+                  .join('');
+
+                // 응답에 청크 추가 (누적)
+                setResponse(prev => prev + text);
+              }
+            } else {
+              // Framework 네이티브 스트리밍 응답
+              if (agent.framework === 'Agno') {
+                const output = chunk.output || '';
+                setResponse(prev => prev + output);
+                if (chunk.done) {
+                  setIsLoading(false);
+                  return;
+                }
+              } else if (agent.framework === 'Langchain') {
+                const output = chunk.output || '';
+                setResponse(prev => prev + output);
+              } else {
+                // Custom: A2A 스트리밍
+                const result = chunk.result;
+                if (result && result.parts) {
+                  const text = result.parts
+                    .filter((p: any) => p.kind === 'text')
+                    .map((p: any) => p.text)
+                    .join('');
+                  setResponse(prev => prev + text);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse chunk:', data, e);
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        setResponse(prev => prev + '\n\n[중단됨]');
+      } else {
+        setResponse(`Error: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 메시지 전송
+  const handleSend = () => {
+    if (!message.trim() || isLoading) return;
+
+    if (streamingMode === 'blocking') {
+      sendBlockingMessage();
+    } else {
+      sendStreamingMessage();
+    }
+  };
+
+  // Streaming 중단
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="playground-container">
+      <div className="playground-header">
+        <h2>Playground: {agent.title}</h2>
+
+        {/* Endpoint 모드 선택 */}
+        <div className="endpoint-selector">
+          <label>Endpoint 모드</label>
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as EndpointMode)}
+            disabled={isLoading}
+          >
+            <option value="proxy">A2A Proxy (통합 endpoint)</option>
+            <option value="direct">Direct (원본 endpoint)</option>
+          </select>
+          <span className="text-sm text-gray-500">
+            {mode === 'proxy'
+              ? `URL: /api/a2a/proxy/${agent.id}/tasks/send`
+              : `URL: ${agent.original_endpoint}`
+            }
+          </span>
+        </div>
+
+        {/* Streaming 모드 선택 */}
+        <div className="streaming-selector">
+          <label>응답 모드</label>
+          <div className="radio-group">
+            <label>
+              <input
+                type="radio"
+                value="streaming"
+                checked={streamingMode === 'streaming'}
+                onChange={e => setStreamingMode(e.target.value as StreamingMode)}
+                disabled={isLoading}
+              />
+              Streaming (실시간)
+            </label>
+            <label>
+              <input
+                type="radio"
+                value="blocking"
+                checked={streamingMode === 'blocking'}
+                onChange={e => setStreamingMode(e.target.value as StreamingMode)}
+                disabled={isLoading}
+              />
+              Blocking (전체 응답)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* 메시지 입력 */}
+      <div className="chat-input">
+        <textarea
+          placeholder="메시지를 입력하세요..."
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          disabled={isLoading}
+          rows={4}
+        />
+        <div className="chat-actions">
+          {isLoading ? (
+            <button onClick={handleStop} className="btn-stop">
+              중단
+            </button>
+          ) : (
+            <button onClick={handleSend} className="btn-send">
+              전송
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 응답 출력 */}
+      <div className="chat-response">
+        <h3>응답</h3>
+        <pre className="response-content">
+          {response || (isLoading ? '응답을 기다리는 중...' : '여기에 응답이 표시됩니다')}
+        </pre>
+      </div>
+    </div>
+  );
+}
+```
+
+**주요 기능:**
+
+1. **Endpoint 모드 전환**
+   - Proxy 모드: A2A 표준 프로토콜 사용
+   - Direct 모드: Framework 네이티브 프로토콜 사용
+
+2. **Streaming 지원**
+   - SSE (Server-Sent Events) 기반
+   - 실시간 청크 수신 및 화면 업데이트
+   - 중단(abort) 기능
+
+3. **Framework 별 프로토콜 변환**
+   - Agno OS: `input`, `session_id`, `stream`
+   - Langchain: `input.question`, `config`
+   - Custom: A2A 프로토콜
 
 ---
 
@@ -351,9 +917,163 @@ export const useAgentStore = create<AgentState>((set) => ({
 - **`http://localhost:9050/api/auth/**` -> `user-service`
 - **`http://localhost:9050/api/users/**` -> `user-service`
 - **`http://localhost:9050/api/agents/**` -> `agent-service`
+- **`http://localhost:9050/api/a2a/proxy/**` -> `agent-service` (A2A Universal Proxy)
 - **`http://localhost:9050/api/admin/**` -> `admin-service`
 
 따라서 Frontend에서 API를 호출할 때는 전체 경로(예: `/api/users/me`)를 사용해야 합니다.
+
+### A2A Universal Proxy 통합
+
+Agent Service는 **A2A Universal Proxy**를 제공하여 다양한 프레임워크로 개발된 에이전트들을 표준화된 A2A 프로토콜로 통신할 수 있게 합니다.
+
+#### Framework 분류 체계
+
+에이전트 등록 시 Framework 종류에 따라 **3가지 방식**으로 처리됩니다:
+
+**1. A2A Native Frameworks (Direct A2A Call - Proxy 불필요) ⭐**
+
+A2A Protocol을 네이티브로 지원하는 프레임워크입니다. **Proxy를 거치지 않고** 직접 A2A endpoint를 호출할 수 있습니다.
+
+| Framework | Base URL 예시 | A2A Endpoint 패턴 | Proxy 필요? |
+|-----------|---------------|------------------|------------|
+| **Google ADK** | `http://localhost:8080` | `{base_url}/.well-known/agent-card.json` | ❌ 불필요 (Direct Call) |
+| **Agno OS** (미래) | `http://localhost:7777` | `{base_url}/.well-known/agent-card.json` | ❌ 불필요 (A2A 지원 완료 시) |
+
+**예시: Google ADK 에이전트 등록**
+```typescript
+// 사용자 입력
+const agentData = {
+  title: "My ADK Agent",
+  framework: "Google ADK",
+  base_url: "http://localhost:8080",  // base URL만 입력
+  agent_id: "my-adk-agent"
+};
+
+// 시스템 동작
+// 1. Agent Card Discovery: http://localhost:8080/.well-known/agent-card.json
+// 2. Direct A2A Call: Frontend → Agent Endpoint (Proxy 불필요!)
+// 3. 플랫폼 등록: 메타데이터 및 검색용으로만 저장
+```
+
+**⚠️ 중요**: Google ADK는 A2A를 네이티브로 지원하므로 **플랫폼 proxy를 거치지 않고** 직접 호출합니다. 플랫폼은 Agent Card 메타데이터와 검색을 위해서만 등록 정보를 저장합니다.
+
+**2. Well-known Non-A2A Frameworks (Proxy 필요) 🔄**
+
+표준 endpoint 패턴을 가지지만 A2A를 네이티브로 지원하지 않는 프레임워크입니다. **Proxy를 통한 프로토콜 변환**이 필요합니다.
+
+| Framework | Base URL 예시 | 원본 Endpoint 패턴 | Proxy 필요? |
+|-----------|---------------|-------------------|------------|
+| **Agno OS** (현재) | `http://localhost:7777` | `{base_url}/agents/{agent_id}/runs` | ✅ 필요 (프로토콜 변환) |
+
+**예시: Agno OS 에이전트 등록**
+```typescript
+// 사용자 입력
+const agentData = {
+  title: "My Agno Agent",
+  framework: "Agno OS",
+  base_url: "http://localhost:7777",
+  agent_id: "my-agent-123"
+};
+
+// 시스템 동작
+// 1. 원본 endpoint 생성: http://localhost:7777/agents/my-agent-123/runs
+// 2. Proxy endpoint 생성: /api/a2a/proxy/{db_agent_id}/tasks/send
+// 3. Frontend → A2A Proxy → Agno Adapter → Agno Endpoint
+//    (A2A Protocol → Agno 프로토콜 변환)
+```
+
+**📝 참고**: Agno OS가 향후 A2A를 네이티브로 지원하면 **Google ADK와 동일한 방식**으로 직접 호출할 수 있게 됩니다.
+
+**3. Custom Frameworks (Proxy 필요) 🔄**
+
+표준 패턴이 없는 프레임워크입니다. 사용자는 **전체 endpoint URL**을 입력하고, **Proxy를 통한 변환**이 필요합니다.
+
+| Framework | Endpoint 입력 방식 | Proxy 필요? |
+|-----------|------------------|------------|
+| **Langchain** | 전체 URL (예: `http://my-server.com/langchain/invoke`) | ✅ 필요 |
+| **Custom** | 전체 URL (예: `http://my-custom-agent.com/api/v1/chat`) | ✅ 필요 |
+
+**예시: Custom 에이전트 등록**
+```typescript
+// 사용자 입력
+const agentData = {
+  title: "My Custom Agent",
+  framework: "Custom",
+  original_endpoint: "http://my-server.com/api/v1/chat"  // 전체 URL 입력
+};
+
+// 시스템 동작
+// 1. Proxy endpoint 생성: /api/a2a/proxy/{db_agent_id}/tasks/send
+// 2. Frontend → A2A Proxy → Custom Adapter → Custom Endpoint
+```
+
+#### Endpoint 호출 방식
+
+Workbench Playground에서는 Framework 유형에 따라 **다른 방식**으로 테스트할 수 있습니다:
+
+**1. A2A Native Frameworks (Google ADK)**
+
+```typescript
+// Google ADK는 Direct A2A Call 지원
+const modes = [
+  {
+    name: 'A2A Direct',
+    url: agent.a2a_endpoint,  // http://localhost:8080 (Agent Card Discovery)
+    description: 'A2A 네이티브 직접 호출 (권장)'
+  },
+  {
+    name: 'Original Endpoint',
+    url: agent.original_endpoint,  // Framework 고유 프로토콜
+    description: '프레임워크 네이티브 테스트'
+  }
+];
+```
+
+**2. Well-known Non-A2A Frameworks (Agno OS)**
+
+```typescript
+// Agno OS는 Proxy를 통한 변환 필요
+const modes = [
+  {
+    name: 'A2A Proxy',
+    url: `/api/a2a/proxy/${agent.id}/tasks/send`,
+    description: 'A2A 표준 프로토콜 (권장)'
+  },
+  {
+    name: 'Direct Original',
+    url: agent.original_endpoint,  // http://localhost:7777/agents/my-agent/runs
+    description: 'Agno 네이티브 프로토콜 테스트'
+  }
+];
+```
+
+**3. Custom Frameworks (Langchain, Custom)**
+
+```typescript
+// Custom은 Proxy를 통한 변환 필요
+const modes = [
+  {
+    name: 'A2A Proxy',
+    url: `/api/a2a/proxy/${agent.id}/tasks/send`,
+    description: 'A2A 표준 프로토콜 (권장)'
+  },
+  {
+    name: 'Direct Original',
+    url: agent.original_endpoint,  // http://my-server.com/api/v1/chat
+    description: '원본 endpoint 직접 테스트'
+  }
+];
+```
+
+**호출 방식 비교:**
+
+| Framework | A2A 지원 | 권장 호출 방식 | Proxy 필요? | Access Control | Monitoring |
+|-----------|---------|--------------|------------|----------------|-----------|
+| **Google ADK** | ✅ Native | Direct A2A | ❌ 불필요 | Agent 자체 처리 | Agent 자체 처리 |
+| **Agno OS** (현재) | ❌ | A2A Proxy | ✅ 필요 | 플랫폼 처리 | 플랫폼 처리 |
+| **Agno OS** (미래) | ✅ Native | Direct A2A | ❌ 불필요 | Agent 자체 처리 | Agent 자체 처리 |
+| **Langchain** | ❌ | A2A Proxy | ✅ 필요 | 플랫폼 처리 | 플랫폼 처리 |
+| **Custom** | ❌ | A2A Proxy | ✅ 필요 | 플랫폼 처리 | 플랫폼 처리 |
 
 ### API 서비스 (`api.ts`)
 
@@ -444,16 +1164,164 @@ import api from './api';
 export const agentService = {
   // 에이전트 목록 조회
   getAgents: (filters) => api.get('/api/agents/', { params: filters }),
-  
+
   // ID로 단일 에이전트 조회
   getAgentById: (id) => api.get(`/api/agents/${id}/`),
-  
+
   // 쿼리로 에이전트 검색 (추천)
   searchAgents: (query) => api.post('/api/agents/search', { query }),
-  
+
   // 새 에이전트 생성
   createAgent: (data) => api.post('/api/agents/', data),
+
+  // 에이전트 업데이트
+  updateAgent: (id, data) => api.put(`/api/agents/${id}/`, data),
+
+  // 에이전트 삭제
+  deleteAgent: (id) => api.delete(`/api/agents/${id}/`),
+
+  // ===== A2A Universal Proxy API =====
+
+  /**
+   * A2A Proxy를 통해 에이전트에게 메시지 전송 (Blocking 모드)
+   * @param agentId - DB에 등록된 에이전트 ID
+   * @param message - 전송할 메시지
+   * @param config - A2A 설정
+   */
+  sendMessageViaProxy: (agentId: number, message: string, config?: any) => {
+    const request = {
+      jsonrpc: "2.0",
+      method: "sendMessage",
+      params: {
+        message: {
+          messageId: `msg-${Date.now()}`,
+          role: "user",
+          parts: [{ kind: "text", text: message }],
+          kind: "message",
+          contextId: `ctx-${Date.now()}`,
+          taskId: `task-${Date.now()}`
+        },
+        configuration: {
+          blocking: true,  // Blocking 모드
+          acceptedOutputModes: ["text/plain"],
+          ...config
+        }
+      },
+      id: `request-${Date.now()}`
+    };
+
+    return api.post(`/api/a2a/proxy/${agentId}/tasks/send`, request);
+  },
+
+  /**
+   * A2A Proxy를 통해 에이전트에게 메시지 전송 (Streaming 모드)
+   * SSE를 사용하므로 fetch API로 직접 호출해야 함
+   * @param agentId - DB에 등록된 에이전트 ID
+   * @param message - 전송할 메시지
+   * @param onChunk - 청크 수신 시 호출될 콜백
+   */
+  streamMessageViaProxy: async (
+    agentId: number,
+    message: string,
+    onChunk: (text: string) => void,
+    signal?: AbortSignal
+  ) => {
+    const request = {
+      jsonrpc: "2.0",
+      method: "sendMessage",
+      params: {
+        message: {
+          messageId: `msg-${Date.now()}`,
+          role: "user",
+          parts: [{ kind: "text", text: message }],
+          kind: "message",
+          contextId: `ctx-${Date.now()}`,
+          taskId: `task-${Date.now()}`
+        },
+        configuration: {
+          blocking: false,  // Streaming 모드
+          acceptedOutputModes: ["text/plain"]
+        }
+      },
+      id: `request-${Date.now()}`
+    };
+
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(
+      `${api.defaults.baseURL}/api/a2a/proxy/${agentId}/tasks/send`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(request),
+        signal
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    // SSE 스트림 파싱
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim() || !line.startsWith('data: ')) continue;
+
+        const data = line.slice(6);
+        if (data.trim() === '[DONE]') return;
+
+        try {
+          const chunk = JSON.parse(data);
+          const result = chunk.result;
+          if (result && result.parts) {
+            const text = result.parts
+              .filter((p: any) => p.kind === 'text')
+              .map((p: any) => p.text)
+              .join('');
+            if (text) onChunk(text);
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE chunk:', e);
+        }
+      }
+    }
+  }
 };
+```
+
+**사용 예시:**
+
+```typescript
+// Blocking 모드 (전체 응답 한 번에 수신)
+const response = await agentService.sendMessageViaProxy(agentId, "안녕하세요");
+const text = response.data.result.parts
+  .filter(p => p.kind === 'text')
+  .map(p => p.text)
+  .join('');
+console.log(text);
+
+// Streaming 모드 (실시간 청크 수신)
+await agentService.streamMessageViaProxy(
+  agentId,
+  "안녕하세요",
+  (chunk) => {
+    console.log('Received chunk:', chunk);
+    setResponse(prev => prev + chunk);
+  }
+);
 ```
 
 ### React Query 사용
