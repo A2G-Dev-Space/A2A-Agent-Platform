@@ -10,7 +10,6 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.database import init_db
 from app.api.v1 import llm_models, statistics
 
 # Configure logging
@@ -22,11 +21,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
     logger.info("Starting Admin Service...")
-    await init_db()
+    # NOTE: Database tables are created by Alembic migrations, not by ORM
+    # Removed init_db() call to prevent schema conflicts with migrations
     logger.info("Admin Service started successfully")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Admin Service...")
 
