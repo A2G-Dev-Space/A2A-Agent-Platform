@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column('allowed_users', sa.JSON(), nullable=True),
 
         # Health and metadata
-        sa.Column('health_status', sa.Enum('healthy', 'unhealthy', 'unknown', name='healthstatus'), nullable=False),
+        sa.Column('health_status', sa.Enum('HEALTHY', 'UNHEALTHY', 'UNKNOWN', name='healthstatus'), nullable=False),
         sa.Column('last_health_check', sa.DateTime(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),

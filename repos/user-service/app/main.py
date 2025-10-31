@@ -10,7 +10,6 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.database import init_db
 from app.api.v1 import auth, users, admin, v1_users
 from app.core.security import get_current_user
 
@@ -23,11 +22,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
     logger.info("Starting User Service...")
-    await init_db()
+    # NOTE: Database tables are created by Alembic migrations, not by ORM
+    # Removed init_db() call to prevent schema conflicts with migrations
     logger.info("User Service started successfully")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down User Service...")
 
