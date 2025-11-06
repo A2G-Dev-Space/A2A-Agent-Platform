@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - User Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            font-size: 24px;}
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex min-h-screen">
+<aside class="w-64 flex-shrink-0 bg-white/5 dark:bg-black/20 p-4 flex flex-col justify-between">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="A2G Platform logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBBR8UYgFR5N2tGlhxZ485GNhg9hLEmNcCcjkri4PCVkFkXHIqhJrPlJWKV6nOGhbCNY0XL0JKFRLbQXoLDcPoa8pbV9nSqQPDXhPbJ0aHI5tNC1iPH9PUksP9o5fnCh4Bq16oEMqgZaBX5fgKqLu-hKAWLJkEfIwE4_geaO23mo7FF00CsVj_do_NXr5ed4ft_eMz55UWoE-9cRydCflnb0w7Q0t42PlEwyP4DxPnDr3qDvaTrCHF8x31JvsuP0Gj3MpTmIsmscKAG");'></div>
+<div class="flex flex-col">
+<h1 class="text-gray-900 dark:text-white text-base font-medium leading-normal">A2G Platform</h1>
+<p class="text-gray-500 dark:text-[#ab9abc] text-sm font-normal leading-normal">Agent Management</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined">code</span>
+<p class="text-sm font-medium leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined">apps</span>
+<p class="text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined">timeline</span>
+<p class="text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+</div>
+</aside>
+<main class="flex-1 p-8 overflow-y-auto">
+<div class="max-w-7xl mx-auto">
+<div class="flex justify-end items-center mb-6">
+<button class="flex items-center justify-center size-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">account_circle</span>
+</button>
+</div>
+<div class="flex min-w-72 flex-col gap-3 mb-6">
+<h1 class="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Settings</h1>
+<p class="text-gray-500 dark:text-[#ab9abc] text-base font-normal leading-normal">Manage your account and platform settings.</p>
+</div>
+<div class="pb-3 mb-6">
+<div class="flex border-b border-gray-200 dark:border-[#483956] gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-[#ab9abc] pb-[13px] pt-4 hover:text-gray-700 dark:hover:text-gray-200" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">General</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-[#ab9abc] pb-[13px] pt-4 hover:text-gray-700 dark:hover:text-gray-200" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">API Key</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-gray-900 dark:text-white pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">User Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-[#ab9abc] pb-[13px] pt-4 hover:text-gray-700 dark:hover:text-gray-200" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">LLM Model Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-[#ab9abc] pb-[13px] pt-4 hover:text-gray-700 dark:hover:text-gray-200" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">Statistics</p>
+</a>
+</div>
+</div>
+<div class="flex justify-end items-center mb-4">
+<button class="flex items-center justify-center h-10 px-4 rounded-lg bg-primary/80 dark:bg-primary/90 text-gray-900 text-sm font-bold hover:bg-primary dark:hover:bg-primary">
+        Invite User
+    </button>
+</div>
+<div class="mt-4 @container">
+<div class="overflow-hidden rounded-xl border border-gray-200 dark:border-[#483956] bg-white dark:bg-[#211b28]/50">
+<table class="min-w-full">
+<thead class="bg-gray-50 dark:bg-[#211b28]">
+<tr>
+<th class="w-12 px-4 py-3 text-left">
+<input class="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary dark:text-[#ebd6ff] checked:bg-primary dark:checked:bg-[#ebd6ff] checked:border-primary dark:checked:border-[#ebd6ff] focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+</th>
+<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">User</th>
+<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Department</th>
+<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Role</th>
+<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-gray-200 dark:divide-[#483956]">
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-4 py-3">
+<input class="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary dark:text-[#ebd6ff] checked:bg-primary dark:checked:bg-[#ebd6ff] checked:border-primary dark:checked:border-[#ebd6ff] focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-4 py-3 whitespace-nowrap">
+<div>
+<p class="text-sm font-medium text-gray-900 dark:text-white">Olivia Rhye</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">olivia@a2g.com</p>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Engineering</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-purple-800 dark:bg-primary/30 dark:text-primary">Admin</span>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Active</td>
+<td class="px-4 py-3 text-sm font-medium"></td>
+</tr>
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-4 py-3">
+<input class="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary dark:text-[#ebd6ff] checked:bg-primary dark:checked:bg-[#ebd6ff] checked:border-primary dark:checked:border-[#ebd6ff] focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-4 py-3 whitespace-nowrap">
+<div>
+<p class="text-sm font-medium text-gray-900 dark:text-white">Phoenix Baker</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">phoenix@a2g.com</p>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Product</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Standard</span>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Active</td>
+<td class="px-4 py-3 text-sm font-medium"></td>
+</tr>
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-4 py-3">
+<input class="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary dark:text-[#ebd6ff] checked:bg-primary dark:checked:bg-[#ebd6ff] checked:border-primary dark:checked:border-[#ebd6ff] focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-4 py-3 whitespace-nowrap">
+<div>
+<p class="text-sm font-medium text-gray-900 dark:text-white">Lana Steiner</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">lana@a2g.com</p>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Design</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Pending</span>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Invited</td>
+<td class="px-4 py-3 text-sm font-medium">
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-500/20 dark:hover:bg-green-500/30">Approve</button>
+<button class="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20 dark:hover:bg-red-500/30">Reject</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-4 py-3">
+<input class="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary dark:text-[#ebd6ff] checked:bg-primary dark:checked:bg-[#ebd6ff] checked:border-primary dark:checked:border-[#ebd6ff] focus:ring-0 focus:ring-offset-0" type="checkbox"/>
+</td>
+<td class="px-4 py-3 whitespace-nowrap">
+<div>
+<p class="text-sm font-medium text-gray-900 dark:text-white">Drew Cano</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">drew@a2g.com</p>
+</div>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Marketing</td>
+<td class="px-4 py-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Standard</span>
+</td>
+<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Active</td>
+<td class="px-4 py-3 text-sm font-medium"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="flex items-center justify-between mt-6 px-1">
+<p class="text-sm text-gray-600 dark:text-gray-400">Showing 1 to 4 of 32 users</p>
+<div class="flex items-center gap-2">
+<button class="h-8 px-3 rounded-md text-sm font-medium flex items-center justify-center bg-white dark:bg-[#31273a] border border-gray-300 dark:border-[#483956] text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#3d3148]">Previous</button>
+<button class="h-8 px-3 rounded-md text-sm font-medium flex items-center justify-center bg-white dark:bg-[#31273a] border border-gray-300 dark:border-[#483956] text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#3d3148]">Next</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

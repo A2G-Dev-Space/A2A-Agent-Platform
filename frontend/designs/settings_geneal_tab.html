@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex min-h-screen w-full">
+<aside class="flex w-64 flex-col justify-between border-r border-slate-200/50 bg-background-light p-4 dark:border-white/10 dark:bg-background-dark">
+<div>
+<div class="flex items-center gap-3 px-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="A2G Platform abstract logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDMROn1vdiFGANmZ1MToeLIgHM7_PYtSdgiiAfCOZJFkRjdWYmeJGV9ULbeJy91JeZxy6e9ti0eTtpP0Jq39tekTZQnipPLoF19rgPOzotQhu8RsyRD-6zqcnjTUNSSONaa_o65fMBQ7ThUAUZIYsVI1jIn0g0vu84PupTY1B5rLZ7PSHIsLGPrWjuVCoefMF1zfDMc937p-8PLqIl1S7H6jA-wDetXYuymgfUry7BW2caESPyfjSSFY-gubQ-Hz3obcRCI7XpL92Oa");'></div>
+<div class="flex flex-col">
+<h1 class="text-slate-900 text-base font-bold leading-normal dark:text-white">A2G Platform</h1>
+</div>
+</div>
+<nav class="mt-8 flex flex-col gap-2">
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">code</span>
+<p class="text-sm font-medium leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">widgets</span>
+<p class="text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">account_tree</span>
+<p class="text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+</div>
+</aside>
+<div class="flex flex-1 flex-col">
+<header class="flex h-16 items-center justify-end border-b border-slate-200/50 bg-background-light px-6 dark:border-white/10 dark:bg-background-dark">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar image" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuASAeVrBIc7OtYjIIotvjigjEBoQdN_atYOMh9YBQoMsjHAmvQ2vFGSx0UQWp-mBsP6CEDtroDEfITPcwgEQUzI6GUBBC-otf_pexFZvO_6UbfMzyZrtCOrAK9JExh3UP8R4YsjRmP4DJEn44gyfczeyrEOlgvPhH2FV1jQlwL6F1z_24LnWWO4BNqHMw4r_9Pit7dZqprSs1SZsWkC_kb6t10BCV84VmcT5oo9PPIHZzJ_PY1-yuXo3iKebypcE29xbbdhRVq1-McX");'></div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto p-8">
+<div class="mx-auto max-w-4xl">
+<div class="flex flex-wrap items-end justify-between gap-4 pb-6">
+<div class="flex flex-col gap-1">
+<p class="text-slate-900 text-3xl font-bold leading-tight tracking-tight dark:text-white">Settings</p>
+<p class="text-slate-500 text-base font-normal leading-normal dark:text-slate-400">Manage your application preferences</p>
+</div>
+</div>
+<div class="border-b border-slate-200/80 dark:border-white/10">
+<div class="flex gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-primary pb-3 pt-1 text-slate-900 dark:text-white" href="#">
+<p class="text-sm font-bold leading-normal">General</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent pb-3 pt-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" href="#">
+<p class="text-sm font-bold leading-normal">API Key</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent pb-3 pt-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" href="#">
+<p class="text-sm font-bold leading-normal">User Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent pb-3 pt-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" href="#">
+<p class="text-sm font-bold leading-normal">LLM Model Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-transparent pb-3 pt-1 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" href="#">
+<p class="text-sm font-bold leading-normal">Statistics</p>
+</a>
+</div>
+</div>
+<div class="mt-8 flex flex-col gap-10">
+<section>
+<h2 class="text-slate-900 text-xl font-bold leading-tight tracking-tight dark:text-white">Theme</h2>
+<p class="mt-1 text-slate-500 text-sm dark:text-slate-400">Choose how A2G Platform looks to you.</p>
+<div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+<div class="flex flex-1 items-center gap-4 rounded-lg border border-slate-200/80 p-4 dark:border-white/10">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10">
+<span class="material-symbols-outlined text-slate-700 dark:text-slate-300">light_mode</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-200">Light</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Optimized for bright environments.</p>
+</div>
+<input class="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700 dark:focus:ring-primary/60 dark:focus:ring-offset-background-dark" name="theme-option" type="radio" value="light"/>
+</div>
+<div class="flex flex-1 items-center gap-4 rounded-lg border border-primary/50 bg-primary/10 p-4 dark:border-primary/60 dark:bg-primary/20">
+<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10">
+<span class="material-symbols-outlined text-slate-700 dark:text-slate-300">dark_mode</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-200">Dark</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Ideal for low-light conditions.</p>
+</div>
+<input checked="" class="h-4 w-4 border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50 dark:border-slate-600 dark:bg-slate-700 dark:focus:ring-primary/60 dark:focus:ring-offset-background-dark" name="theme-option" type="radio" value="dark"/>
+</div>
+</div>
+</section>
+<section>
+<h2 class="text-slate-900 text-xl font-bold leading-tight tracking-tight dark:text-white">Language</h2>
+<p class="mt-1 text-slate-500 text-sm dark:text-slate-400">Select your preferred language for the interface.</p>
+<div class="mt-6 max-w-sm">
+<div class="relative">
+<select class="w-full appearance-none rounded-lg border border-slate-200/80 bg-background-light py-2 pl-3 pr-10 text-sm text-slate-900 focus:border-primary/80 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-white/10 dark:bg-background-dark dark:text-white dark:focus:border-primary/70">
+<option>English (EN)</option>
+<option selected="">Korean (KR)</option>
+</select>
+<span class="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">unfold_more</span>
+</div>
+</div>
+</section>
+<div class="mt-4 flex justify-end border-t border-slate-200/80 pt-6 dark:border-white/10">
+<button class="flex min-w-28 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary px-4 py-2 text-sm font-bold text-background-dark transition-colors hover:bg-primary/80">Save Changes</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

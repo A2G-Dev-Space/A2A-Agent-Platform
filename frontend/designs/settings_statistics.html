@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Statistics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="flex h-screen w-full">
+<aside class="flex w-64 flex-col border-r border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+<div class="flex items-center gap-3 p-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with abstract background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD_OrF_kD4e72gL6bb23ypPhOS602eVV0kA4ul_sdWkyWF2jpJzZeuksSESw9Egkaynu11JffE7iyGN7vhSu7f85UvEtF9_ii5A3BX_1ezehrVh1skMXtf9JJZLSKmFjlzqdKkAUrbCEadDoyQaST0AKeb9AhSlBfQebnVUqSAYCQsCuOPMD_3Td-5XErZosdtAsn6cAai-kDKurijZ5nyxuSBOJ6XdSU9OENPDNlviUEC42rfxXrBCHR4KkPwf8L_3PbV73dHw5Fw9");'></div>
+<div class="flex flex-col">
+<h1 class="text-slate-800 dark:text-slate-200 text-base font-medium leading-normal">A2G Platform</h1>
+</div>
+</div>
+<nav class="mt-8 flex flex-1 flex-col gap-2">
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">code_blocks</span>
+<p class="text-sm font-medium leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">widgets</span>
+<p class="text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">account_tree</span>
+<p class="text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" href="#">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400">logout</span>
+<p class="text-sm font-medium leading-normal">Logout</p>
+</a>
+</div>
+</aside>
+<div class="flex flex-1 flex-col overflow-y-auto">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 bg-white px-8 py-4 dark:border-slate-800 dark:bg-slate-900 sticky top-0 z-10">
+<div class="flex items-center gap-4 text-slate-800 dark:text-slate-200">
+<h2 class="text-lg font-bold leading-tight tracking-[-0.015em]">Statistics</h2>
+</div>
+<div class="flex flex-1 justify-end">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with abstract background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDC4P1Mw3V7dpP-7zPnSpNsGae-p8wsSdQ8QKnvonNIQXOdz7i3PLncl01dCfXI1YebXJRpniSLta6MLSCA2z0zd-dZ21N-cs__P3HvSLk1yQbZy5Sk3NyXrXtMP5GNLQ1FSLdzq1OHHlaO2lRsZzVnKvjg7JcykJ4HpmUO3IyrmJHWuqA49AJltuyrfhsOOu4uZWSzHVpboYqYF5orz7PxzMNH01wEhOlSD_l0yxI03wKEjwpgkv0EWqr0BUiLdS5Norrk4U3IvyUZ");'></div>
+</div>
+</header>
+<main class="flex-1 p-8">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<p class="text-slate-800 dark:text-slate-100 text-4xl font-black leading-tight tracking-[-0.033em] min-w-72">Dashboard</p>
+<div class="flex gap-2">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-slate-800 pl-4 pr-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
+<p class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-normal">Last 7 Days</p>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 !text-xl">expand_more</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-slate-800 pl-4 pr-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
+<p class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-normal">All Agents</p>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 !text-xl">expand_more</span>
+</button>
+</div>
+</div>
+<div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl bg-white p-6 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Total Users</p>
+<p class="text-slate-800 dark:text-white tracking-tight text-3xl font-bold leading-tight">1,428</p>
+<p class="text-green-500 dark:text-green-400 text-base font-medium leading-normal">+2.5%</p>
+</div>
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl bg-white p-6 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Active Agents</p>
+<p class="text-slate-800 dark:text-white tracking-tight text-3xl font-bold leading-tight">76</p>
+<p class="text-green-500 dark:text-green-400 text-base font-medium leading-normal">+1.8%</p>
+</div>
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl bg-white p-6 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+<p class="text-slate-600 dark:text-slate-400 text-base font-medium leading-normal">Agents in Develop Process</p>
+<p class="text-slate-800 dark:text-white tracking-tight text-3xl font-bold leading-tight">12</p>
+<p class="text-yellow-500 dark:text-yellow-400 text-base font-medium leading-normal">-3 since last week</p>
+</div>
+</div>
+<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+<div class="lg:col-span-3 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div>
+<h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Top LLM Token Consumers</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Users who consumed the most LLM tokens.</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="relative"><select class="h-9 w-24 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:ring-primary/50"><option>Top 5</option><option>Top 10</option><option>Top 20</option></select><span class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 !text-xl">expand_more</span></div>
+<div class="relative"><select class="h-9 w-32 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:ring-primary/50"><option>All LLMs</option><option>GPT-4</option><option>Claude 3</option></select><span class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 !text-xl">expand_more</span></div>
+<div class="relative"><select class="h-9 w-36 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:focus:ring-primary/50"><option>Last 7 Days</option><option>Last 30 Days</option><option>Last 90 Days</option></select><span class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 !text-xl">expand_more</span></div>
+</div>
+</div>
+<div class="mt-6 flex h-[280px] w-full flex-col">
+<div class="flex-1 flex gap-4">
+<div class="flex h-full flex-col justify-between text-right text-xs text-slate-500 dark:text-slate-400">
+<span>300k</span>
+<span>225k</span>
+<span>150k</span>
+<span>75k</span>
+<span class="mb-5">0</span>
+</div>
+<div class="relative flex-1 grid grid-cols-5 gap-x-4 border-l border-b border-slate-200 dark:border-slate-700">
+<div class="absolute -left-px -top-2 w-full h-[calc(100%+8px)] flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full"></div>
+</div>
+<div class="flex items-end">
+<div class="group relative w-full bg-primary/20 hover:bg-primary/40 dark:bg-primary/30 dark:hover:bg-primary/50" style="height: 90%">
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">
+<p class="font-semibold">Alex Johnson</p>
+<p>270,123 tokens</p>
+</div>
+</div>
+</div>
+<div class="flex items-end">
+<div class="group relative w-full bg-primary/20 hover:bg-primary/40 dark:bg-primary/30 dark:hover:bg-primary/50" style="height: 75%">
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">
+<p class="font-semibold">Maria Garcia</p>
+<p>225,489 tokens</p>
+</div>
+</div>
+</div>
+<div class="flex items-end">
+<div class="group relative w-full bg-primary/20 hover:bg-primary/40 dark:bg-primary/30 dark:hover:bg-primary/50" style="height: 60%">
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">
+<p class="font-semibold">Chen Wei</p>
+<p>180,945 tokens</p>
+</div>
+</div>
+</div>
+<div class="flex items-end">
+<div class="group relative w-full bg-primary/20 hover:bg-primary/40 dark:bg-primary/30 dark:hover:bg-primary/50" style="height: 40%">
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">
+<p class="font-semibold">David Miller</p>
+<p>120,312 tokens</p>
+</div>
+</div>
+</div>
+<div class="flex items-end">
+<div class="group relative w-full bg-primary/20 hover:bg-primary/40 dark:bg-primary/30 dark:hover:bg-primary/50" style="height: 25%">
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">
+<p class="font-semibold">Sophia Brown</p>
+<p>75,678 tokens</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex pt-2">
+<div class="w-10"></div>
+<div class="flex-1 grid grid-cols-5 gap-x-4 text-center text-xs text-slate-500 dark:text-slate-400">
+<p class="truncate">A. Johnson</p>
+<p class="truncate">M. Garcia</p>
+<p class="truncate">C. Wei</p>
+<p class="truncate">D. Miller</p>
+<p class="truncate">S. Brown</p>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+<h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Which Agent is used most</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Total calls per day over the last week.</p>
+<div class="mt-6 flex h-[280px] w-full flex-col">
+<div class="flex flex-1 gap-4">
+<div class="flex h-full flex-col justify-between text-right text-xs text-slate-500 dark:text-slate-400">
+<p>10k</p>
+<p>8k</p>
+<p>6k</p>
+<p>4k</p>
+<p>2k</p>
+<p class="mb-5">0</p>
+</div>
+<div class="relative flex-1 border-b border-l border-slate-200 dark:border-slate-700">
+<div class="absolute -left-px -top-2.5 h-[calc(100%+10px)] w-full flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full border-t border-dashed border-slate-200 dark:border-slate-700"></div>
+<div class="w-full"></div>
+</div>
+<svg class="absolute inset-0 size-full" fill="none" preserveaspectratio="none" viewbox="0 0 287 190" xmlns="http://www.w3.org/2000/svg">
+<path d="M1 152.091L48.8333 95.0455L96.6667 114.057L144.5 57L192.333 76.0114L240.167 19.0001L287 38.0114" stroke="#4A90E2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M1 152.091L48.8333 95.0455L96.6667 114.057L144.5 57L192.333 76.0114L240.167 19.0001L287 38.0114" stroke="url(#paint0_linear_1_2)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="paint0_linear_1_2" x1="144" x2="144" y1="19.0001" y2="152.091">
+<stop stop-color="#4A90E2"></stop>
+<stop offset="1" stop-color="#4A90E2" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="absolute bottom-0 h-full w-full grid grid-cols-7">
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[95.0455px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">8,560 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[114.057px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">7,280 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[57px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">9,820 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[76.0114px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">8,950 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[19.0001px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">11,230 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[38.0114px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">10,450 calls</div>
+</div>
+<div class="group relative h-full">
+<div class="absolute left-1/2 top-[152.091px] -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full border-2 border-primary bg-white dark:bg-slate-900"></div>
+<div class="absolute bottom-full left-1/2 mb-2 w-max -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-1.5 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-slate-700">5,430 calls</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex pt-2">
+<div class="w-10"></div>
+<div class="grid flex-1 grid-cols-7 text-center text-xs text-slate-500 dark:text-slate-400">
+<p>Mon</p>
+<p>Tue</p>
+<p>Wed</p>
+<p>Thu</p>
+<p>Fri</p>
+<p>Sat</p>
+<p>Sun</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+<h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">Recent User Activity</h3>
+<div class="mt-4 overflow-x-auto">
+<table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+<thead class="text-xs uppercase text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800">
+<tr>
+<th class="px-6 py-3" scope="col">User</th>
+<th class="px-6 py-3" scope="col">Agent</th>
+<th class="px-6 py-3" scope="col">Timestamp</th>
+<th class="px-6 py-3" scope="col">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-slate-900 dark:text-white">Alex Johnson</td>
+<td class="px-6 py-4">SupportBot</td>
+<td class="px-6 py-4">2024-07-21 14:32:11</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">Successful</span></td>
+</tr>
+<tr class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-slate-900 dark:text-white">Maria Garcia</td>
+<td class="px-6 py-4">SalesPro</td>
+<td class="px-6 py-4">2024-07-21 14:28:45</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Escalated</span></td>
+</tr>
+<tr class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-slate-900 dark:text-white">Chen Wei</td>
+<td class="px-6 py-4">OnboardingHelper</td>
+<td class="px-6 py-4">2024-07-21 14:25:03</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">Successful</span></td>
+</tr>
+<tr class="border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-slate-900 dark:text-white">David Miller</td>
+<td class="px-6 py-4">SupportBot</td>
+<td class="px-6 py-4">2024-07-21 14:21:59</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">Failed</span></td>
+</tr>
+<tr class="bg-white dark:bg-slate-900">
+<td class="whitespace-nowrap px-6 py-4 font-medium text-slate-900 dark:text-white">Sophia Brown</td>
+<td class="px-6 py-4">TechAdvisor</td>
+<td class="px-6 py-4">2024-07-21 14:18:22</td>
+<td class="px-6 py-4"><span class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">Successful</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex items-center justify-between border-t border-slate-200 pt-4 mt-4 dark:border-slate-700">
+<span class="text-sm text-slate-600 dark:text-slate-400">Showing 1 to 5 of 2,345 entries</span>
+<div class="inline-flex gap-1">
+<button class="inline-flex h-8 items-center justify-center rounded-md px-3 text-sm font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Previous</button>
+<button class="inline-flex h-8 items-center justify-center rounded-md px-3 text-sm font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">Next</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>
