@@ -1,8 +1,24 @@
 # TODO.md - Index Document for TODO_ALL.md
 
-**Version 2.0** | **Last Updated: 2025-11-06** | **Total Lines: 1516**
+**Version 2.1** | **Last Updated: 2025-11-06** | **Total Lines: 1873 (+357)**
 
 > 🔍 This is an INDEX document. For detailed implementation tasks, refer to [TODO_ALL.md](./TODO_ALL.md) using the line numbers below.
+
+---
+
+## 🚨 NEW: CRITICAL PRIORITY TASKS (Section 0)
+
+**Lines 8-365** | **Added: 2025-11-06** | **Priority: 🔴 URGENT**
+
+User-requested verification and implementation tasks that must be completed immediately:
+
+1. **Frontend UI/UX Fixes** (Lines 10-39) - Remove settings from sidebar, move user to header
+2. **Agent Integration** (Lines 41-90) - Add ADK/Agno agents to workbench with streaming chat
+3. **Publishing Workflow** (Lines 92-157) - Implement agent publishing and Hub integration
+4. **LLM Management** (Lines 159-220) - Settings verification, LLM management, key validation
+5. **User Management** (Lines 222-263) - User approval/rejection, role management
+6. **Statistics** (Lines 265-314) - Agent and LLM usage statistics tracking
+7. **Verification** (Lines 316-363) - Playwright E2E tests for all features
 
 ---
 
@@ -10,18 +26,19 @@
 
 | Section | Topic | Lines | Priority |
 |---------|-------|-------|----------|
-| **1** | Critical UI/UX Improvements | 8-233 | 🔴 CRITICAL |
-| **2** | Frontend Functionality | 234-400 | 🔴 HIGH |
-| **3** | Backend Service Completion | 401-709 | 🟡 MEDIUM |
-| **4** | Infrastructure & DevOps | 710-1035 | 🟡 MEDIUM |
-| **5** | Documentation & API | 1036-1138 | 🟢 LOW |
-| **6** | Performance Optimizations | 1139-1218 | 🟢 LOW |
-| **7** | Security Enhancements | 1219-1270 | 🔴 HIGH |
-| **8** | Service-Specific Issues | 1271-1408 | 🔴 CRITICAL |
-| **9** | Bug Fixes & Issues | 1409-1436 | 🔴 HIGH |
-| **10** | Implementation Timeline | 1437-1470 | - |
-| **11** | Resource Requirements | 1471-1496 | - |
-| **12** | Definition of Done | 1497-1516 | - |
+| **0** | 🆕 USER VERIFICATION REQUIREMENTS | 8-365 | 🔴🔴🔴 URGENT |
+| **1** | Critical UI/UX Improvements | 367-591 | 🔴 CRITICAL |
+| **2** | Frontend Functionality | 593-758 | 🔴 HIGH |
+| **3** | Backend Service Completion | 760-1067 | 🟡 MEDIUM |
+| **4** | Infrastructure & DevOps | 1069-1393 | 🟡 MEDIUM |
+| **5** | Documentation & API | 1395-1496 | 🟢 LOW |
+| **6** | Performance Optimizations | 1498-1576 | 🟢 LOW |
+| **7** | Security Enhancements | 1578-1628 | 🔴 HIGH |
+| **8** | Service-Specific Issues | 1630-1766 | 🔴 CRITICAL |
+| **9** | Bug Fixes & Issues | 1768-1794 | 🔴 HIGH |
+| **10** | Implementation Timeline | 1796-1828 | - |
+| **11** | Resource Requirements | 1830-1854 | - |
+| **12** | Definition of Done | 1856-1873 | - |
 
 ---
 

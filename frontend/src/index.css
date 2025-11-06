@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
 html {
-  font-family: 'Manrope', 'Noto Sans', sans-serif;
+  font-family: 'Noto Sans KR', 'Manrope', sans-serif;
 }
 
 @variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
   --color-*: initial;
+
+  /* Base Colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
 
   /* Light & Dark Theme Colors */
   --color-primary: #607AFB;

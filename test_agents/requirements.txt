@@ -1,0 +1,4 @@
+google-adk[a2a]
+uvicorn
+starlette
+pydantic

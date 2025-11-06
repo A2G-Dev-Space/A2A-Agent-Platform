@@ -1,8 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@/stores/authStore';
-import { Avatar } from '@/components/ui';
 
 interface NavItem {
   to: string;
@@ -13,14 +11,12 @@ interface NavItem {
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();
-  const { logout, user } = useAuthStore();
   const location = useLocation();
 
   const navItems: NavItem[] = [
     { to: '/workbench', icon: 'code_blocks', label: t('sidebar.workbench'), mode: 'workbench' },
     { to: '/hub', icon: 'apps', label: t('sidebar.hub'), mode: 'hub' },
     { to: '/flow', icon: 'hub', label: t('sidebar.flow'), mode: 'flow' },
-    { to: '/settings', icon: 'settings', label: t('sidebar.settings'), mode: 'settings' },
   ];
 
   // Mode-specific colors for active states
@@ -70,61 +66,31 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation */}
-      <div className="flex flex-col justify-between flex-1 p-4">
-        <nav className="flex flex-col gap-2">
-          {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.to);
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${getModeColors(
-                  item.mode,
-                  isActive
-                )}`}
+      <nav className="flex flex-col gap-2 p-4">
+        {navItems.map((item) => {
+          const isActive = location.pathname.startsWith(item.to);
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${getModeColors(
+                item.mode,
+                isActive
+              )}`}
+            >
+              <span
+                className="material-symbols-outlined text-lg"
+                style={{
+                  fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
+                }}
               >
-                <span
-                  className="material-symbols-outlined text-lg"
-                  style={{
-                    fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
-                  }}
-                >
-                  {item.icon}
-                </span>
-                <p className="text-sm font-medium">{item.label}</p>
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* User Section */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar
-              src={user?.avatar}
-              alt={user?.name || 'User'}
-              fallback={user?.name?.substring(0, 2).toUpperCase()}
-              size="md"
-              status="online"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary truncate">
-                {user?.name || 'User'}
-              </p>
-              <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary truncate">
-                {user?.email || ''}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => logout()}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-light-secondary dark:text-text-dark-secondary hover:bg-background-light dark:hover:bg-background-dark transition-colors"
-          >
-            <span className="material-symbols-outlined text-lg">logout</span>
-            <p className="text-sm font-medium">{t('sidebar.logout')}</p>
-          </button>
-        </div>
-      </div>
+                {item.icon}
+              </span>
+              <p className="text-sm font-medium">{item.label}</p>
+            </NavLink>
+          );
+        })}
+      </nav>
     </aside>
   );
 };

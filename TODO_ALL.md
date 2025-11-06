@@ -1,7 +1,368 @@
 # A2G Agent Platform: TODO & Implementation Roadmap (TODO_ALL.md)
 
-**Version**: 2.0
+**Version**: 2.1
 **Last Updated**: 2025-11-06
+
+---
+
+## 0. CRITICAL PRIORITY - User Verification Requirements (NEW)
+
+### 0.1. Frontend UI/UX Fixes
+**Priority**: 🔴 CRITICAL | **Effort**: 3 days | **Status**: ✅ COMPLETED (2025-11-06)
+
+#### 0.1.1. Remove Settings from Sidebar
+**Issue**: Settings currently appears in sidebar navigation, but design specs show it should only be accessible from user dropdown in header.
+**Status**: ✅ COMPLETED
+
+**Required Changes**:
+- Remove "Settings" link from `frontend/src/components/layout/Sidebar.tsx`
+- Add Settings option to user dropdown menu in header (with gear icon)
+- Ensure settings modal/page opens when clicked from user dropdown
+- Update navigation state management to reflect this change
+
+**Files to Modify**:
+- `frontend/src/components/layout/Sidebar.tsx` - Remove settings link
+- `frontend/src/components/layout/Header.tsx` - Add user dropdown with settings option
+- `frontend/src/components/settings/SettingsModal.tsx` - Ensure opens from header
+
+#### 0.1.2. Move User Info to Header
+**Issue**: User info (avatar, name) currently displayed in sidebar bottom. Design specs show it should be in header top-right.
+**Status**: ✅ COMPLETED
+
+**Required Changes**:
+- Remove user section from sidebar bottom
+- Add user avatar + name to header top-right
+- Implement dropdown menu on click with options: Profile, Settings, Logout
+- Add online status indicator (green dot)
+
+**Files to Modify**:
+- `frontend/src/components/layout/Sidebar.tsx` - Remove user section
+- `frontend/src/components/layout/Header.tsx` - Add user avatar with dropdown
+- `frontend/src/components/layout/UserDropdown.tsx` - Create new component
+
+### 0.2. Agent Integration & Workbench
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.2.1. Add ADK/Agno Agents to Workbench
+**Requirements**:
+- Complete agent registration API integration
+- Fetch deployed test agents (Math Agent on port 8011, Text Agent on port 8012)
+- Display agents in Workbench agent list with proper framework badges
+- Show agent status (online/offline) with health check
+- Enable agent selection for testing
+
+**Implementation Steps**:
+1. Fix authentication for agent registration API calls
+2. Implement agent discovery from agent-service
+3. Display agent cards with framework, capabilities, status
+4. Add "Test Agent" button that opens chat interface
+5. Store selected agent in workbench state
+
+**Files to Create/Modify**:
+- `frontend/src/pages/Workbench.tsx` - Agent list display
+- `frontend/src/api/agents.ts` - API calls for agent listing
+- `frontend/src/components/workbench/AgentCard.tsx` - Agent display component
+- `frontend/src/stores/workbenchStore.ts` - Agent selection state
+
+#### 0.2.2. Implement Streaming Chat with Tracing
+**Requirements**:
+- WebSocket connection to chat-service for streaming responses
+- Display chat messages in real-time with token-by-token streaming
+- Real-time trace log display showing:
+  - Request/response payloads
+  - Tool calls and parameters
+  - Agent transfers (if multi-agent)
+  - Execution timeline
+  - Error messages
+- Split-pane layout: Chat on left, Trace logs on right
+
+**Implementation Steps**:
+1. Connect to chat WebSocket endpoint
+2. Send messages to selected agent via A2A proxy
+3. Receive and display streaming tokens
+4. Connect to tracing WebSocket for log streaming
+5. Display logs in collapsible tree format with JSON viewer
+6. Highlight agent transfers and tool calls
+
+**Files to Create/Modify**:
+- `frontend/src/hooks/useChat.ts` - Chat WebSocket logic
+- `frontend/src/hooks/useTrace.ts` - Trace WebSocket logic
+- `frontend/src/components/workbench/ChatPanel.tsx` - Chat interface
+- `frontend/src/components/workbench/TracePanel.tsx` - Trace display
+- `frontend/src/components/workbench/TestInterface.tsx` - Split layout
+
+### 0.3. Agent Publishing & Hub Integration
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.3.1. Agent Publishing Workflow
+**Requirements**:
+- Implement visibility state transitions: DEVELOPMENT → STAGING → PRODUCTION
+- Add "Publish" button to agent detail page in Workbench
+- Show confirmation modal with deployment target selection
+- Update agent visibility via API call
+- Display current visibility status with badge
+
+**Implementation Steps**:
+1. Add visibility field to agent display
+2. Implement "Publish to Staging" button (DEVELOPMENT → STAGING)
+3. Implement "Publish to Production" button (STAGING → PRODUCTION)
+4. Add confirmation modal with deployment checklist
+5. Update agent list to filter by visibility
+
+**Files to Create/Modify**:
+- `frontend/src/components/workbench/AgentActions.tsx` - Publish button
+- `frontend/src/components/workbench/PublishModal.tsx` - Confirmation dialog
+- `frontend/src/api/agents.ts` - Update visibility API call
+
+#### 0.3.2. Hub Agent Display
+**Requirements**:
+- Only show PRODUCTION visibility agents in Hub
+- Display agent marketplace with cards showing:
+  - Agent name, logo, description
+  - Framework badge (ADK, Agno, Langchain, Custom)
+  - Capabilities badges
+  - Usage statistics (if available)
+  - "Try Agent" button
+- Category filters and search functionality
+
+**Implementation Steps**:
+1. Fetch agents with visibility=PRODUCTION from API
+2. Display agent cards in grid layout
+3. Add category filter dropdown
+4. Add search bar with debounced filtering
+5. Implement "Try Agent" button that opens chat
+
+**Files to Create/Modify**:
+- `frontend/src/pages/Hub.tsx` - Marketplace layout
+- `frontend/src/components/hub/AgentCard.tsx` - Public agent card
+- `frontend/src/components/hub/AgentFilters.tsx` - Search and filters
+
+#### 0.3.3. Hub Streaming Chat
+**Requirements**:
+- Same streaming chat functionality as Workbench
+- Session management (create, list, resume sessions)
+- Session sidebar showing chat history
+- Agent info panel showing capabilities and documentation
+- No trace logs (this is production usage, not debugging)
+
+**Implementation Steps**:
+1. Reuse chat WebSocket logic from Workbench
+2. Create session sidebar component
+3. Implement session creation and retrieval
+4. Display chat messages with streaming
+5. Add agent info panel with collapsible details
+
+**Files to Create/Modify**:
+- `frontend/src/pages/HubChat.tsx` - Hub chat page
+- `frontend/src/components/hub/SessionSidebar.tsx` - Chat history
+- `frontend/src/components/hub/ChatInterface.tsx` - Chat area
+- `frontend/src/components/hub/AgentInfoPanel.tsx` - Agent details
+
+### 0.4. Settings & LLM Management
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.4.1. Verify Settings Actions (No Direct Key Usage)
+**Requirements**:
+- Review all settings pages to ensure Gemini API key is NOT used directly in agents
+- LLM models should be registered in Admin service
+- Agents should reference LLM model IDs, not API keys
+- Personal keys should be encrypted and managed securely
+
+**Verification Steps**:
+1. Check agent creation form - ensure no API key field
+2. Verify agents use LLM model references (model_id)
+3. Check admin service for proper LLM model management
+4. Ensure API keys are encrypted in database
+5. Test agent execution uses proxy endpoint with registered LLMs
+
+**Files to Review**:
+- `frontend/src/components/workbench/AddAgentModal.tsx`
+- `repos/agent-service/app/models/agent.py`
+- `repos/admin-service/app/models/llm_model.py`
+
+#### 0.4.2. LLM Management Implementation
+**Requirements**:
+- Admin UI to add/edit/delete LLM models
+- Fields: Provider (OpenAI, Anthropic, Google, etc.), Model name, API key, API endpoint
+- Test connection button to verify API key works
+- Display registered LLMs in settings page
+- Workbench shows proxy endpoint for each LLM
+
+**Implementation Steps**:
+1. Create LLM management page in admin settings
+2. Implement add LLM modal with form validation
+3. Add API endpoint testing functionality
+4. Display LLM list with status indicators
+5. Show proxy endpoint URLs in Workbench for registered LLMs
+
+**Files to Create/Modify**:
+- `frontend/src/pages/settings/LLMManagement.tsx` - LLM admin page
+- `frontend/src/components/settings/AddLLMModal.tsx` - Add LLM form
+- `repos/admin-service/app/routers/llm_models.py` - LLM CRUD endpoints
+- `repos/agent-service/app/proxy/llm_proxy.py` - Proxy endpoint logic
+
+#### 0.4.3. Personal Key Validation
+**Requirements**:
+- Users can add personal API keys for LLM providers
+- Key validation on save (test API call)
+- If key is invalid, show error and prevent save
+- Display key status (valid/invalid) with last tested timestamp
+- Keys are encrypted at rest in database
+
+**Implementation Steps**:
+1. Create personal key management UI in user settings
+2. Add key validation endpoint that tests API call
+3. Encrypt keys before storing in database
+4. Display key status with indicators
+5. Show error messages for invalid keys
+
+**Files to Create/Modify**:
+- `frontend/src/pages/settings/PersonalKeys.tsx` - Key management UI
+- `repos/user-service/app/routers/user_keys.py` - Key CRUD endpoints
+- `repos/user-service/app/core/encryption.py` - Key encryption logic
+
+### 0.5. User Management & Admin Features
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.5.1. User Approval/Rejection Workflow
+**Requirements**:
+- New users start with PENDING status
+- Admin sees list of pending users with Approve/Reject buttons
+- Approval changes status to USER (active)
+- Rejection deletes user or changes status to REJECTED
+- Email notification on approval/rejection (optional)
+
+**Implementation Steps**:
+1. Modify user registration to set status=PENDING
+2. Create admin user management page
+3. Add approve/reject buttons with confirmation
+4. Implement status update API calls
+5. Add filters to view users by status (PENDING, USER, REJECTED)
+
+**Files to Create/Modify**:
+- `frontend/src/pages/admin/UserManagement.tsx` - User admin page
+- `repos/user-service/app/models/user.py` - Add PENDING status
+- `repos/user-service/app/routers/admin.py` - Approve/reject endpoints
+
+#### 0.5.2. Role Management
+**Requirements**:
+- Admin can change user roles: USER, TEAM_LEAD, ADMIN
+- Role dropdown in user management table
+- Confirmation modal for role changes
+- Role changes take effect immediately (token refresh may be needed)
+- Audit log for role changes
+
+**Implementation Steps**:
+1. Add role dropdown to user management table
+2. Implement role update API endpoint
+3. Add confirmation modal for role changes
+4. Create audit log entry for role changes
+5. Update user token claims if needed
+
+**Files to Create/Modify**:
+- `frontend/src/components/admin/UserRoleDropdown.tsx` - Role selector
+- `repos/user-service/app/routers/admin.py` - Role update endpoint
+- `repos/user-service/app/models/audit_log.py` - Audit logging
+
+### 0.6. Usage Statistics & Monitoring
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.6.1. Agent Usage Statistics
+**Requirements**:
+- Track agent call counts per user
+- Track agent execution time and success/failure rates
+- Display statistics in admin dashboard:
+  - Total calls per agent
+  - Average response time
+  - Success rate
+  - Top users of each agent
+- Filter by date range
+
+**Implementation Steps**:
+1. Implement usage tracking in chat service (log each agent call)
+2. Create statistics aggregation worker task (hourly/daily)
+3. Store aggregated stats in database
+4. Create statistics API endpoints
+5. Build statistics dashboard UI with charts
+
+**Files to Create/Modify**:
+- `repos/chat-service/app/services/usage_tracker.py` - Usage logging
+- `repos/worker-service/app/tasks.py` - Statistics aggregation task
+- `repos/admin-service/app/routers/statistics.py` - Stats API
+- `frontend/src/pages/admin/Statistics.tsx` - Stats dashboard
+
+#### 0.6.2. LLM Token Usage Statistics
+**Requirements**:
+- Track token usage per LLM model
+- Track cost per user (if pricing data available)
+- Display statistics:
+  - Total tokens used per model
+  - Token usage by user
+  - Estimated costs
+  - Usage trends over time
+- Export statistics to CSV
+
+**Implementation Steps**:
+1. Log token counts in chat service on each LLM call
+2. Store token usage in statistics database
+3. Calculate costs based on model pricing
+4. Create token statistics API endpoints
+5. Build token usage dashboard with charts and export
+
+**Files to Create/Modify**:
+- `repos/chat-service/app/services/token_tracker.py` - Token counting
+- `repos/admin-service/app/models/token_usage.py` - Token usage model
+- `repos/admin-service/app/routers/statistics.py` - Token stats API
+- `frontend/src/pages/admin/TokenStatistics.tsx` - Token dashboard
+
+### 0.7. Verification Requirements
+**Priority**: 🔴 CRITICAL | **Effort**: Ongoing | **Status**: ❌ Not Started
+
+#### 0.7.1. Playwright E2E Verification
+**Requirements**: After implementing each feature above, verify with Playwright MCP tool
+
+**Test Scenarios**:
+1. **UI/UX Tests**:
+   - Settings accessible only from user dropdown in header
+   - User info displayed in header, not sidebar
+
+2. **Agent Integration Tests**:
+   - ADK agents visible in Workbench
+   - Can select agent and open chat
+   - Streaming chat works with token-by-token display
+   - Trace logs appear in real-time
+
+3. **Publishing Tests**:
+   - Can publish agent from DEVELOPMENT to STAGING
+   - Can publish agent from STAGING to PRODUCTION
+   - Published agents appear in Hub
+   - Hub chat works with streaming
+
+4. **Settings Tests**:
+   - Can add LLM model
+   - LLM proxy endpoint accessible
+   - Personal key validation works
+   - Invalid keys show error
+
+5. **Admin Tests**:
+   - Can approve/reject pending users
+   - Can change user roles
+   - Statistics display correctly
+   - Usage data tracked accurately
+
+**Implementation**:
+- Create Playwright test suite for each scenario
+- Run tests after each implementation
+- Update verification report with test results
+- Fix any issues found during testing
+
+**Files to Create**:
+- `e2e/tests/0.1-ui-fixes.spec.ts` - UI/UX tests
+- `e2e/tests/0.2-agent-integration.spec.ts` - Agent tests
+- `e2e/tests/0.3-publishing.spec.ts` - Publishing tests
+- `e2e/tests/0.4-settings.spec.ts` - Settings tests
+- `e2e/tests/0.5-admin.spec.ts` - Admin tests
+- `e2e/tests/0.6-statistics.spec.ts` - Statistics tests
 
 ---
 
