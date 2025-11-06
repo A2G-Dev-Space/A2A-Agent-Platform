@@ -67,8 +67,20 @@
 - ⏸️ `frontend/src/stores/workbenchStore.ts` - Agent selection state (pending)
 
 #### 0.2.2. Implement Streaming Chat with Tracing
+**Status**: 🟡 IN PROGRESS (Architecture Investigation Completed 2025-11-06)
+**Estimated Effort**: 4 weeks
+**Current Phase**: Week 1 - Backend Foundation
+
+**⚠️ COMPLEXITY NOTE**: This is a major feature requiring extensive backend modifications to chat-service, tracing-service, and api-gateway, plus comprehensive frontend implementation. Investigation complete with detailed technical specification.
+
 **Requirements**:
-- WebSocket connection to chat-service for streaming responses
+- ✅ WebSocket connection architecture defined
+- ⏸️ Backend: Chat-service WebSocket with A2A proxy integration (NOT STARTED)
+- ⏸️ Backend: Tracing-service WebSocket support (NOT STARTED)
+- ⏸️ Backend: API Gateway WebSocket proxy fix (NOT STARTED)
+- ✅ Frontend: useWebSocket hook implemented (2025-11-06)
+- ⏸️ Frontend: ChatPlayground component (NOT STARTED)
+- ⏸️ Frontend: TraceView component (NOT STARTED)
 - Display chat messages in real-time with token-by-token streaming
 - Real-time trace log display showing:
   - Request/response payloads
@@ -78,20 +90,131 @@
   - Error messages
 - Split-pane layout: Chat on left, Trace logs on right
 
-**Implementation Steps**:
-1. Connect to chat WebSocket endpoint
-2. Send messages to selected agent via A2A proxy
-3. Receive and display streaming tokens
-4. Connect to tracing WebSocket for log streaming
-5. Display logs in collapsible tree format with JSON viewer
-6. Highlight agent transfers and tool calls
+**🏗️ IMPLEMENTATION PHASES**:
 
-**Files to Create/Modify**:
-- `frontend/src/hooks/useChat.ts` - Chat WebSocket logic
-- `frontend/src/hooks/useTrace.ts` - Trace WebSocket logic
-- `frontend/src/components/workbench/ChatPanel.tsx` - Chat interface
-- `frontend/src/components/workbench/TracePanel.tsx` - Trace display
-- `frontend/src/components/workbench/TestInterface.tsx` - Split layout
+**Phase 1: Backend Foundation (Week 1)**
+1. Create `/repos/chat-service/app/websocket/chat_handler.py`:
+   - Implement ChatWebSocketHandler class
+   - Integrate with agent-service A2A proxy
+   - Stream SSE responses from agents as WebSocket messages
+   - Log all interactions to tracing-service
+   - Handle agent transfers and errors
+2. Create `/repos/tracing-service/app/websocket/manager.py`:
+   - Implement TraceConnectionManager for log broadcasting
+   - Map trace_id → Set<WebSocket> connections
+   - Broadcast logs in real-time
+3. Modify `/repos/tracing-service/app/api/v1/logs.py`:
+   - Add broadcasting to WebSocket on log creation
+4. Create `/repos/api-gateway/app/websocket_proxy.py`:
+   - Implement proper WebSocket proxy using websockets library
+   - Support bidirectional relay
+5. Modify `/repos/api-gateway/app/main.py`:
+   - Add WebSocket routes: /ws/chat/{session_id}, /ws/trace/{trace_id}
+   - Proxy to respective backend services
+6. Add dependency to `/repos/api-gateway/pyproject.toml`:
+   - Add `websockets>=12.0`
+
+**Phase 2: Frontend Implementation (Week 2)**
+1. ✅ Create `frontend/src/hooks/useWebSocket.ts` - Generic WebSocket hook (DONE)
+2. Create `frontend/src/components/workbench/ChatPlayground.tsx`:
+   - Message display with streaming animation
+   - Input field with send button
+   - Session management
+   - Error handling and reconnection
+3. Create `frontend/src/components/workbench/TraceView.tsx`:
+   - Real-time log display
+   - Log filtering by level and type
+   - Collapsible metadata
+   - Color-coded log types
+4. Modify `frontend/src/components/workbench/WorkbenchDashboard.tsx`:
+   - Integrate ChatPlayground and TraceView
+   - Create session on agent selection
+   - Pass session_id and trace_id to components
+
+**Phase 3: Integration & Testing (Week 3)**
+1. End-to-end testing with Math Agent and Text Agent
+2. Verify token-by-token streaming display
+3. Verify trace logs appear in real-time
+4. Test error handling and reconnection
+5. Test with multiple concurrent sessions
+6. Performance optimization
+
+**Phase 4: Polish (Week 4)**
+1. Add agent transfer detection and UI indication
+2. Add message history loading from database
+3. Add session list and switching
+4. Add clear session functionality
+5. Add export chat/trace functionality
+6. Documentation and user guide
+
+**📋 FILES TO CREATE**:
+**Backend:**
+- `/repos/chat-service/app/websocket/chat_handler.py` - Enhanced WebSocket handler with agent integration (~350 lines)
+- `/repos/tracing-service/app/websocket/manager.py` - Trace WebSocket manager (~100 lines)
+- `/repos/api-gateway/app/websocket_proxy.py` - Proper WebSocket proxy (~120 lines)
+
+**Frontend:**
+- ✅ `/frontend/src/hooks/useWebSocket.ts` - WebSocket React hook (DONE)
+- `/frontend/src/components/workbench/ChatPlayground.tsx` - Streaming chat UI (~200 lines)
+- `/frontend/src/components/workbench/TraceView.tsx` - Real-time trace log UI (~180 lines)
+
+**📝 FILES TO MODIFY**:
+**Backend:**
+- `/repos/chat-service/app/main.py` - Replace echo WebSocket with real handler
+- `/repos/tracing-service/app/main.py` - Add WebSocket endpoint
+- `/repos/tracing-service/app/api/v1/logs.py` - Add broadcasting
+- `/repos/api-gateway/app/main.py` - Replace WebSocket proxy
+- `/repos/api-gateway/pyproject.toml` - Add websockets dependency
+
+**Frontend:**
+- `/frontend/src/components/workbench/WorkbenchDashboard.tsx` - Integrate components
+
+**🔗 WEBSOCKET PROTOCOL SPECIFICATIONS**:
+
+**Chat WebSocket** (`ws://localhost:9050/ws/chat/{session_id}?token={jwt}`):
+```
+Client → Server:
+  {type: 'chat_message', content: 'Hello', session_id, agent_id}
+  {type: 'ping'}
+
+Server → Client:
+  {type: 'stream_start', session_id}
+  {type: 'token', content: 'Hello', index: 0, session_id}
+  {type: 'stream_end', session_id, total_tokens: 150}
+  {type: 'error', error: {code, message, reconnect}}
+  {type: 'pong'}
+```
+
+**Trace WebSocket** (`ws://localhost:9050/ws/trace/{trace_id}?token={jwt}`):
+```
+Server → Client:
+  {type: 'log_entry', trace_id, log: {timestamp, service, level, log_type, message, metadata}}
+```
+
+**🔧 A2A INTEGRATION**:
+Chat-service calls agent-service A2A proxy:
+```
+POST http://agent-service:8002/api/a2a/proxy/{agent_id}/tasks/send
+{
+  "jsonrpc": "2.0",
+  "method": "sendMessage",
+  "params": {
+    "message": {...},
+    "configuration": {"blocking": false}
+  }
+}
+```
+
+Response is SSE stream that chat-service converts to WebSocket tokens.
+
+**📚 INVESTIGATION REPORT**:
+Complete technical specification available in Agent exploration output (2025-11-06).
+Key findings:
+- Current chat-service WebSocket is echo-only, needs full agent integration
+- Tracing-service has no WebSocket support, needs pub/sub implementation
+- API Gateway WebSocket proxy needs replacement with proper library
+- Frontend uses socket.io-client, switching to native WebSocket
+- All database schemas support required functionality (no migrations needed)
 
 ### 0.3. Agent Publishing & Hub Integration
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
