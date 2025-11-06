@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Modal, Input, Textarea, Button } from '@/components/ui';
-import { AgentFramework } from '@/types';
+import { AgentFramework, AgentStatus, HealthStatus } from '@/types';
+import { agentService } from '@/services/agentService';
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -76,8 +77,35 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
 
   const onSubmit = async (data: AgentFormData) => {
     console.log('Form data:', data);
-    // TODO: Implement agent creation API call
-    onClose();
+    try {
+      // Call the agent service to create the agent
+      await agentService.createAgent({
+        name: data.name,
+        description: data.description,
+        framework: data.framework,
+        a2a_endpoint: data.url,
+        capabilities: {
+          skills: data.capabilities,
+          version: data.version,
+          description: data.description,
+        },
+        card_color: data.color,
+        logo_url: data.logo ? URL.createObjectURL(data.logo) : undefined,
+        status: AgentStatus.DEVELOPMENT,
+        visibility: 'private', // Default to private for new agents
+        is_public: false,
+        health_status: HealthStatus.UNKNOWN,
+      });
+
+      // Close modal on success
+      onClose();
+
+      // Refresh agent list (React Query will handle this automatically)
+      window.location.reload(); // Temporary solution - should use query invalidation
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      // TODO: Show error toast notification
+    }
   };
 
   const handleLogoUpload = (file: File) => {
