@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 html {
-  font-family: 'Manrope', 'Pretendard', sans-serif;
+  font-family: 'Manrope', 'Noto Sans', sans-serif;
 }
 
 @variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -22,10 +22,28 @@ html {
   --color-text-light-secondary: #6b7281;
   --color-text-dark-secondary: #9ca3af;
 
+  /* Workbench Mode Colors (Red) */
+  --color-workbench-primary: #EA2831;
+  --color-workbench-bg-light: #f8f6f6;
+  --color-workbench-bg-dark: #211111;
+  --color-workbench-surface-dark: #1f1c26;
+  --color-workbench-border-dark: #433c53;
+  --color-workbench-text-muted: #a59db8;
+  --color-workbench-input-dark: #131118;
+
+  /* Hub Mode Colors (Blue) */
+  --color-hub-primary: #359EFF;
   --color-hub-accent: #0284c7;
   --color-hub-accent-light: #E0F2FE;
   --color-hub-accent-dark: #0369a1;
+  --color-hub-bg-light: #f5f7f8;
+  --color-hub-bg-dark: #0f1923;
+  --color-hub-surface-dark: #110d1a;
 
+  /* Flow Mode Colors (Yellow) */
+  --color-flow-primary: #FAC638;
+  --color-flow-bg-light: #f8f8f5;
+  --color-flow-bg-dark: #231e0f;
   --color-flow-accent: #CCFBF1;
   --color-flow-accent-dark: #0d9488;
 }
@@ -59,4 +77,81 @@ body {
 [data-theme="dark"] body {
     background-color: var(--color-background-dark);
     color: var(--color-text-dark-primary);
+}
+
+/* Material Icons Configuration */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-size: 24px;
+}
+
+/* Utility Classes */
+.form-input {
+    @apply w-full rounded-lg border border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors;
+}
+
+.btn-primary {
+    @apply px-4 py-2 rounded-lg bg-primary text-white font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all;
+}
+
+.btn-secondary {
+    @apply px-4 py-2 rounded-lg border border-border-light dark:border-border-dark bg-transparent text-text-light-primary dark:text-text-dark-primary hover:bg-background-light dark:hover:bg-background-dark focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all;
+}
+
+.btn-ghost {
+    @apply px-4 py-2 rounded-lg bg-transparent text-text-light-primary dark:text-text-dark-primary hover:bg-background-light dark:hover:bg-background-dark focus:outline-none transition-all;
+}
+
+.card {
+    @apply rounded-xl bg-panel-light dark:bg-panel-dark border border-border-light dark:border-border-dark shadow-sm;
+}
+
+/* Mode-specific styles */
+[data-mode="workbench"] {
+    --mode-primary: var(--color-workbench-primary);
+    --mode-bg-light: var(--color-workbench-bg-light);
+    --mode-bg-dark: var(--color-workbench-bg-dark);
+}
+
+[data-mode="hub"] {
+    --mode-primary: var(--color-hub-primary);
+    --mode-bg-light: var(--color-hub-bg-light);
+    --mode-bg-dark: var(--color-hub-bg-dark);
+}
+
+[data-mode="flow"] {
+    --mode-primary: var(--color-flow-primary);
+    --mode-bg-light: var(--color-flow-bg-light);
+    --mode-bg-dark: var(--color-flow-bg-dark);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border-light);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-dark);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: var(--color-background-dark);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--color-border-dark);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-light);
 }
