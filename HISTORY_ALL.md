@@ -315,6 +315,27 @@ A dedicated settings area (`/settings`) provides administrators with tools to ma
     - Role-based access control (RBAC)
     - Automatic redirect to login for unauthenticated users
 
+#### 3.8.7. Form Validation
+- **Add Agent Modal** (`frontend/src/components/workbench/AddAgentModal.tsx`):
+    - Real-time field validation with error states
+    - **Validation Rules**:
+        - Name: Required, 3-50 characters (Line 39-46)
+        - Description: Required, minimum 10 characters (Line 47-52)
+        - Framework: Required selection (Line 53-56)
+    - **Visual Feedback**:
+        - Red border on invalid fields (`border-red-500`)
+        - Error messages below each field
+        - Submit button disabled when invalid
+    - **User Experience**:
+        - Validation triggers on blur (Line 63-68)
+        - Real-time validation after first touch
+        - Clear error messages with i18n support
+    - **Error States Management**:
+        - `errors` state for validation messages (Line 33)
+        - `touched` state to track user interaction (Line 34)
+        - `validateField()` function for field-specific validation (Line 36-61)
+        - `handleBlur()` function for touch tracking (Line 63-68)
+
 ---
 
 ## 4. API Services Implementation

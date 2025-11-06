@@ -29,7 +29,56 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const [framework, setFramework] = useState<AgentFramework | ''>('');
   const [color, setColor] = useState(cardColors[3]);
 
+  // Form validation states
+  const [errors, setErrors] = useState<{ name?: string; description?: string; framework?: string }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; description?: boolean; framework?: boolean }>({});
+
+  const validateField = (field: 'name' | 'description' | 'framework', value: string) => {
+    let error = '';
+
+    if (field === 'name') {
+      if (!value.trim()) {
+        error = t('createAgent.errors.nameRequired', 'Agent name is required');
+      } else if (value.length < 3) {
+        error = t('createAgent.errors.nameTooShort', 'Agent name must be at least 3 characters');
+      } else if (value.length > 50) {
+        error = t('createAgent.errors.nameTooLong', 'Agent name must be less than 50 characters');
+      }
+    } else if (field === 'description') {
+      if (!value.trim()) {
+        error = t('createAgent.errors.descriptionRequired', 'Description is required');
+      } else if (value.length < 10) {
+        error = t('createAgent.errors.descriptionTooShort', 'Description must be at least 10 characters');
+      }
+    } else if (field === 'framework') {
+      if (!value) {
+        error = t('createAgent.errors.frameworkRequired', 'Framework selection is required');
+      }
+    }
+
+    setErrors(prev => ({ ...prev, [field]: error }));
+    return !error;
+  };
+
+  const handleBlur = (field: 'name' | 'description' | 'framework') => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    if (field === 'name') validateField('name', name);
+    else if (field === 'description') validateField('description', description);
+    else if (field === 'framework') validateField('framework', framework);
+  };
+
   const handleSubmit = async () => {
+    // Validate all fields
+    const isNameValid = validateField('name', name);
+    const isDescValid = validateField('description', description);
+    const isFrameworkValid = validateField('framework', framework);
+
+    setTouched({ name: true, description: true, framework: true });
+
+    if (!isNameValid || !isDescValid || !isFrameworkValid) {
+      return;
+    }
+
     // ... (submission logic will be updated later)
     onClose();
   };
@@ -52,31 +101,52 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           <label className="flex flex-col">
             <p className="text-base font-medium leading-normal pb-2">{t('createAgent.nameLabel')}</p>
             <input
-              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal"
+              className={`form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 ${touched.name && errors.name ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-300 dark:border-[#433c53] focus:ring-primary/50'} border h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal`}
               placeholder={t('createAgent.namePlaceholder')}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (touched.name) validateField('name', e.target.value);
+              }}
+              onBlur={() => handleBlur('name')}
             />
+            {touched.name && errors.name && (
+              <p className="text-sm text-red-500 dark:text-red-400 mt-1">{errors.name}</p>
+            )}
           </label>
           <label className="flex flex-col">
             <p className="text-base font-medium leading-normal pb-2">{t('createAgent.descriptionLabel')}</p>
             <textarea
-              className="form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] min-h-28 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] p-4 text-base font-normal leading-normal"
+              className={`form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 ${touched.description && errors.description ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-300 dark:border-[#433c53] focus:ring-primary/50'} border min-h-28 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] p-4 text-base font-normal leading-normal`}
               placeholder={t('createAgent.descriptionPlaceholder')}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                if (touched.description) validateField('description', e.target.value);
+              }}
+              onBlur={() => handleBlur('description')}
             />
+            {touched.description && errors.description && (
+              <p className="text-sm text-red-500 dark:text-red-400 mt-1">{errors.description}</p>
+            )}
           </label>
           <label className="flex flex-col">
             <p className="text-base font-medium leading-normal pb-2">{t('createAgent.frameworkLabel')}</p>
             <select
-              className="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 px-4 text-base font-normal leading-normal"
+              className={`form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 ${touched.framework && errors.framework ? 'border-red-500 focus:ring-red-500/50' : 'border-gray-300 dark:border-[#433c53] focus:ring-primary/50'} border h-12 px-4 text-base font-normal leading-normal`}
               value={framework}
-              onChange={(e) => setFramework(e.target.value as AgentFramework)}
+              onChange={(e) => {
+                setFramework(e.target.value as AgentFramework);
+                if (touched.framework) validateField('framework', e.target.value);
+              }}
+              onBlur={() => handleBlur('framework')}
             >
               <option value="" disabled>{t('createAgent.frameworkPlaceholder')}</option>
               {Object.values(AgentFramework).map(f => <option key={f} value={f}>{f}</option>)}
             </select>
+            {touched.framework && errors.framework && (
+              <p className="text-sm text-red-500 dark:text-red-400 mt-1">{errors.framework}</p>
+            )}
           </label>
           <div>
             <p className="text-base font-medium leading-normal pb-2">{t('createAgent.colorLabel')}</p>
