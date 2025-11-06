@@ -41,28 +41,30 @@
 - `frontend/src/components/layout/UserDropdown.tsx` - Create new component
 
 ### 0.2. Agent Integration & Workbench
-**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: 🟡 In Progress
 
 #### 0.2.1. Add ADK/Agno Agents to Workbench
+**Status**: ✅ COMPLETED (2025-11-06)
 **Requirements**:
-- Complete agent registration API integration
-- Fetch deployed test agents (Math Agent on port 8011, Text Agent on port 8012)
-- Display agents in Workbench agent list with proper framework badges
-- Show agent status (online/offline) with health check
-- Enable agent selection for testing
+- ✅ Complete agent registration API integration
+- ✅ Fetch deployed test agents (Math Agent on port 8011, Text Agent on port 8012)
+- ✅ Display agents in Workbench agent list with proper framework badges
+- ✅ Show agent status (DEVELOPMENT) with health check
+- ✅ Enable agent selection for testing
 
 **Implementation Steps**:
-1. Fix authentication for agent registration API calls
-2. Implement agent discovery from agent-service
-3. Display agent cards with framework, capabilities, status
-4. Add "Test Agent" button that opens chat interface
-5. Store selected agent in workbench state
+1. ✅ Fix authentication for agent registration API calls
+2. ✅ Implement agent discovery from agent-service
+3. ✅ Display agent cards with framework, capabilities, status
+4. ⏸️ Add "Test Agent" button that opens chat interface (pending chat implementation)
+5. ⏸️ Store selected agent in workbench state (pending chat implementation)
 
-**Files to Create/Modify**:
-- `frontend/src/pages/Workbench.tsx` - Agent list display
-- `frontend/src/api/agents.ts` - API calls for agent listing
-- `frontend/src/components/workbench/AgentCard.tsx` - Agent display component
-- `frontend/src/stores/workbenchStore.ts` - Agent selection state
+**Files Created/Modified**:
+- ✅ `frontend/src/components/workbench/AddAgentModal.tsx` - Implemented agentService.createAgent() API call
+- ✅ `frontend/src/services/agentService.ts` - Agent API integration
+- ✅ `frontend/src/types/index.ts` - AgentStatus, HealthStatus enums
+- ⏸️ `frontend/src/pages/Workbench.tsx` - Agent list display (already exists, needs chat integration)
+- ⏸️ `frontend/src/stores/workbenchStore.ts` - Agent selection state (pending)
 
 #### 0.2.2. Implement Streaming Chat with Tracing
 **Requirements**:

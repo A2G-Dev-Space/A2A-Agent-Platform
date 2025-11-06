@@ -424,6 +424,7 @@ A comprehensive frontend redesign was implemented to transform the platform into
 - **zod**: Schema validation
 
 **AddAgentModal Redesign** (`frontend/src/components/workbench/AddAgentModal.tsx`):
+- **✅ UPDATED (2025-11-06)**: Implemented agent creation API integration
 - **Features**: Comprehensive validation with Zod schema, drag & drop logo upload, image preview
 - **Validation Rules**:
   ```typescript
@@ -439,8 +440,15 @@ A comprehensive frontend redesign was implemented to transform the platform into
     capabilities: z.array(z.string()).min(1)
   });
   ```
+- **API Integration** (Lines 78-108):
+  - Calls `agentService.createAgent()` with form data
+  - Maps form fields to agent model: `data.url` → `a2a_endpoint`, `data.version` → `capabilities.version`
+  - Sets default values: `status: DEVELOPMENT`, `visibility: 'private'`, `health_status: UNKNOWN`
+  - Reloads page on success (temporary, should use query invalidation)
+  - Error handling with console.error (TODO: add toast notification)
 - **Layout**: Grid-based responsive layout, logo & color picker on the right, accessible form controls
 - **✅ Verified**: All validation rules working correctly, error messages displaying properly
+- **✅ Verified (2025-11-06)**: Successfully created Math Agent and Text Agent, both showing in Workbench with DEVELOPMENT status
 
 ##### Component Updates
 
