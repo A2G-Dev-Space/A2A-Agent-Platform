@@ -7,6 +7,7 @@ const SettingsPage: React.FC = () => {
 
   const tabs = [
     { name: t('settings.tabs.general'), path: '/settings/general' },
+    { name: t('settings.tabs.platformKeys'), path: '/settings/platform-keys' },
     { name: t('settings.tabs.userManagement'), path: '/settings/user-management' },
     { name: t('settings.tabs.llmManagement'), path: '/settings/llm-management' },
     { name: t('settings.tabs.statistics'), path: '/settings/statistics' },

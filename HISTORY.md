@@ -1,6 +1,6 @@
 # HISTORY.md - Index Document for HISTORY_ALL.md
 
-**Version 2.0** | **Last Updated: 2025-11-06** | **Total Lines: 925**
+**Version 2.1** | **Last Updated: 2025-11-07** | **Total Lines: 925**
 
 > 🔍 This is an INDEX document. For detailed implementation, refer to [HISTORY_ALL.md](./HISTORY_ALL.md) using the line numbers below.
 
@@ -201,13 +201,13 @@
 
 | Component | Status | Details | Lines |
 |-----------|--------|---------|-------|
-| **User Service** | ✅ 90% | JWT disabled in dev | 489-536 |
+| **User Service** | ✅ 95% | JWT with role, Platform Keys | 489-536 |
 | **Agent Service** | ✅ 85% | Fully functional | 537-574 |
-| **Chat Service** | ⚠️ 60% | Basic WebSocket only | 575-622 |
-| **Tracing Service** | ❌ 10% | Placeholder | 623-644 |
-| **Admin Service** | ❌ 20% | Schema only | 645-681 |
+| **Chat Service** | ✅ 75% | WebSocket streaming impl | 575-622 |
+| **Tracing Service** | ⚠️ 60% | WebSocket real-time logs | 623-644 |
+| **Admin Service** | ✅ 70% | LLM management working | 645-681 |
 | **Worker Service** | ❌ 5% | Mock tasks | 682-725 |
-| **API Gateway** | ✅ 80% | FastAPI-based | 726-771 |
+| **API Gateway** | ✅ 90% | WebSocket proxy added | 726-771 |
 | **Mock SSO** | ✅ 100% | Dev only | 794-831 |
 
 ---

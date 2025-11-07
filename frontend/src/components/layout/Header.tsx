@@ -2,15 +2,29 @@ import React from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui';
+import { Menu } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onMobileMenuClick?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-end h-16 bg-panel-light dark:bg-[#110d1a]/50 backdrop-blur-sm border-b border-border-light dark:border-border-dark px-6 sticky top-0 z-10">
-      <div className="flex items-center gap-4">
+    <header className="flex items-center justify-between h-16 bg-panel-light dark:bg-[#110d1a]/50 backdrop-blur-sm border-b border-border-light dark:border-border-dark px-4 sm:px-6 sticky top-0 z-10">
+      {/* Mobile menu button */}
+      <button
+        onClick={onMobileMenuClick}
+        className="lg:hidden p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors"
+        aria-label="Open menu"
+      >
+        <Menu className="h-6 w-6 text-text-light-secondary dark:text-text-dark-secondary" />
+      </button>
+
+      <div className="flex items-center gap-2 sm:gap-4 ml-auto">
         {/* Notification Bell */}
         <button
           className="p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors relative"

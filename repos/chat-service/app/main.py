@@ -15,6 +15,7 @@ from typing import Dict, List
 from app.core.config import settings
 from app.api.v1 import sessions, messages
 from app.websocket.manager import ConnectionManager
+from app.websocket.chat_handler import ChatWebSocketHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 # WebSocket connection manager
 manager = ConnectionManager()
+chat_handler = ChatWebSocketHandler(manager)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,27 +60,19 @@ app.add_middleware(
 app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
 
-@app.websocket("/ws/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    """WebSocket endpoint for real-time chat"""
-    await manager.connect(websocket, session_id)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            message_data = json.loads(data)
-            
-            # Echo back with timestamp
-            response = {
-                "type": "message",
-                "content": f"Echo: {message_data.get('content', '')}",
-                "timestamp": "2025-01-01T00:00:00Z",
-                "session_id": session_id
-            }
-            
-            await manager.send_personal_message(json.dumps(response), session_id)
-            
-    except WebSocketDisconnect:
-        manager.disconnect(session_id)
+@app.websocket("/ws/chat/{session_id}")
+async def websocket_chat_endpoint(websocket: WebSocket, session_id: str, token: str = None):
+    """WebSocket endpoint for real-time chat with agent streaming
+
+    Query params:
+        token: JWT authentication token
+    """
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    # Use enhanced chat handler with A2A proxy integration
+    await chat_handler.handle_connection(websocket, session_id, token)
 
 @app.get("/health")
 async def health_check():

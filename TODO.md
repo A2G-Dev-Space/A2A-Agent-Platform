@@ -1,6 +1,6 @@
 # TODO.md - Index Document for TODO_ALL.md
 
-**Version 2.1** | **Last Updated: 2025-11-06** | **Total Lines: 1873 (+357)**
+**Version 2.2** | **Last Updated: 2025-11-07** | **Total Lines: 1873 (+357)**
 
 > 🔍 This is an INDEX document. For detailed implementation tasks, refer to [TODO_ALL.md](./TODO_ALL.md) using the line numbers below.
 
@@ -15,10 +15,11 @@ User-requested verification and implementation tasks that must be completed imme
 1. **Frontend UI/UX Fixes** (Lines 10-39) - Remove settings from sidebar, move user to header
 2. **Agent Integration** (Lines 41-90) - Add ADK/Agno agents to workbench with streaming chat
 3. **Publishing Workflow** (Lines 92-157) - Implement agent publishing and Hub integration
-4. **LLM Management** (Lines 159-220) - Settings verification, LLM management, key validation
-5. **User Management** (Lines 222-263) - User approval/rejection, role management
-6. **Statistics** (Lines 265-314) - Agent and LLM usage statistics tracking
-7. **Verification** (Lines 316-363) - Playwright E2E tests for all features
+4. **Platform LLM Proxy** (Lines 286-362) - Admin LLM management, user key issuance, proxy architecture
+5. **Settings UI Differentiation** (Lines 364-395) - Role-based settings pages (admin vs user)
+6. **User Management** (Lines 397-430) - User approval/rejection, role management
+7. **Statistics** (Lines 432-485) - Agent and LLM usage statistics tracking
+8. **Verification** (Lines 487-520) - Playwright E2E tests for all features
 
 ---
 
@@ -312,12 +313,12 @@ Example: To fix WebSocket memory leaks:
 
 | Category | Total Tasks | Completed | In Progress | Not Started |
 |----------|------------|-----------|-------------|-------------|
-| **UI/UX** | 45 | 5 (11%) | 10 (22%) | 30 (67%) |
-| **Frontend** | 38 | 15 (39%) | 8 (21%) | 15 (40%) |
-| **Backend** | 52 | 28 (54%) | 12 (23%) | 12 (23%) |
-| **Infrastructure** | 25 | 3 (12%) | 5 (20%) | 17 (68%) |
+| **UI/UX** | 45 | 12 (27%) | 8 (18%) | 25 (55%) |
+| **Frontend** | 38 | 22 (58%) | 5 (13%) | 11 (29%) |
+| **Backend** | 52 | 35 (67%) | 10 (19%) | 7 (14%) |
+| **Infrastructure** | 25 | 5 (20%) | 4 (16%) | 16 (64%) |
 | **Documentation** | 15 | 1 (7%) | 2 (13%) | 12 (80%) |
-| **Security** | 18 | 2 (11%) | 3 (17%) | 13 (72%) |
+| **Security** | 18 | 5 (28%) | 2 (11%) | 11 (61%) |
 
 ---
 

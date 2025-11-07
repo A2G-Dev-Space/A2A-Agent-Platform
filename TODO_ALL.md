@@ -283,73 +283,121 @@ Key findings:
 - `frontend/src/components/hub/ChatInterface.tsx` - Chat area
 - `frontend/src/components/hub/AgentInfoPanel.tsx` - Agent details
 
-### 0.4. Settings & LLM Management
-**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+### 0.4. Platform LLM Proxy Architecture
+**Priority**: 🔴 CRITICAL | **Effort**: 2 weeks | **Status**: 🟡 In Progress
 
-#### 0.4.1. Verify Settings Actions (No Direct Key Usage)
+#### 0.4.1. Core LLM Proxy Architecture
 **Requirements**:
-- Review all settings pages to ensure Gemini API key is NOT used directly in agents
-- LLM models should be registered in Admin service
-- Agents should reference LLM model IDs, not API keys
-- Personal keys should be encrypted and managed securely
+- Platform acts as LLM Proxy between user agents and real LLM providers
+- Admin manages all real LLM API keys (users do NOT provide their own keys)
+- Users receive platform-issued keys and endpoints for their agents
+- All LLM traffic flows through platform for tracing and debugging
+- Platform maps: User Key → Agent → Admin's Real LLM
 
-**Verification Steps**:
-1. Check agent creation form - ensure no API key field
-2. Verify agents use LLM model references (model_id)
-3. Check admin service for proper LLM model management
-4. Ensure API keys are encrypted in database
-5. Test agent execution uses proxy endpoint with registered LLMs
-
-**Files to Review**:
-- `frontend/src/components/workbench/AddAgentModal.tsx`
-- `repos/agent-service/app/models/agent.py`
-- `repos/admin-service/app/models/llm_model.py`
-
-#### 0.4.2. LLM Management Implementation
-**Requirements**:
-- Admin UI to add/edit/delete LLM models
-- Fields: Provider (OpenAI, Anthropic, Google, etc.), Model name, API key, API endpoint
-- Test connection button to verify API key works
-- Display registered LLMs in settings page
-- Workbench shows proxy endpoint for each LLM
+**Architecture Flow**:
+```
+[User's Agent Code]
+    ↓ Uses platform-provided endpoint + key
+[Platform LLM Proxy]
+    ↓ Intercepts & traces all calls
+[Admin's Real LLM (Gemini/OpenAI)]
+```
 
 **Implementation Steps**:
-1. Create LLM management page in admin settings
-2. Implement add LLM modal with form validation
-3. Add API endpoint testing functionality
-4. Display LLM list with status indicators
-5. Show proxy endpoint URLs in Workbench for registered LLMs
+1. Remove user LLM key storage (delete user_llm_keys table)
+2. Create platform key issuance system
+3. Build LLM proxy that intercepts all agent LLM calls
+4. Map issued keys to users and specific agents
+5. Route to admin-configured LLMs based on model selection
+6. Log all LLM interactions to tracing service
 
 **Files to Create/Modify**:
-- `frontend/src/pages/settings/LLMManagement.tsx` - LLM admin page
-- `frontend/src/components/settings/AddLLMModal.tsx` - Add LLM form
-- `repos/admin-service/app/routers/llm_models.py` - LLM CRUD endpoints
-- `repos/agent-service/app/proxy/llm_proxy.py` - Proxy endpoint logic
+- `repos/chat-service/app/llm/proxy.py` - Refactor to use admin keys only
+- `repos/api-gateway/app/proxy/llm_endpoint.py` - NEW: Platform LLM endpoint
+- `repos/user-service/app/api/v1/platform_keys.py` - NEW: Key issuance API
+- `repos/user-service/app/models/platform_key.py` - NEW: Platform key model
 
-#### 0.4.3. Personal Key Validation
+#### 0.4.2. Admin-Only LLM Management
 **Requirements**:
-- Users can add personal API keys for LLM providers
-- Key validation on save (test API call)
-- If key is invalid, show error and prevent save
-- Display key status (valid/invalid) with last tested timestamp
-- Keys are encrypted at rest in database
+- Admin-only Settings page for LLM configuration
+- Store real LLM API keys (encrypted) that platform uses
+- Fields: Provider, Model Name, API Key, Rate Limits
+- Test connection before saving
+- Display available models to users (without exposing keys)
+- Track costs and usage per model
 
 **Implementation Steps**:
-1. Create personal key management UI in user settings
-2. Add key validation endpoint that tests API call
-3. Encrypt keys before storing in database
-4. Display key status with indicators
-5. Show error messages for invalid keys
+1. Create admin-only LLM management UI
+2. Store real API keys encrypted in admin database
+3. Add connection testing endpoint
+4. Create model listing API for users (no keys exposed)
+5. Implement cost tracking based on token usage
 
 **Files to Create/Modify**:
-- `frontend/src/pages/settings/PersonalKeys.tsx` - Key management UI
-- `repos/user-service/app/routers/user_keys.py` - Key CRUD endpoints
-- `repos/user-service/app/core/encryption.py` - Key encryption logic
+- `frontend/src/pages/admin/LLMManagement.tsx` - NEW: Admin LLM page
+- `frontend/src/components/admin/AddLLMModal.tsx` - NEW: Add LLM form
+- `repos/admin-service/app/routers/llm_admin.py` - NEW: Admin LLM CRUD
+- `repos/admin-service/app/models/admin_llm_model.py` - NEW: Admin LLM model
 
-### 0.5. User Management & Admin Features
+#### 0.4.3. User Platform Key & Endpoint Management
+**Requirements**:
+- Users generate platform keys in Settings (general section)
+- Each key is tied to: User ID + Agent ID
+- Display platform endpoints in Workbench debugging UI
+- Show all available LLM models users can reference
+- Keys can be revoked and regenerated
+
+**Implementation Steps**:
+1. Add "Generate Key" button in user Settings
+2. Create unique key with proper entropy
+3. Store key → user → agent mappings
+4. Display endpoint format: `http://api-gateway:8000/llm/{agent_id}`
+5. Show key in format: `a2g_key_XXXXXXXXXXXXX`
+6. Add revocation with audit logging
+
+**Files to Create/Modify**:
+- `frontend/src/pages/settings/GeneralSettings.tsx` - Add key generation
+- `frontend/src/components/workbench/AgentEndpoints.tsx` - Show endpoints
+- `repos/user-service/app/api/v1/platform_keys.py` - Key generation API
+- `repos/user-service/app/models/platform_key.py` - Platform key model
+
+### 0.5. Settings UI Role Differentiation
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
 
-#### 0.5.1. User Approval/Rejection Workflow
+#### 0.5.1. Role-Based Settings Pages
+**Requirements**:
+- Settings modal shows different pages based on user role
+- Regular users see: General, Platform Keys
+- Admins see: General, Platform Keys, LLM Management, User Management, Statistics
+- Settings accessible only from header user dropdown (not sidebar)
+- Each section has proper access control
+
+**User Settings Pages**:
+1. **General**: Profile info, preferences, theme
+2. **Platform Keys**: Generate/revoke platform API keys
+
+**Admin Settings Pages** (in addition to user pages):
+3. **LLM Management**: Add/edit/delete real LLM configurations
+4. **User Management**: Approve/reject users, change roles
+5. **Statistics**: Usage metrics, costs, agent performance
+
+**Implementation Steps**:
+1. Check user role from JWT token
+2. Conditionally render settings sections
+3. Add role-based route protection
+4. Create separate components for each section
+5. Test access control thoroughly
+
+**Files to Create/Modify**:
+- `frontend/src/components/settings/SettingsModal.tsx` - Role-based rendering
+- `frontend/src/pages/settings/GeneralSettings.tsx` - User profile
+- `frontend/src/pages/settings/PlatformKeys.tsx` - Key management
+- `frontend/src/pages/admin/*` - Admin-only pages
+
+### 0.6. User Management & Admin Features
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+
+#### 0.6.1. User Approval/Rejection Workflow
 **Requirements**:
 - New users start with PENDING status
 - Admin sees list of pending users with Approve/Reject buttons
@@ -389,61 +437,68 @@ Key findings:
 - `repos/user-service/app/routers/admin.py` - Role update endpoint
 - `repos/user-service/app/models/audit_log.py` - Audit logging
 
-### 0.6. Usage Statistics & Monitoring
+### 0.7. Usage Statistics & Monitoring
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
 
-#### 0.6.1. Agent Usage Statistics
+#### 0.7.1. Platform LLM Proxy Usage Tracking
 **Requirements**:
-- Track agent call counts per user
-- Track agent execution time and success/failure rates
-- Display statistics in admin dashboard:
-  - Total calls per agent
-  - Average response time
-  - Success rate
-  - Top users of each agent
-- Filter by date range
+- Track ALL LLM calls through platform proxy
+- Map usage to: User (by platform key) → Agent (by endpoint) → LLM Model
+- Capture per request: tokens in/out, latency, success/failure
+- Real-time usage aggregation for admin dashboard
+- Cost calculation based on admin's LLM pricing
+
+**Tracking Points**:
+1. **Platform Key Usage**: Which user made the request
+2. **Agent Identification**: Which agent endpoint was used
+3. **Model Usage**: Which LLM model was actually called
+4. **Token Metrics**: Input/output tokens, total cost
+5. **Performance**: Response time, success rate
 
 **Implementation Steps**:
-1. Implement usage tracking in chat service (log each agent call)
-2. Create statistics aggregation worker task (hourly/daily)
-3. Store aggregated stats in database
-4. Create statistics API endpoints
-5. Build statistics dashboard UI with charts
+1. Add tracking middleware to LLM proxy service
+2. Log: platform_key → user_id → agent_id → model → tokens
+3. Store metrics in time-series database (or PostgreSQL with partitioning)
+4. Create real-time aggregation pipeline
+5. Build admin dashboard with usage analytics
 
 **Files to Create/Modify**:
-- `repos/chat-service/app/services/usage_tracker.py` - Usage logging
-- `repos/worker-service/app/tasks.py` - Statistics aggregation task
+- `repos/api-gateway/app/proxy/usage_middleware.py` - Usage tracking
+- `repos/admin-service/app/models/usage_metrics.py` - Usage data model
 - `repos/admin-service/app/routers/statistics.py` - Stats API
-- `frontend/src/pages/admin/Statistics.tsx` - Stats dashboard
+- `frontend/src/pages/admin/UsageDashboard.tsx` - Usage analytics
 
-#### 0.6.2. LLM Token Usage Statistics
+#### 0.7.2. Agent Performance Statistics
 **Requirements**:
-- Track token usage per LLM model
-- Track cost per user (if pricing data available)
-- Display statistics:
-  - Total tokens used per model
-  - Token usage by user
-  - Estimated costs
-  - Usage trends over time
-- Export statistics to CSV
+- Track agent-specific metrics (separate from LLM usage)
+- Monitor: call frequency, error rates, average latency
+- Identify top agents by usage
+- Show per-agent breakdown: users, sessions, success rate
+- Agent health monitoring and alerts
+
+**Metrics to Track**:
+- Total calls per agent per time period
+- Unique users per agent
+- Average session length
+- Error rate and error types
+- Agent availability/uptime
 
 **Implementation Steps**:
-1. Log token counts in chat service on each LLM call
-2. Store token usage in statistics database
-3. Calculate costs based on model pricing
-4. Create token statistics API endpoints
-5. Build token usage dashboard with charts and export
+1. Track agent calls at API gateway level
+2. Store agent performance metrics
+3. Create agent leaderboard
+4. Build agent health monitoring
+5. Add alerting for agent failures
 
 **Files to Create/Modify**:
-- `repos/chat-service/app/services/token_tracker.py` - Token counting
-- `repos/admin-service/app/models/token_usage.py` - Token usage model
-- `repos/admin-service/app/routers/statistics.py` - Token stats API
-- `frontend/src/pages/admin/TokenStatistics.tsx` - Token dashboard
+- `repos/agent-service/app/services/agent_metrics.py` - Agent tracking
+- `repos/admin-service/app/models/agent_stats.py` - Agent stats model
+- `frontend/src/pages/admin/AgentStatistics.tsx` - Agent dashboard
 
-### 0.7. Verification Requirements
+### 0.8. Verification Requirements
 **Priority**: 🔴 CRITICAL | **Effort**: Ongoing | **Status**: ❌ Not Started
 
-#### 0.7.1. Playwright E2E Verification
+#### 0.8.1. Playwright E2E Verification
 **Requirements**: After implementing each feature above, verify with Playwright MCP tool
 
 **Test Scenarios**:

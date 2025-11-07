@@ -26,14 +26,20 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
   const shouldReconnectRef = useRef(reconnect);
 
   const connect = useCallback(() => {
-    if (!url) return;
+    if (!url) {
+      console.log('[useWebSocket] No URL provided, skipping connection');
+      return;
+    }
+
+    console.log('[useWebSocket] Creating WebSocket connection to:', url);
 
     try {
       const ws = new WebSocket(url);
       wsRef.current = ws;
+      console.log('[useWebSocket] wsRef.current set:', wsRef.current !== null);
 
       ws.onopen = () => {
-        console.log('WebSocket connected:', url);
+        console.log('[useWebSocket] onopen fired, url:', url, 'readyState:', ws.readyState, 'wsRef.current:', wsRef.current !== null);
         setIsConnected(true);
         onOpen?.();
       };
@@ -84,10 +90,12 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
   }, []);
 
   const sendMessage = useCallback((data: any) => {
+    console.log('[useWebSocket] sendMessage called, readyState:', wsRef.current?.readyState, 'OPEN:', WebSocket.OPEN);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('[useWebSocket] Sending message:', data);
       wsRef.current.send(JSON.stringify(data));
     } else {
-      console.warn('WebSocket not connected, cannot send message');
+      console.warn('[useWebSocket] WebSocket not ready, readyState:', wsRef.current?.readyState);
     }
   }, []);
 

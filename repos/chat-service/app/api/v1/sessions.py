@@ -7,9 +7,10 @@ from typing import Optional
 from datetime import datetime
 import uuid
 
-from app.core.database import async_session_maker, ChatSession
+from app.core.database import get_db, ChatSession
 from app.core.security import get_current_user
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ class SessionCreate(BaseModel):
     title: Optional[str] = None
 
 class SessionResponse(BaseModel):
-    session_id: str
+    id: str
     trace_id: str
     websocket_url: str
     created_at: datetime
@@ -27,7 +28,7 @@ class SessionResponse(BaseModel):
 async def create_session(
     request: SessionCreate,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create new chat session"""
     session_id = str(uuid.uuid4())
@@ -46,7 +47,7 @@ async def create_session(
     await db.refresh(session)
     
     return SessionResponse(
-        session_id=session_id,
+        id=session_id,
         trace_id=trace_id,
         websocket_url=f"ws://localhost:8003/ws/{session_id}",
         created_at=session.created_at
@@ -56,7 +57,7 @@ async def create_session(
 async def get_session(
     session_id: str,
     current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get chat session details"""
     result = await db.execute(select(ChatSession).where(ChatSession.session_id == session_id))
