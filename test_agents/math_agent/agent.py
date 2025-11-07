@@ -3,6 +3,7 @@ import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from google.adk.tools.function_tool import FunctionTool
+from fastapi.middleware.cors import CORSMiddleware
 
 # Set Gemini API key
 os.environ["GOOGLE_API_KEY"] = "AIzaSyA88_jZGuybTQ4NYnVFQXemfLSt1utHAkE"
@@ -67,8 +68,21 @@ async def start_math_agent():
         port=8011
     )
 
+    # Add CORS middleware to allow frontend access
+    a2a_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:9060",  # Frontend dev server
+            "http://localhost:9050",  # Production frontend
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     print("\n✓ Math Agent initialized")
     print("✓ Port: 8011")
+    print("✓ CORS enabled for frontend origins")
     print("✓ Agent Card endpoint: http://localhost:8011/.well-known/agent.json")
     print("✓ Task endpoint: http://localhost:8011/tasks/send")
     print("\nStarting agent...\n")

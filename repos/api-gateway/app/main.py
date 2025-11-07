@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 SERVICE_ROUTES = {
     # Authentication & Users (User Service)
     '/api/auth': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
+    '/api/v1/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),  # Platform keys and other v1 endpoints
     '/api/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
-    '/api/v1/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
 
     # Admin - User Management (User Service) - Must be before /api/admin
     '/api/admin/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
@@ -34,6 +34,9 @@ SERVICE_ROUTES = {
     # Admin - LLM & Statistics (Admin Service)
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
     '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+
+    # LLM Proxy (Chat Service)
+    '/api/llm': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
 
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),

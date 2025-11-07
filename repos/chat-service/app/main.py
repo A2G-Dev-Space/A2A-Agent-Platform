@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, List
 
 from app.core.config import settings
-from app.api.v1 import sessions, messages
+from app.api.v1 import sessions, messages, llm_proxy
 from app.websocket.manager import ConnectionManager
 from app.websocket.chat_handler import ChatWebSocketHandler
 
@@ -59,6 +59,7 @@ app.add_middleware(
 # Include routers
 app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
+app.include_router(llm_proxy.router, prefix="/api", tags=["llm-proxy"])
 
 @app.websocket("/ws/chat/{session_id}")
 async def websocket_chat_endpoint(websocket: WebSocket, session_id: str, token: str = None):

@@ -24,7 +24,7 @@ const PlatformKeysPage: React.FC = () => {
 
   const fetchKeys = async () => {
     try {
-      const response = await fetch('http://localhost:9050/api/users/me/platform-keys/', {
+      const response = await fetch('http://localhost:9050/api/v1/users/me/platform-keys/', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -49,7 +49,7 @@ const PlatformKeysPage: React.FC = () => {
     if (!newKeyName.trim()) return;
 
     try {
-      const response = await fetch('http://localhost:9050/api/users/me/platform-keys/', {
+      const response = await fetch('http://localhost:9050/api/v1/users/me/platform-keys/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -73,7 +73,7 @@ const PlatformKeysPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this key?')) return;
 
     try {
-      const response = await fetch(`http://localhost:9050/api/users/me/platform-keys/${id}/`, {
+      const response = await fetch(`http://localhost:9050/api/v1/users/me/platform-keys/${id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

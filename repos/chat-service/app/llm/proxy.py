@@ -76,7 +76,7 @@ class LLMProxy:
             from sqlalchemy import select, text
 
             # Create connection to admin DB
-            admin_db_url = "postgresql+asyncpg://admin:adminpass@postgres:5432/a2g_admin"
+            admin_db_url = "postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db"
             engine = create_async_engine(admin_db_url)
             session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

@@ -36,6 +36,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   const [selectedAgnoAgent, setSelectedAgnoAgent] = useState('');
   const [agnoTeams, setAgnoTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [agnoAgents, setAgnoAgents] = useState<Array<{ id: string; name: string }>>([]);
+  const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   // Use ref to track streaming message without causing re-renders
   const streamingMessageRef = useRef('');
@@ -164,6 +165,39 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     }
   };
 
+  // Test agent endpoint connection
+  const handleTestAgentEndpoint = async () => {
+    if (!agent.a2a_endpoint) {
+      setAgentEndpointStatus('error');
+      return;
+    }
+
+    setAgentEndpointStatus('testing');
+
+    try {
+      // Test A2A agent.json endpoint
+      const url = agent.a2a_endpoint.endsWith('/')
+        ? `${agent.a2a_endpoint}.well-known/agent.json`
+        : `${agent.a2a_endpoint}/.well-known/agent.json`;
+
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Agent card:', data);
+        setAgentEndpointStatus('success');
+        setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+      } else {
+        setAgentEndpointStatus('error');
+        setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+      }
+    } catch (error) {
+      console.error('Error testing agent endpoint:', error);
+      setAgentEndpointStatus('error');
+      setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+    }
+  };
+
   return (
     <div className="flex flex-col bg-surface-light dark:bg-surface-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
       {/* Header */}
@@ -240,6 +274,83 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               </div>
               <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
                 Use this endpoint with your platform API key for LLM access
+              </p>
+            </div>
+
+            {/* Agent A2A Endpoint */}
+            <div className="border rounded-lg border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
+              <h4 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2">
+                Agent A2A Endpoint
+              </h4>
+              <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded mb-2">
+                <code className="text-xs text-gray-700 dark:text-gray-300">
+                  {agent.a2a_endpoint || 'No endpoint configured'}
+                </code>
+                <button
+                  onClick={() => {
+                    if (agent.a2a_endpoint) {
+                      navigator.clipboard.writeText(agent.a2a_endpoint);
+                    }
+                  }}
+                  className="text-green-600 dark:text-green-400 hover:text-green-800 p-1"
+                  title="Copy to clipboard"
+                  disabled={!agent.a2a_endpoint}
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* CORS Warning for localhost endpoints */}
+              {agent.a2a_endpoint && (agent.a2a_endpoint.includes('localhost') || agent.a2a_endpoint.includes('127.0.0.1')) && (
+                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-300 mb-1">⚠️ CORS Configuration Required</p>
+                  <p className="text-yellow-700 dark:text-yellow-400 mb-1.5">
+                    For localhost testing, enable CORS in your agent server:
+                  </p>
+                  <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
+                    {agent.framework === 'ADK' ? (
+                      `# Add to your agent code:\nfrom fastapi.middleware.cors import CORSMiddleware\n\na2a_app.add_middleware(\n  CORSMiddleware,\n  allow_origins=["http://localhost:9060"],\n  allow_credentials=True,\n  allow_methods=["*"],\n  allow_headers=["*"]\n)`
+                    ) : agent.framework === 'Agno' ? (
+                      `# Add CORS middleware to your Agno agent`
+                    ) : (
+                      `# Enable CORS for http://localhost:9060`
+                    )}
+                  </code>
+                </div>
+              )}
+
+              <button
+                onClick={handleTestAgentEndpoint}
+                disabled={!agent.a2a_endpoint || agentEndpointStatus === 'testing'}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600"
+              >
+                {agentEndpointStatus === 'testing' && (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+                {agentEndpointStatus === 'success' && (
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {agentEndpointStatus === 'error' && (
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                <span>
+                  {agentEndpointStatus === 'testing' && 'Testing Connection...'}
+                  {agentEndpointStatus === 'success' && 'Connected Successfully!'}
+                  {agentEndpointStatus === 'error' && 'Connection Failed'}
+                  {agentEndpointStatus === 'idle' && 'Test Connection'}
+                </span>
+              </button>
+              <p className="text-xs text-green-700 dark:text-green-400 mt-2">
+                Test connection to your agent's A2A endpoint
               </p>
             </div>
 
