@@ -1,7 +1,7 @@
 """
 Chat message API endpoints - REST + SSE streaming
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -40,7 +40,7 @@ async def send_message_stream(
     session_id: str,
     request: MessageCreate,
     current_user: dict = Depends(get_current_user),
-    authorization: str = None
+    authorization: Optional[str] = Header(None)
 ):
     """
     Send message to agent and stream response via SSE
@@ -75,10 +75,8 @@ async def send_message_stream(
         db.add(user_msg)
         await db.commit()
 
-    # Get JWT token from header
-    token = None
-    if authorization:
-        token = authorization.replace("Bearer ", "")
+    # Get JWT token from header (authorization already includes "Bearer " prefix)
+    token = authorization.replace("Bearer ", "") if authorization else None
 
     # Stream response
     async def event_generator():
@@ -236,24 +234,21 @@ async def _stream_from_agent_a2a(
     trace_id: str
 ):
     """
-    Stream response from agent via A2A SSE protocol
+    Stream response from agent via A2A protocol
+    Tries message/stream first, falls back to message/invoke if not supported
     Yields events: {"type": "text_token", "content": "..."} or {"type": "trace_event", ...}
     """
-    # Build A2A JSON-RPC 2.0 request for streaming
     message_id = f"msg-{session_id}-{int(time.time() * 1000)}"
-    a2a_request = {
+
+    # Try streaming first
+    a2a_stream_request = {
         "jsonrpc": "2.0",
         "method": "message/stream",
         "params": {
             "message": {
                 "messageId": message_id,
                 "role": "user",
-                "parts": [
-                    {
-                        "kind": "text",
-                        "text": user_message
-                    }
-                ],
+                "parts": [{"kind": "text", "text": user_message}],
                 "contextId": session_id
             }
         },
@@ -263,11 +258,14 @@ async def _stream_from_agent_a2a(
     logger.info(f"[A2A] Calling agent: POST {agent_url}")
 
     try:
+        streaming_supported = False
+
         async with httpx.AsyncClient(timeout=300.0) as client:
+            # Try streaming endpoint
             async with client.stream(
                 "POST",
                 agent_url,
-                json=a2a_request,
+                json=a2a_stream_request,
                 headers={"Accept": "text/event-stream"}
             ) as response:
                 response.raise_for_status()
@@ -278,77 +276,88 @@ async def _stream_from_agent_a2a(
                     if not line or not line.startswith("data: "):
                         continue
 
-                    data_str = line[6:]  # Remove "data: " prefix
+                    data_str = line[6:]
 
                     try:
                         event_data = json.loads(data_str)
+
+                        # Check for streaming not supported error
+                        if "error" in event_data:
+                            error_msg = event_data["error"].get("message", "")
+                            if "not supported" in error_msg.lower():
+                                logger.info(f"[A2A] Agent doesn't support streaming, falling back to invoke")
+                                break
+                            else:
+                                logger.error(f"[A2A] Error from agent: {error_msg}")
+                                yield {"type": "error", "message": error_msg}
+                                return
+
+                        streaming_supported = True
                         logger.info(f"[A2A] Received SSE event: {json.dumps(event_data)[:200]}")
 
-                        # Parse JSON-RPC response
                         if "result" in event_data:
                             result = event_data["result"]
-
-                            # Handle different result types based on A2A spec
                             if isinstance(result, dict):
                                 kind = result.get("kind")
 
-                                if kind == "status-update":
-                                    # TaskStatusUpdateEvent
-                                    status = result.get("status", {})
-                                    state = status.get("state")
-
-                                    # Emit trace event for status change
-                                    yield {
-                                        "type": "trace_event",
-                                        "level": "INFO",
-                                        "log_type": "AGENT",
-                                        "message": f"Agent status: {state}",
-                                        "metadata": {"state": state, "task_id": result.get("taskId")}
-                                    }
-
-                                elif kind == "artifact-update":
-                                    # TaskArtifactUpdateEvent - contains agent response
+                                if kind == "artifact-update":
                                     artifact = result.get("artifact", {})
                                     parts = artifact.get("parts", [])
-
                                     for part in parts:
                                         if part.get("kind") == "text":
-                                            # Yield text token for chat UI
-                                            yield {
-                                                "type": "text_token",
-                                                "content": part.get("text", "")
-                                            }
+                                            yield {"type": "text_token", "content": part.get("text", "")}
 
                                 elif "parts" in result:
-                                    # Message object with parts
                                     for part in result.get("parts", []):
                                         if part.get("kind") == "text":
-                                            yield {
-                                                "type": "text_token",
-                                                "content": part.get("text", "")
-                                            }
-
-                                elif "status" in result:
-                                    # Task object
-                                    status = result.get("status", {})
-                                    state = status.get("state")
-                                    yield {
-                                        "type": "trace_event",
-                                        "level": "INFO",
-                                        "log_type": "AGENT",
-                                        "message": f"Task {state}",
-                                        "metadata": {"task_id": result.get("id"), "state": state}
-                                    }
+                                            yield {"type": "text_token", "content": part.get("text", "")}
 
                     except json.JSONDecodeError as e:
                         logger.warning(f"[A2A] Failed to parse SSE data: {e}")
                         continue
 
+        if streaming_supported:
+            return
+
+        # Fall back to message/invoke if streaming not supported
+        logger.info(f"[A2A] Using message/invoke fallback")
+        a2a_invoke_request = {
+            "jsonrpc": "2.0",
+            "method": "message/invoke",
+            "params": {
+                "message": {
+                    "messageId": message_id,
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": user_message}],
+                    "contextId": session_id
+                }
+            },
+            "id": f"req-{session_id}"
+        }
+
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            response = await client.post(
+                agent_url,
+                json=a2a_invoke_request,
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+
+            result_data = response.json()
+            logger.info(f"[A2A] Invoke response: {json.dumps(result_data)[:200]}")
+
+            if "result" in result_data:
+                result = result_data["result"]
+                if isinstance(result, dict) and "parts" in result:
+                    for part in result.get("parts", []):
+                        if part.get("kind") == "text":
+                            yield {"type": "text_token", "content": part.get("text", "")}
+
     except httpx.HTTPStatusError as e:
         logger.error(f"[A2A] HTTP error: {e.response.status_code} - {e.response.text}")
         raise
     except Exception as e:
-        logger.error(f"[A2A] Error streaming from agent: {e}", exc_info=True)
+        logger.error(f"[A2A] Error calling agent: {e}", exc_info=True)
         raise
 
 async def _log_to_tracing(

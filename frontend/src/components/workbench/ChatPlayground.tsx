@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp } from 'lucide-react';
-import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework } from '@/types';
 
@@ -40,51 +39,101 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   // Use ref to track streaming message without causing re-renders
   const streamingMessageRef = useRef('');
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // WebSocket message handler - wrapped in useCallback to prevent reconnection loop
-  const handleWebSocketMessage = useCallback((data: any) => {
-    if (data.type === 'stream_start') {
-      setIsStreaming(true);
-      setStreamingMessage('');
-      streamingMessageRef.current = '';
-    } else if (data.type === 'token') {
-      streamingMessageRef.current += data.content;
-      setStreamingMessage(streamingMessageRef.current);
-    } else if (data.type === 'stream_end') {
-      setIsStreaming(false);
-      // Add complete assistant message
-      setMessages((prev) => [
-        ...prev,
+  // API base URL
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
+
+  // SSE streaming handler
+  const handleSSEStream = async (userMessage: string) => {
+    setIsStreaming(true);
+    setStreamingMessage('');
+    streamingMessageRef.current = '';
+
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/chat/sessions/${sessionId}/messages/stream`,
         {
-          id: `msg-${Date.now()}`,
-          role: 'assistant',
-          content: streamingMessageRef.current,
-          timestamp: new Date(),
-        },
-      ]);
-      setStreamingMessage('');
-      streamingMessageRef.current = '';
-    } else if (data.type === 'error') {
-      console.error('WebSocket error:', data.error);
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ content: userMessage }),
+          signal: abortControllerRef.current.signal,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body reader available');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'stream_start') {
+                console.log('[SSE] Stream started');
+              } else if (data.type === 'text_token') {
+                streamingMessageRef.current += data.content;
+                setStreamingMessage(streamingMessageRef.current);
+              } else if (data.type === 'stream_end') {
+                console.log('[SSE] Stream ended');
+                // Add complete assistant message
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `msg-${Date.now()}`,
+                    role: 'assistant',
+                    content: streamingMessageRef.current,
+                    timestamp: new Date(),
+                  },
+                ]);
+                setStreamingMessage('');
+                streamingMessageRef.current = '';
+                setIsStreaming(false);
+              } else if (data.type === 'error') {
+                console.error('[SSE] Error:', data.message);
+                setIsStreaming(false);
+              }
+            } catch (err) {
+              console.warn('[SSE] Failed to parse event data:', line);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('[SSE] Stream aborted');
+      } else {
+        console.error('[SSE] Stream error:', error);
+      }
       setIsStreaming(false);
     }
-  }, []);
-
-  const handleWebSocketError = useCallback((error: Event) => {
-    console.error('WebSocket connection error:', error);
-  }, []);
-
-  // WebSocket connection
-  const wsUrl = accessToken
-    ? `ws://localhost:9050/ws/chat/${sessionId}?token=${encodeURIComponent(accessToken)}`
-    : null;
-
-  const { isConnected, sendMessage } = useWebSocket(wsUrl, {
-    reconnect: true,
-    reconnectInterval: 3000,
-    onMessage: handleWebSocketMessage,
-    onError: handleWebSocketError,
-  });
+  };
 
   // Fetch Agno teams when agent is Agno framework
   useEffect(() => {
@@ -115,30 +164,28 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isStreaming) return;
+
+    const userMessageContent = inputValue.trim();
 
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: inputValue.trim(),
+      content: userMessageContent,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-
-    // Send to WebSocket (sendMessage handles connection check internally)
-    sendMessage({
-      type: 'chat_message',
-      content: inputValue.trim(),
-    });
-
     setInputValue('');
 
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+
+    // Send message via REST + SSE
+    await handleSSEStream(userMessageContent);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -149,10 +196,25 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   };
 
   const handleClearSession = () => {
+    // Abort any ongoing stream
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
     setMessages([]);
     setStreamingMessage('');
     setIsStreaming(false);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -207,9 +269,6 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
           <p className="text-xs text-gray-500 dark:text-gray-400">{agentName}</p>
         </div>
         <div className="flex items-center gap-2">
-          {!isConnected && (
-            <span className="text-xs text-red-500">{t('workbench.disconnected')}</span>
-          )}
           <button
             onClick={() => setShowConfig(!showConfig)}
             className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
