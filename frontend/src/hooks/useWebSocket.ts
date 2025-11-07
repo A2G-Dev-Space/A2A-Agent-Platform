@@ -56,16 +56,19 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
-        setIsConnected(false);
-        wsRef.current = null;
-        onClose?.();
+        // Only clear wsRef if this is still the current WebSocket
+        if (wsRef.current === ws) {
+          setIsConnected(false);
+          wsRef.current = null;
+          onClose?.();
 
-        // Auto-reconnect
-        if (shouldReconnectRef.current) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect...');
-            connect();
-          }, reconnectInterval);
+          // Auto-reconnect
+          if (shouldReconnectRef.current) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              console.log('Attempting to reconnect...');
+              connect();
+            }, reconnectInterval);
+          }
         }
       };
 
