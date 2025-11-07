@@ -238,6 +238,10 @@ async def _stream_from_agent_a2a(
     Tries message/stream first, falls back to message/invoke if not supported
     Yields events: {"type": "text_token", "content": "..."} or {"type": "trace_event", ...}
     """
+    # Transform localhost to host.docker.internal for Docker environments
+    agent_url = agent_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+    logger.info(f"[A2A] Using transformed agent URL: {agent_url}")
+
     message_id = f"msg-{session_id}-{int(time.time() * 1000)}"
 
     # Try streaming first
@@ -319,11 +323,11 @@ async def _stream_from_agent_a2a(
         if streaming_supported:
             return
 
-        # Fall back to message/invoke if streaming not supported
-        logger.info(f"[A2A] Using message/invoke fallback")
-        a2a_invoke_request = {
+        # Fall back to message/send if streaming not supported
+        logger.info(f"[A2A] Using message/send fallback (non-streaming)")
+        a2a_send_request = {
             "jsonrpc": "2.0",
-            "method": "message/invoke",
+            "method": "message/send",
             "params": {
                 "message": {
                     "messageId": message_id,
@@ -335,23 +339,61 @@ async def _stream_from_agent_a2a(
             "id": f"req-{session_id}"
         }
 
+        logger.info(f"[A2A] Sending message/send request to {agent_url}")
+        logger.debug(f"[A2A] Request payload: {json.dumps(a2a_send_request)[:500]}")
+
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(
                 agent_url,
-                json=a2a_invoke_request,
+                json=a2a_send_request,
                 headers={"Content-Type": "application/json"}
             )
-            response.raise_for_status()
+
+            logger.info(f"[A2A] Response status: {response.status_code}")
+
+            if response.status_code != 200:
+                error_text = response.text
+                logger.error(f"[A2A] Error response: {error_text}")
+                response.raise_for_status()
 
             result_data = response.json()
-            logger.info(f"[A2A] Invoke response: {json.dumps(result_data)[:200]}")
+            logger.info(f"[A2A] Send response received: {json.dumps(result_data)[:500]}")
 
+            # Handle different A2A response formats
             if "result" in result_data:
                 result = result_data["result"]
-                if isinstance(result, dict) and "parts" in result:
+                logger.debug(f"[A2A] Result type: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+
+                # Handle task format (ADK agents return this)
+                if isinstance(result, dict) and "status" in result:
+                    status_message = result.get("status", {}).get("message", {})
+                    logger.info(f"[A2A] Task status format detected: state={result.get('status', {}).get('state')}")
+
+                    if isinstance(status_message, dict) and "parts" in status_message:
+                        for part in status_message.get("parts", []):
+                            if part.get("kind") == "text":
+                                text_content = part.get("text", "")
+                                logger.info(f"[A2A] Extracted text from task.status.message: {text_content[:100]}")
+                                yield {"type": "text_token", "content": text_content}
+
+                # Handle message format
+                elif isinstance(result, dict) and "parts" in result:
+                    logger.info(f"[A2A] Message format detected with {len(result.get('parts', []))} parts")
                     for part in result.get("parts", []):
                         if part.get("kind") == "text":
-                            yield {"type": "text_token", "content": part.get("text", "")}
+                            text_content = part.get("text", "")
+                            logger.info(f"[A2A] Extracted text from message: {text_content[:100]}")
+                            yield {"type": "text_token", "content": text_content}
+                else:
+                    logger.warning(f"[A2A] Unexpected result format: {json.dumps(result)[:200]}")
+
+            elif "error" in result_data:
+                error = result_data["error"]
+                logger.error(f"[A2A] Agent returned error: code={error.get('code')}, message={error.get('message')}")
+                raise Exception(f"Agent error: {error.get('message')}")
+
+            else:
+                logger.warning(f"[A2A] No result or error in response: {json.dumps(result_data)[:200]}")
 
     except httpx.HTTPStatusError as e:
         logger.error(f"[A2A] HTTP error: {e.response.status_code} - {e.response.text}")

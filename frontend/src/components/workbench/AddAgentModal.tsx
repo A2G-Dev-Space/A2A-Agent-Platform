@@ -16,7 +16,7 @@ const agentSchema = z.object({
   name: z.string().min(3, 'Agent name must be at least 3 characters').max(50, 'Agent name must be less than 50 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description must be less than 500 characters'),
   framework: z.nativeEnum(AgentFramework, { required_error: 'Framework selection is required' }),
-  url: z.string().url('Must be a valid URL'),
+  url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)'),
   documentationUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   logo: z.instanceof(File).optional(),
@@ -83,7 +83,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
         name: data.name,
         description: data.description,
         framework: data.framework,
-        a2a_endpoint: data.url,
+        a2a_endpoint: data.url || undefined, // Optional - can be added later via Chat&Debug
         capabilities: {
           skills: data.capabilities,
           version: data.version,

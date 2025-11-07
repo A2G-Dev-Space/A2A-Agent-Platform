@@ -12,12 +12,12 @@ class Settings(BaseSettings):
     gateway_host: str = "0.0.0.0"
     environment: str = "development"
 
-    # Service URLs
-    user_service_url: str = "http://user-service:8001"
-    agent_service_url: str = "http://agent-service:8002"
-    chat_service_url: str = "http://chat-service:8003"
-    tracing_service_url: str = "http://tracing-service:8004"
-    admin_service_url: str = "http://admin-service:8005"
+    # Service URLs (using localhost for local development)
+    user_service_url: str = "http://localhost:8001"
+    agent_service_url: str = "http://localhost:8002"
+    chat_service_url: str = "http://localhost:8003"
+    tracing_service_url: str = "http://localhost:8004"
+    admin_service_url: str = "http://localhost:8005"
 
     # Mock SSO
     enable_mock_sso: bool = True

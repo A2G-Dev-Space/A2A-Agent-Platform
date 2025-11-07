@@ -1,7 +1,7 @@
 """Platform API key endpoints."""
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from pydantic import BaseModel
@@ -178,6 +178,45 @@ async def verify_platform_key(
         "valid": True,
         "key_id": db_key.id,
         "name": db_key.name
+    }
+
+
+@router.get("/platform-keys/validate")
+async def validate_platform_key_endpoint(
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate a Platform API key
+    Used by LLM Proxy and other services to authenticate requests
+    """
+    if not authorization or not authorization.startswith("Bearer a2g_"):
+        raise HTTPException(status_code=401, detail="Invalid or missing authorization header")
+
+    key = authorization.replace("Bearer ", "")
+
+    result = await db.execute(
+        select(PlatformKey).where(
+            and_(
+                PlatformKey.key == key,
+                PlatformKey.is_active == True
+            )
+        )
+    )
+    db_key = result.scalar_one_or_none()
+
+    if not db_key:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+
+    # Update last used timestamp
+    db_key.last_used = datetime.utcnow()
+    await db.commit()
+
+    return {
+        "valid": True,
+        "user_id": db_key.user_id,
+        "key_id": db_key.id,
+        "key_name": db_key.name
     }
 
 

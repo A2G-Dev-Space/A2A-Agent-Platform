@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework } from '@/types';
+import { agentService } from '@/services/agentService';
 
 interface Message {
   id: string;
@@ -29,8 +30,9 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   // Configuration state
   const [showConfig, setShowConfig] = useState(false);
-  const [customEndpoint, setCustomEndpoint] = useState('');
-  const [useCustomEndpoint, setUseCustomEndpoint] = useState(false);
+  const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
+  const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
+  const [showCorsExample, setShowCorsExample] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedAgnoAgent, setSelectedAgnoAgent] = useState('');
   const [agnoTeams, setAgnoTeams] = useState<Array<{ id: string; name: string }>>([]);
@@ -227,9 +229,34 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     }
   };
 
+  // Save agent endpoint
+  const handleSaveEndpoint = async () => {
+    if (!agentEndpoint.trim()) {
+      return;
+    }
+
+    setIsSavingEndpoint(true);
+
+    try {
+      await agentService.updateAgent(agent.id, {
+        a2a_endpoint: agentEndpoint.trim()
+      });
+
+      // Update local agent object
+      agent.a2a_endpoint = agentEndpoint.trim();
+
+      console.log('Agent endpoint saved successfully');
+      // Show success feedback
+      setTimeout(() => setIsSavingEndpoint(false), 500);
+    } catch (error) {
+      console.error('Error saving agent endpoint:', error);
+      setIsSavingEndpoint(false);
+    }
+  };
+
   // Test agent endpoint connection
   const handleTestAgentEndpoint = async () => {
-    if (!agent.a2a_endpoint) {
+    if (!agentEndpoint.trim()) {
       setAgentEndpointStatus('error');
       return;
     }
@@ -238,9 +265,9 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
     try {
       // Test A2A agent.json endpoint
-      const url = agent.a2a_endpoint.endsWith('/')
-        ? `${agent.a2a_endpoint}.well-known/agent.json`
-        : `${agent.a2a_endpoint}/.well-known/agent.json`;
+      const url = agentEndpoint.endsWith('/')
+        ? `${agentEndpoint}.well-known/agent.json`
+        : `${agentEndpoint}/.well-known/agent.json`;
 
       const response = await fetch(url);
 
@@ -288,8 +315,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
       {/* Configuration Panel */}
       {showConfig && (
-        <div className="border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark/50 px-4 py-3">
-          <div className="flex flex-col gap-4">
+        <div className="border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark/50 px-4 py-3 max-h-[60vh] overflow-y-auto">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-text-light dark:text-text-dark">
                 Configuration
@@ -317,11 +344,11 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               </h4>
               <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded">
                 <code className="text-xs text-gray-700 dark:text-gray-300">
-                  http://localhost:9050/api/llm/agent/{agent.id}/chat
+                  http://localhost:9050/api/llm/agent/{agent.id}
                 </code>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`http://localhost:9050/api/llm/agent/${agent.id}/chat`);
+                    navigator.clipboard.writeText(`http://localhost:9050/api/llm/agent/${agent.id}`);
                   }}
                   className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1"
                   title="Copy to clipboard"
@@ -341,49 +368,86 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               <h4 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2">
                 Agent A2A Endpoint
               </h4>
-              <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded mb-2">
-                <code className="text-xs text-gray-700 dark:text-gray-300">
-                  {agent.a2a_endpoint || 'No endpoint configured'}
-                </code>
-                <button
-                  onClick={() => {
-                    if (agent.a2a_endpoint) {
-                      navigator.clipboard.writeText(agent.a2a_endpoint);
-                    }
-                  }}
-                  className="text-green-600 dark:text-green-400 hover:text-green-800 p-1"
-                  title="Copy to clipboard"
-                  disabled={!agent.a2a_endpoint}
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
+
+              {/* Endpoint Input */}
+              <div className="mb-3">
+                <input
+                  type="url"
+                  value={agentEndpoint}
+                  onChange={(e) => setAgentEndpoint(e.target.value)}
+                  placeholder="http://localhost:8011"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-2 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                <p className="text-xs text-green-700 dark:text-green-400 mt-1">
+                  Enter your agent's hosted A2A endpoint (e.g., http://localhost:8011)
+                </p>
               </div>
 
+              {/* Save Button */}
+              <button
+                onClick={handleSaveEndpoint}
+                disabled={!agentEndpoint.trim() || isSavingEndpoint}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-2"
+                style={{
+                  backgroundColor: 'white',
+                  color: '#16a34a',
+                  borderWidth: '2px',
+                  borderColor: '#86efac',
+                  borderStyle: 'solid'
+                }}
+              >
+                {isSavingEndpoint && (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
+                <span>{isSavingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
+              </button>
+
               {/* CORS Warning for localhost endpoints */}
-              {agent.a2a_endpoint && (agent.a2a_endpoint.includes('localhost') || agent.a2a_endpoint.includes('127.0.0.1')) && (
+              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
                 <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
-                  <p className="font-semibold text-yellow-800 dark:text-yellow-300 mb-1">⚠️ CORS Configuration Required</p>
-                  <p className="text-yellow-700 dark:text-yellow-400 mb-1.5">
-                    For localhost testing, enable CORS in your agent server:
-                  </p>
-                  <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
-                    {agent.framework === 'ADK' ? (
-                      `# Add to your agent code:\nfrom fastapi.middleware.cors import CORSMiddleware\n\na2a_app.add_middleware(\n  CORSMiddleware,\n  allow_origins=["http://localhost:9060"],\n  allow_credentials=True,\n  allow_methods=["*"],\n  allow_headers=["*"]\n)`
-                    ) : agent.framework === 'Agno' ? (
-                      `# Add CORS middleware to your Agno agent`
-                    ) : (
-                      `# Enable CORS for http://localhost:9060`
-                    )}
-                  </code>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
+                    <button
+                      onClick={() => setShowCorsExample(!showCorsExample)}
+                      className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
+                    >
+                      {showCorsExample ? 'Hide' : 'Show'} example
+                    </button>
+                  </div>
+                  {showCorsExample && (
+                    <>
+                      <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
+                        For localhost testing, enable CORS in your agent server:
+                      </p>
+                      <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
+                        {agent.framework === 'ADK' ? (
+                          `# Add to your agent code:\nfrom fastapi.middleware.cors import CORSMiddleware\n\na2a_app.add_middleware(\n  CORSMiddleware,\n  allow_origins=["http://localhost:9060"],\n  allow_credentials=True,\n  allow_methods=["*"],\n  allow_headers=["*"]\n)`
+                        ) : agent.framework === 'Agno' ? (
+                          `# Add CORS middleware to your Agno agent`
+                        ) : (
+                          `# Enable CORS for http://localhost:9060`
+                        )}
+                      </code>
+                    </>
+                  )}
                 </div>
               )}
 
+              {/* Test Connection Button */}
               <button
                 onClick={handleTestAgentEndpoint}
-                disabled={!agent.a2a_endpoint || agentEndpointStatus === 'testing'}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600"
+                disabled={!agentEndpoint.trim() || agentEndpointStatus === 'testing'}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'white',
+                  color: '#16a34a',
+                  borderWidth: '2px',
+                  borderColor: '#86efac',
+                  borderStyle: 'solid'
+                }}
               >
                 {agentEndpointStatus === 'testing' && (
                   <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -408,34 +472,6 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                   {agentEndpointStatus === 'idle' && 'Test Connection'}
                 </span>
               </button>
-              <p className="text-xs text-green-700 dark:text-green-400 mt-2">
-                Test connection to your agent's A2A endpoint
-              </p>
-            </div>
-
-            {/* Custom Endpoint Input (All Frameworks) */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="use-custom-endpoint"
-                  checked={useCustomEndpoint}
-                  onChange={(e) => setUseCustomEndpoint(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <label htmlFor="use-custom-endpoint" className="text-sm font-medium text-text-light dark:text-text-dark">
-                  Use Custom Endpoint
-                </label>
-              </div>
-              {useCustomEndpoint && (
-                <input
-                  type="url"
-                  value={customEndpoint}
-                  onChange={(e) => setCustomEndpoint(e.target.value)}
-                  placeholder="https://api.example.com/chat"
-                  className="form-input w-full rounded-lg border-border-light bg-background-light p-2 text-sm placeholder:text-gray-400 focus:border-primary-dark focus:outline-none focus:ring-1 focus:ring-primary-dark dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
-                />
-              )}
             </div>
 
             {/* Agno Team/Agent Selector (Only for Agno Framework) */}

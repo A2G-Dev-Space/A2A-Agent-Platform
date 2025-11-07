@@ -1,14 +1,32 @@
+"""
+Math Agent using Platform LLM Proxy
+Demonstrates how to use Platform's OpenAI Compatible endpoint for trace debugging
+"""
 import asyncio
 import os
-from google.adk.agents.llm_agent import Agent
+from google.adk.agents.llm_agent import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from google.adk.tools.function_tool import FunctionTool
 from fastapi.middleware.cors import CORSMiddleware
 
-# Set Gemini API key
-os.environ["GOOGLE_API_KEY"] = "AIzaSyA88_jZGuybTQ4NYnVFQXemfLSt1utHAkE"
+# Platform Configuration
+# User gets these from Platform:
+# 1. LLM Proxy endpoint: http://localhost:8006/v1
+# 2. API Key: Generated from Platform Admin page
+PLATFORM_LLM_ENDPOINT = os.getenv("PLATFORM_LLM_ENDPOINT", "http://localhost:8006/v1")
+PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "test-user-api-key")
+AGENT_ID = os.getenv("AGENT_ID", "math-agent")
 
-# ===== Math functions =====
+print("=" * 60)
+print("Math Agent Configuration")
+print("=" * 60)
+print(f"Platform LLM Endpoint: {PLATFORM_LLM_ENDPOINT}")
+print(f"Platform API Key: {PLATFORM_API_KEY[:20]}...")
+print(f"Agent ID: {AGENT_ID}")
+print("=" * 60)
+
+# ===== Math Tool Functions =====
 def add(a: float, b: float) -> float:
     """두 수를 더합니다"""
     return a + b
@@ -31,16 +49,28 @@ def power(base: float, exponent: float) -> float:
     """거듭제곱을 계산합니다"""
     return base ** exponent
 
-# ===== Create tools =====
+# ===== Create Tools =====
 add_tool = FunctionTool(add)
 subtract_tool = FunctionTool(subtract)
 multiply_tool = FunctionTool(multiply)
 divide_tool = FunctionTool(divide)
 power_tool = FunctionTool(power)
 
-# ===== Create Math Agent =====
-math_agent = Agent(
-    model="gemini-2.0-flash-exp",
+# ===== Create Math Agent using Platform LLM Proxy =====
+math_agent = LlmAgent(
+    model=LiteLlm(
+        # Use hosted_vllm provider for custom endpoints
+        # LiteLLM will append /chat/completions automatically
+        model="hosted_vllm/gemini-2.0-flash-exp",
+        api_base=PLATFORM_LLM_ENDPOINT,
+        api_key=PLATFORM_API_KEY,
+        # Disable streaming for internal LLM calls (UI->Agent uses A2A streaming)
+        stream=False,
+        # Send Agent ID in headers for trace routing
+        extra_headers={
+            "X-Agent-ID": AGENT_ID
+        }
+    ),
     name="math_agent",
     description="수학 계산을 수행하는 에이전트",
     instruction="""당신은 전문 수학 계산 에이전트입니다.
@@ -55,12 +85,12 @@ math_agent = Agent(
     tools=[add_tool, subtract_tool, multiply_tool, divide_tool, power_tool]
 )
 
-# ===== Start A2A server =====
+# ===== Start A2A Server =====
 async def start_math_agent():
     """Start Math Agent as A2A server"""
-    print("=" * 50)
-    print("Math Agent A2A Server Starting...")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("Starting Math Agent A2A Server...")
+    print("=" * 60)
 
     # Convert Agent to A2A server
     a2a_app = to_a2a(
@@ -68,12 +98,12 @@ async def start_math_agent():
         port=8011
     )
 
-    # Add CORS middleware to allow frontend access
+    # Add CORS middleware
     a2a_app.add_middleware(
         CORSMiddleware,
         allow_origins=[
             "http://localhost:9060",  # Frontend dev server
-            "http://localhost:9050",  # Production frontend
+            "http://localhost:9050",  # API Gateway
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -81,11 +111,12 @@ async def start_math_agent():
     )
 
     print("\n✓ Math Agent initialized")
+    print(f"✓ Using Platform LLM Proxy: {PLATFORM_LLM_ENDPOINT}")
     print("✓ Port: 8011")
     print("✓ CORS enabled for frontend origins")
-    print("✓ Agent Card endpoint: http://localhost:8011/.well-known/agent.json")
-    print("✓ Task endpoint: http://localhost:8011/tasks/send")
-    print("\nStarting agent...\n")
+    print("✓ Agent Card: http://localhost:8011/.well-known/agent.json")
+    print("\n🚀 Agent ready for connections!")
+    print("=" * 60)
 
     # Run with Uvicorn
     import uvicorn
@@ -102,4 +133,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(start_math_agent())
     except KeyboardInterrupt:
-        print("\n\nMath Agent server stopped.")
+        print("\n\n✓ Math Agent server stopped.")

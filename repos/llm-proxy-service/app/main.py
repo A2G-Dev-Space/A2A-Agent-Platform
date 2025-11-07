@@ -51,10 +51,12 @@ app.add_middleware(
 
 # Import routers
 from app.api import proxy_router
+from app.api.openai_compatible import openai_router
 from app.websocket import websocket_router
 
 # Include routers
 app.include_router(proxy_router, prefix="/api/proxy", tags=["proxy"])
+app.include_router(openai_router, prefix="/v1", tags=["openai-compatible"])
 app.include_router(websocket_router, prefix="/ws", tags=["websocket"])
 
 @app.get("/health")

@@ -76,15 +76,16 @@ async def validate_platform_key(authorization: str) -> Optional[int]:
         return None
 
 
-@router.post("/llm/agent/{agent_id}/chat")
+@router.post("/llm/agent/{agent_id}/v1/chat/completions")
 async def agent_llm_chat(
     agent_id: int,
     request: ChatCompletionRequest,
     authorization: str = Header(None)
 ):
     """
-    LLM Proxy endpoint for agents
+    LLM Proxy endpoint for agents (OpenAI-compatible)
     Agents use their platform API key to access LLM through platform proxy
+    Note: /v1 in path is required for LiteLLM hosted_vllm provider compatibility
     """
     # Validate platform key
     user_id = await validate_platform_key(authorization)
@@ -109,10 +110,10 @@ async def agent_llm_chat(
         provider = "google"
 
     try:
-        # Stream the completion
-        async def generate():
-            try:
-                if request.stream:
+        if request.stream:
+            # Streaming response
+            async def generate():
+                try:
                     # Server-Sent Events format for streaming
                     async for token in llm_proxy.stream_completion(
                         provider=provider,
@@ -124,26 +125,58 @@ async def agent_llm_chat(
                         # Format as SSE
                         yield f"data: {token}\n\n"
                     yield "data: [DONE]\n\n"
-                else:
-                    # Non-streaming response
-                    full_response = ""
-                    async for token in llm_proxy.stream_completion(
-                        provider=provider,
-                        model_name=request.model,
-                        messages=messages,
-                        temperature=request.temperature,
-                        max_tokens=request.max_tokens
-                    ):
-                        full_response += token
-                    yield full_response
-            except Exception as e:
-                logger.error(f"Error during LLM streaming: {e}")
-                yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
+                except Exception as e:
+                    logger.error(f"Error during LLM streaming: {e}")
+                    yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
 
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream" if request.stream else "text/plain"
-        )
+            return StreamingResponse(
+                generate(),
+                media_type="text/event-stream"
+            )
+        else:
+            # Non-streaming response - OpenAI compatible format
+            full_response = ""
+            async for token in llm_proxy.stream_completion(
+                provider=provider,
+                model_name=request.model,
+                messages=messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens
+            ):
+                full_response += token
+
+            # Return OpenAI-compatible JSON response with explicit headers
+            import time
+            from fastapi.responses import JSONResponse
+
+            response_obj = {
+                "id": f"chatcmpl-{int(time.time())}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": request.model,
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": full_response
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                }
+            }
+
+            # Return JSONResponse explicitly with proper Content-Type
+            return JSONResponse(
+                content=response_obj,
+                media_type="application/json",
+                headers={
+                    "Content-Type": "application/json"
+                }
+            )
 
     except Exception as e:
         logger.error(f"Error in LLM proxy: {e}")

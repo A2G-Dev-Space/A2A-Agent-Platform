@@ -32,7 +32,7 @@ export const agentService = {
   },
 
   updateAgent: async (id: number, data: Partial<Agent>): Promise<Agent> => {
-    return await api.patch<Agent>(`/agents/${id}/`, data);
+    return await api.put<Agent>(`/agents/${id}`, data);
   },
 
   deleteAgent: async (id: number): Promise<void> => {
