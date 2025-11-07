@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1 import auth, users, admin, v1_users
+from app.api.v1 import auth, users, admin, v1_users, llm_keys, platform_keys
 from app.core.security import get_current_user
 
 # Configure logging
@@ -53,6 +53,8 @@ app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(v1_users.router, prefix="/api/v1/users", tags=["v1-users"])
+app.include_router(llm_keys.router, prefix="/api/v1/users", tags=["llm-keys"])
+app.include_router(platform_keys.router, prefix="/api/v1", tags=["platform-keys"])
 
 @app.get("/health")
 async def health_check():

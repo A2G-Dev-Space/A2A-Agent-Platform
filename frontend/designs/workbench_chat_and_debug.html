@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Workbench</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&amp;family=Fira+Code&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#EA2831", "primary-dark": "#5719e6", "background-light": "#f8f6f6", "background-dark": "#211111", "surface-light": "#FFFFFF", "surface-dark": "#1E293B", "text-light": "#1E293B", "text-dark": "#E2E8F0", "border-light": "#E2E8F0", "border-dark": "#2d2938"}, fontFamily: {display: "Manrope", mono: ["Fira Code", "monospace"]}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark">
+<div class="flex h-screen w-full">
+<aside class="flex w-64 flex-col justify-between border-r border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark/50 p-4">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3 px-2">
+<img alt="A2G Platform Logo" class="h-8 w-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1G5VX6re3VkjZyb2aZpBetsXzbb0TKjXTKvarGwTw7StTrBtFLXTBdlCHWnD41NXerya6U5M_BJLn25WEz1b1OFFXDP-edoq5lJrx6mrAbg4mJ3-RVNtL6ld51N9gObUipRNV3NseQio8mZ5Xc8tHhAnA4WR7_831CFA1_Cy3N6TmeZhuMCMd_VhidHljLYtKrSPS0iLdJ_zHVbIDYw_uHU3ibn2kYlreP9p-lkQSIwUUMXt9zetgecp6LeWWv2uu4WIztAj7kDsa"/>
+<h1 class="text-lg font-bold text-text-light dark:text-text-dark">A2G Platform</h1>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/20 dark:bg-primary/20" href="#">
+<span class="material-symbols-outlined text-primary-dark dark:text-primary">
+                            code
+                        </span>
+<p class="font-bold text-sm text-primary-dark dark:text-primary">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10" href="#">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">
+                            hub
+                        </span>
+<p class="font-medium text-sm">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10" href="#">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-300">
+                            timeline
+                        </span>
+<p class="font-medium text-sm">Flow</p>
+</a>
+</div>
+</div>
+</aside>
+<div class="flex flex-1 flex-col">
+<header class="flex h-16 items-center justify-between whitespace-nowrap border-b border-border-light dark:border-border-dark px-6 bg-surface-light dark:bg-surface-dark/50">
+<div></div>
+<div class="flex flex-1 items-center justify-end">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with a colorful background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDU5W_YVlgDmjkNtmP_DzsGCU5WvmdPLTdz6S6VygtqGraE3aKYW8mfWQs8FEL7S7I4GfSI1nsVntXhWTVrA7pmpdxNB8mgu_hcONvponslM-FR4KQNxZ_uGq6FEP4n5TAQ67XrXzfg_vlFG0cyLsIVVoDkKbAElp1fxiJzTrxJkX-rYYGOJ4lQWYLQ6wWFZCO8yQRfkBQN6FsSBa3maxyJs4eT0M0YUYK9NKyHyze-kCEhjqpbqvZLqjTaVuY_yXY2P42eU_QgsVsv");'></div>
+</div>
+</header>
+<main class="grid flex-1 grid-cols-1 gap-px overflow-y-auto bg-border-light dark:bg-border-dark md:grid-cols-3">
+<div class="col-span-1 flex flex-col bg-background-light dark:bg-background-dark md:col-span-2">
+<div class="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark p-4">
+<h2 class="text-base font-bold">Chat Playground</h2>
+<button class="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 text-gray-600 dark:text-gray-300 gap-2 text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark">
+<span class="material-symbols-outlined text-lg">
+                                refresh
+                            </span>
+<span class="truncate">Clear Session</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6">
+<div class="flex flex-col gap-6">
+<div class="flex items-start gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="User avatar with a colorful background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBshepXOM1JSuIOC14Y9n-KJxgo65jxWmcdtcdwNaowr5q7HFnsShE3hVm-SJ_D-ux8lXQjBamKvthXENg8lbvBOw3Y5hKzhMIGRP8Wl5Le89alLO78yAp-TOXU4xAItTAv9CtC1LPz5Msq_HKeUvNr_OiFN_Z41fces5H7OygUrXAxGbyr0ZmdlrNF53-1Y88DUgYBeV_X92lFOyNueVDjtpfsDEf-gXzPK6pG9sFfYsOYrpxjoXaMyKxdvB5ZOWw6eKQ8ghIAsKZc");'></div>
+<div class="flex flex-col gap-1">
+<p class="font-bold text-sm">You</p>
+<div class="rounded-lg rounded-tl-none bg-surface-light dark:bg-surface-dark p-3 text-sm leading-relaxed">
+<p>Hello, I'm having an issue with my recent order #12345. Can you help me track it?</p>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4 flex-row-reverse justify-start">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="Agent avatar with a purple background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBddLJKsbPdrAHsUattJxIU6dxnYKb8KiHfYRdQELimLZ5t9AQrLWjvVl7jCu40K0n_8YAPtBv1BVEzusrmcZtyUcrX9Cm7Swg3PYUbfjXZc9m7K42U2gaY7KrQlr_SgPY2YoP7ZAi3ASrDEgZXa1wBLuSI03NoKNqFuIOgqFpZGpWXHJTzJdYDy9W7L24Hmd5LJJuY9NFMVPUu08psk5NOfKMvdbWDMH6uNltyAZ1tmtUuaaJaIxedGVqFHfdl8663CUooxrHMKV_n");'></div>
+<div class="flex w-full max-w-xl flex-col gap-1 items-end">
+<p class="font-bold text-sm">Customer Support Agent</p>
+<div class="rounded-lg rounded-tr-none bg-primary/20 dark:bg-primary/20 p-3 text-sm leading-relaxed text-text-light dark:text-text-dark">
+<p>Of course! Let me look up order #12345 for you. One moment, please...</p>
+<p class="mt-2">I see that your order was shipped yesterday and is currently in transit. The estimated delivery date is tomorrow, June 5th.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="border-t border-border-light dark:border-border-dark p-4">
+<div class="relative">
+<textarea class="form-input w-full resize-none rounded-lg border-border-light bg-surface-light p-3 pr-24 text-sm placeholder:text-gray-400 focus:border-primary-dark focus:outline-none focus:ring-1 focus:ring-primary-dark dark:border-border-dark dark:bg-surface-dark dark:text-white dark:focus:border-primary" placeholder="Type your message..." rows="2"></textarea>
+<button class="absolute bottom-2 right-2 flex min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 w-16 bg-primary/80 text-primary-dark hover:bg-primary">
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+</div>
+<div class="col-span-1 flex flex-col bg-surface-light dark:bg-surface-dark">
+<div class="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark p-4">
+<h2 class="text-base font-bold">Trace</h2>
+<button class="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-white/10">
+<span class="material-symbols-outlined text-xl">delete_sweep</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 text-xs">
+<div class="flex flex-col gap-4">
+<div class="flex items-start gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+<span class="material-symbols-outlined text-sm text-blue-600 dark:text-blue-300">send</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<p class="font-bold text-text-light dark:text-text-dark">Send to LLM</p>
+<span class="text-gray-500 dark:text-gray-400">14:32:05</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50">
+<span class="material-symbols-outlined text-sm text-purple-600 dark:text-purple-300">call_received</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<p class="font-bold text-text-light dark:text-text-dark">Receive from LLM</p>
+<span class="text-gray-500 dark:text-gray-400">14:32:06</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
+<span class="material-symbols-outlined text-sm text-green-600 dark:text-green-300">build</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<p class="font-bold text-text-light dark:text-text-dark">Tool Use</p>
+<span class="text-gray-500 dark:text-gray-400">14:32:06</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/50">
+<span class="material-symbols-outlined text-sm text-yellow-600 dark:text-yellow-400">summarize</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<p class="font-bold text-text-light dark:text-text-dark">Tool Result</p>
+<span class="text-gray-500 dark:text-gray-400">14:32:07</span>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="flex h-6 w-6 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/50">
+<span class="material-symbols-outlined text-sm text-pink-600 dark:text-pink-400">transfer_within_a_station</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<p class="font-bold text-text-light dark:text-text-dark">Agent Transfer</p>
+<span class="text-gray-500 dark:text-gray-400">14:32:08</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

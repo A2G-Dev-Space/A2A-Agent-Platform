@@ -14,6 +14,8 @@ import json
 import asyncio
 from datetime import datetime
 
+from app.websocket_proxy import proxy_websocket
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,8 +25,8 @@ logger = logging.getLogger(__name__)
 SERVICE_ROUTES = {
     # Authentication & Users (User Service)
     '/api/auth': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
+    '/api/v1/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),  # Platform keys and other v1 endpoints
     '/api/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
-    '/api/v1/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
 
     # Admin - User Management (User Service) - Must be before /api/admin
     '/api/admin/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
@@ -32,6 +34,9 @@ SERVICE_ROUTES = {
     # Admin - LLM & Statistics (Admin Service)
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
     '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+
+    # LLM Proxy (Chat Service)
+    '/api/llm': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
 
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
@@ -42,6 +47,7 @@ SERVICE_ROUTES = {
 # WebSocket routes
 WEBSOCKET_ROUTES = {
     '/ws/chat': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
+    '/ws/trace': os.getenv('TRACING_SERVICE_URL', 'http://tracing-service:8004'),
 }
 
 # HTTP client pool for better performance
@@ -218,16 +224,18 @@ async def gateway_proxy(request: Request, path: str):
     return await proxy_request(request, service_url, target_path)
 
 @app.websocket("/ws/{path:path}")
-async def websocket_proxy(websocket: WebSocket, path: str):
+async def websocket_proxy_handler(websocket: WebSocket, path: str):
     """WebSocket proxy handler"""
 
     # Determine the backend service
     ws_path = f"/ws/{path}"
     service_url = None
+    matched_route = None
 
     for route_prefix, url in WEBSOCKET_ROUTES.items():
         if ws_path.startswith(route_prefix):
             service_url = url
+            matched_route = route_prefix
             break
 
     if not service_url:
@@ -238,35 +246,13 @@ async def websocket_proxy(websocket: WebSocket, path: str):
     ws_service_url = service_url.replace("http://", "ws://").replace("https://", "wss://")
     target_url = f"{ws_service_url}{ws_path}"
 
-    logger.info(f"Proxying WebSocket connection to {target_url}")
+    # Extract query parameters (e.g., token)
+    query_params = dict(websocket.query_params)
 
-    await websocket.accept()
+    logger.info(f"Proxying WebSocket {ws_path} -> {target_url}")
 
-    try:
-        # Create connection to backend service
-        async with httpx.AsyncClient() as client:
-            # For now, we'll implement a simple message relay
-            # In production, you'd want to use a proper WebSocket client library
-
-            while True:
-                # Receive message from client
-                data = await websocket.receive_text()
-
-                # Here you would forward to the backend WebSocket
-                # For now, echo back with a gateway prefix
-                response = {
-                    "type": "gateway_relay",
-                    "original": json.loads(data),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-
-                await websocket.send_json(response)
-
-    except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected")
-    except Exception as e:
-        logger.error(f"WebSocket error: {str(e)}")
-        await websocket.close(code=1011, reason=str(e))
+    # Use the proper WebSocket proxy
+    await proxy_websocket(websocket, target_url, query_params)
 
 # SSO Mock endpoint (for development)
 if os.getenv("ENABLE_MOCK_SSO", "false").lower() == "true":

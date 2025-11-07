@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LLM Model Management - A2G Platform</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex min-h-screen w-full">
+<aside class="flex w-64 flex-col justify-between bg-background-light dark:bg-background-dark p-4 border-r border-slate-200 dark:border-white/10">
+<div class="flex flex-col gap-8">
+<a class="flex items-center gap-2" href="#">
+<svg class="h-8 w-auto text-slate-900 dark:text-white" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"></path>
+<path d="M2 17L12 22L22 17L12 12L2 17Z" fill="currentColor" opacity="0.6"></path>
+<path d="M2 12L12 17L22 12L12 7L2 12Z" fill="currentColor" opacity="0.3"></path>
+</svg>
+<span class="text-xl font-bold text-slate-900 dark:text-white">A2G Platform</span>
+</a>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/20 rounded-lg" href="#">
+<span class="material-symbols-outlined">construction</span>
+<p class="text-sm font-medium leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/20 rounded-lg" href="#">
+<span class="material-symbols-outlined">hub</span>
+<p class="text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/20 rounded-lg" href="#">
+<span class="material-symbols-outlined">timeline</span>
+<p class="text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+</div>
+<div></div>
+</aside>
+<main class="flex-1">
+<header class="flex h-20 items-center justify-end px-8 border-b border-slate-200 dark:border-white/10">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Admin user avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuACicdbMd4cbHl11rYbiJzMnWLYzSZ5hHe2GB0G5ZlewdmhkWmwWdONNv_9j2cRDTXl5Q0OAy8FmxXHUi8A2SyAUX9WyWZXPizIAcP8P0FAwMKP6Z9IRqyznHZ7NyFOiZtZryzHzlknrsmeR-wyKKLD5irv2984UvcikssXILuz53DIyfeHWABJQ81VjbMCJo2W0RVBDSay00TqKlqyTBtJUEuUB8ckRZuOvsuH6o0OEuM4o3mTWKjOR1SF1DTxFu7RoNZz00V6BZas");'></div>
+</button>
+</header>
+<div class="p-8">
+<div class="flex flex-col max-w-7xl mx-auto gap-6">
+<div class="flex flex-wrap justify-between items-center gap-4">
+<div class="flex flex-col gap-1">
+<p class="text-slate-900 dark:text-white text-3xl font-black leading-tight">Settings</p>
+<p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Manage your platform settings and configurations.</p>
+</div>
+</div>
+<div>
+<div class="flex border-b border-slate-200 dark:border-white/20 gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 hover:border-b-slate-300 dark:hover:border-b-slate-600" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">General</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 hover:border-b-slate-300 dark:hover:border-b-slate-600" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">API Key</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 hover:border-b-slate-300 dark:hover:border-b-slate-600" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">User Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-primary dark:text-white dark:border-b-white pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">LLM Model Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-slate-500 dark:text-slate-400 pb-[13px] pt-4 hover:border-b-slate-300 dark:hover:border-b-slate-600" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">Statistics</p>
+</a>
+</div>
+</div>
+<div class="flex flex-wrap justify-between items-center gap-4 pt-4">
+<div class="flex min-w-72 flex-col gap-1">
+<p class="text-slate-900 dark:text-white text-xl font-bold leading-tight">Available LLM Models</p>
+<p class="text-slate-500 dark:text-slate-400 text-base font-normal leading-normal">Add, view, and manage your LLM models.</p>
+</div>
+<button class="flex min-w-[84px] items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em]">
+<span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+<span class="truncate">Add New Model</span>
+</button>
+</div>
+<div class="@container">
+<div class="flex overflow-hidden rounded-lg border border-slate-200 dark:border-white/20 bg-background-light dark:bg-background-dark">
+<table class="w-full text-left">
+<thead class="bg-slate-50 dark:bg-white/5">
+<tr>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[20%] text-sm font-medium leading-normal">Model Name</th>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[25%] text-sm font-medium leading-normal">Endpoint</th>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[15%] text-sm font-medium leading-normal">Key</th>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[15%] text-sm font-medium leading-normal">Health Status</th>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[10%] text-sm font-medium leading-normal text-center">Active</th>
+<th class="px-4 py-3 text-slate-600 dark:text-slate-300 w-[15%] text-sm font-medium leading-normal text-right">Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-t border-t-slate-200 dark:border-t-white/20">
+<td class="h-[72px] px-4 py-2 text-slate-900 dark:text-white text-sm font-normal leading-normal">GPT-4-Turbo</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal">https://api.openai.com/v1</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal font-mono">sk-••••••••1234</td>
+<td class="h-[72px] px-4 py-2 text-sm font-normal leading-normal">
+<div class="flex items-center gap-2">
+<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
+<span class="text-green-700 dark:text-green-400">Healthy</span>
+</div>
+</td>
+<td class="h-[72px] px-4 py-2 text-center text-sm font-normal leading-normal">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</td>
+<td class="h-[72px] px-4 py-2 text-right">
+<button class="text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-slate-200 dark:border-t-white/20">
+<td class="h-[72px] px-4 py-2 text-slate-900 dark:text-white text-sm font-normal leading-normal">Claude 3 Sonnet</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal">https://api.anthropic.com/v1</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal font-mono">sk-••••••••5678</td>
+<td class="h-[72px] px-4 py-2 text-sm font-normal leading-normal">
+<div class="flex items-center gap-2">
+<span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>
+<span class="text-red-700 dark:text-red-400">Error</span>
+</div>
+</td>
+<td class="h-[72px] px-4 py-2 text-center text-sm font-normal leading-normal">
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</td>
+<td class="h-[72px] px-4 py-2 text-right">
+<button class="text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<tr class="border-t border-t-slate-200 dark:border-t-white/20">
+<td class="h-[72px] px-4 py-2 text-slate-900 dark:text-white text-sm font-normal leading-normal">Gemini Pro 1.5</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal">https://generativelanguage.googleapis.com/v1beta</td>
+<td class="h-[72px] px-4 py-2 text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal font-mono">sk-••••••••9012</td>
+<td class="h-[72px] px-4 py-2 text-sm font-normal leading-normal">
+<div class="flex items-center gap-2">
+<span class="h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+<span class="text-slate-600 dark:text-slate-400">Checking</span>
+</div>
+</td>
+<td class="h-[72px] px-4 py-2 text-center text-sm font-normal leading-normal">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</td>
+<td class="h-[72px] px-4 py-2 text-right">
+<button class="text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="flex items-center justify-center p-4">
+<a class="flex size-10 items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg" href="#">
+<span class="material-symbols-outlined">chevron_left</span>
+</a>
+<a class="text-sm font-bold leading-normal tracking-[0.015em] flex size-10 items-center justify-center text-white rounded-lg bg-primary mx-1" href="#">1</a>
+<a class="text-sm font-normal leading-normal flex size-10 items-center justify-center text-slate-700 dark:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 mx-1" href="#">2</a>
+<a class="text-sm font-normal leading-normal flex size-10 items-center justify-center text-slate-700 dark:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 mx-1" href="#">3</a>
+<span class="text-sm font-normal leading-normal flex size-10 items-center justify-center text-slate-700 dark:text-white rounded-lg mx-1">...</span>
+<a class="text-sm font-normal leading-normal flex size-10 items-center justify-center text-slate-700 dark:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 mx-1" href="#">10</a>
+<a class="flex size-10 items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg" href="#">
+<span class="material-symbols-outlined">chevron_right</span>
+</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

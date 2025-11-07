@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - API Key Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+    </style>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="relative flex min-h-screen w-full">
+<aside class="flex flex-col w-64 bg-background-light dark:bg-background-dark border-r border-gray-200/10 dark:border-white/10 p-4">
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="A2G Platform Logo" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAMG7itERNf112wQtB0iQUnWeXyPguuODVzT52iNh7HJ3sIhtmGLjR2dCdhWZ6KHgRlcnvTl0amFC7OalrLCKXWmhFhErlBqp4tqJO348QZkuyPa_pr9m8a4ZXgbLRZOFcCUoioVFf8IuQpAKTSoyzxwSW3jy_z-Wys7QcIGff4mGTb0aW8uYnqKOS9Cw0TAqamgOfFc19-LbWzFceOGuERWDKKnvIKTPj4CxknwxJqn-sKVYTg8CaR2Nt73lXgfk9TU-D7K9A8-r7C');"></div>
+<div class="flex flex-col">
+<h1 class="text-gray-900 dark:text-white text-base font-bold leading-normal">A2G Platform</h1>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">React-based frontend</p>
+</div>
+</div>
+<nav class="flex flex-col gap-2 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-gray-500 dark:text-gray-400">code_blocks</span>
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-gray-500 dark:text-gray-400">apps</span>
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-gray-500 dark:text-gray-400">timeline</span>
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+</div>
+</aside>
+<main class="flex-1 flex flex-col">
+<header class="flex items-center justify-end whitespace-nowrap border-b border-gray-200/10 dark:border-white/10 px-6 py-3">
+<div class="flex flex-1 justify-end gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar image" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD-kUXelFnr9msgoIiHz7QHV9OdrzhF6WkulhfacIvqmRSbPljLekaNvXq2gtWWvQe38PU_4DHT28iGcLIVp-uIv9LS-A9wEohGH202M4xiKZzYuAgbNsvRI1SMQFCIUjKOBTb8SpW1-Xm3PQNU6EXb5RDPllfNfx-PHpNVOmDKkgVILWAeWK9SPyMiJHKWoTBcWkHhbbN4l1te0lwm0cnPYqgEsEpDMo-Dk2K8WcHwoPZBETdaMO6j2WUfj0_drGM1DjBUiNuj-lu7');"></div>
+</div>
+</header>
+<div class="flex-1 p-6 lg:p-10">
+<div class="flex flex-wrap justify-between gap-3 mb-6">
+<p class="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em] min-w-72">Settings</p>
+</div>
+<div class="mb-8">
+<div class="flex border-b border-gray-200/10 dark:border-white/10 gap-8">
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">General</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-primary text-primary pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">API Key</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">User Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">LLM Model Management</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-[3px] border-b-transparent text-gray-500 dark:text-gray-400 pb-[13px] pt-4" href="#">
+<p class="text-sm font-bold leading-normal tracking-[0.015em]">Statistics</p>
+</a>
+</div>
+</div>
+<div class="flex justify-between items-center mb-6">
+<div class="flex flex-col">
+<h2 class="text-gray-900 dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Manage API Keys</h2>
+<p class="text-gray-500 dark:text-gray-400 mt-1">Manage API keys to securely access the A2G Platform services.</p>
+</div>
+<button class="flex items-center justify-center gap-2 px-4 py-2 h-10 rounded-lg bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-base">add</span>
+                        Generate New Key
+                    </button>
+</div>
+<div class="bg-background-light dark:bg-background-dark/50 border border-gray-200/10 dark:border-white/10 rounded-xl overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead class="bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400">
+<tr>
+<th class="px-6 py-3 font-medium" scope="col">Key Name</th>
+<th class="px-6 py-3 font-medium" scope="col">Created On</th>
+<th class="px-6 py-3 font-medium" scope="col">Expires On</th>
+<th class="px-6 py-3 font-medium" scope="col">Last Used</th>
+<th class="px-6 py-3 font-medium" scope="col">Status</th>
+<th class="px-6 py-3 font-medium text-right" scope="col">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-gray-200/10 dark:divide-white/10">
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">Production Key</td>
+<td class="px-6 py-4 whitespace-nowrap">Jan 15, 2024</td>
+<td class="px-6 py-4 whitespace-nowrap">Jan 15, 2025</td>
+<td class="px-6 py-4 whitespace-nowrap">2 days ago</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300">Active</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-red-500 hover:text-red-700 dark:hover:text-red-400" title="Revoke Key">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">Staging Env</td>
+<td class="px-6 py-4 whitespace-nowrap">Dec 01, 2023</td>
+<td class="px-6 py-4 whitespace-nowrap">Dec 01, 2024</td>
+<td class="px-6 py-4 whitespace-nowrap">1 week ago</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300">Active</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-red-500 hover:text-red-700 dark:hover:text-red-400" title="Revoke Key">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-gray-50/50 dark:hover:bg-white/5">
+<td class="px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 font-medium">Old Analytics Key</td>
+<td class="px-6 py-4 whitespace-nowrap">May 20, 2023</td>
+<td class="px-6 py-4 whitespace-nowrap">May 20, 2024</td>
+<td class="px-6 py-4 whitespace-nowrap">3 months ago</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-500/20 text-gray-800 dark:text-gray-300">Revoked</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-gray-400 cursor-not-allowed" disabled="" title="Key already revoked">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="mt-8 p-6 bg-background-light dark:bg-background-dark/50 border border-gray-200/10 dark:border-white/10 rounded-xl">
+<h3 class="text-lg font-bold text-gray-900 dark:text-white">API Usage Example</h3>
+<p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">Use the Authorization header to authenticate your requests.</p>
+<div class="mt-4 p-4 bg-gray-100 dark:bg-black/30 rounded-lg">
+<pre class="text-sm text-gray-600 dark:text-gray-300"><code class="font-mono">curl -X GET 'https://api.a2g.platform/v1/data' \
+-H 'Authorization: Bearer A2G_PROD_xxxxxxxxxxxx...xxxx'</code></pre>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

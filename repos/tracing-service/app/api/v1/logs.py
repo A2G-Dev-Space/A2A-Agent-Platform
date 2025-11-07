@@ -9,6 +9,7 @@ import uuid
 
 from app.core.database import async_session_maker, LogEntry
 from app.core.security import get_current_user
+from app.websocket.manager import trace_manager
 from sqlalchemy import select, and_
 
 router = APIRouter()
@@ -47,7 +48,7 @@ async def create_log(
     """Create new log entry"""
     # Detect agent transfer
     is_transfer = "Agent Transfer" in request.message or "agent transfer" in request.message.lower()
-    
+
     log_entry = LogEntry(
         trace_id=request.trace_id,
         service_name=request.service_name,
@@ -58,11 +59,24 @@ async def create_log(
         is_transfer=is_transfer,
         user_id=current_user["username"]
     )
-    
+
     db.add(log_entry)
     await db.commit()
     await db.refresh(log_entry)
-    
+
+    # Broadcast log to WebSocket subscribers
+    log_dict = {
+        "log_id": log_entry.id,
+        "timestamp": log_entry.timestamp.isoformat(),
+        "service_name": log_entry.service_name,
+        "agent_id": log_entry.agent_id,
+        "level": log_entry.level,
+        "message": log_entry.message,
+        "metadata": log_entry.metadata,
+        "is_transfer": log_entry.is_transfer
+    }
+    await trace_manager.broadcast_log(request.trace_id, log_dict)
+
     return LogResponse(
         log_id=log_entry.id,
         timestamp=log_entry.timestamp

@@ -2,15 +2,17 @@
 Tracing Service - A2G Platform
 로그 프록시, 실시간 추적, Agent Transfer 감지 담당
 """
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 import logging
+import json
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.api.v1 import logs
+from app.websocket.manager import trace_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +51,35 @@ app.add_middleware(
 
 # Include routers
 app.include_router(logs.router, prefix="/api/tracing", tags=["logs"])
+
+@app.websocket("/ws/trace/{trace_id}")
+async def websocket_trace_endpoint(websocket: WebSocket, trace_id: str, token: str = None):
+    """WebSocket endpoint for real-time log streaming
+
+    Query params:
+        token: JWT authentication token
+    """
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return
+
+    # TODO: Validate token here if needed
+    # For now, just accept the connection
+
+    await trace_manager.connect(websocket, trace_id)
+
+    try:
+        # Keep connection alive with ping/pong
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            if message.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+    except Exception as e:
+        logger.error(f"WebSocket error for trace {trace_id}: {e}")
+    finally:
+        await trace_manager.disconnect(websocket, trace_id)
 
 @app.get("/health")
 async def health_check():

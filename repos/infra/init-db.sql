@@ -7,6 +7,7 @@ CREATE DATABASE agent_service_db;
 CREATE DATABASE chat_service_db;
 CREATE DATABASE tracing_service_db;
 CREATE DATABASE admin_service_db;
+CREATE DATABASE llm_proxy_db;
 
 -- Grant all privileges to dev_user
 GRANT ALL PRIVILEGES ON DATABASE user_service_db TO dev_user;
@@ -14,3 +15,4 @@ GRANT ALL PRIVILEGES ON DATABASE agent_service_db TO dev_user;
 GRANT ALL PRIVILEGES ON DATABASE chat_service_db TO dev_user;
 GRANT ALL PRIVILEGES ON DATABASE tracing_service_db TO dev_user;
 GRANT ALL PRIVILEGES ON DATABASE admin_service_db TO dev_user;
+GRANT ALL PRIVILEGES ON DATABASE llm_proxy_db TO dev_user;

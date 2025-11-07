@@ -40,7 +40,7 @@ check_docker
 check_docker_compose
 
 # Parse arguments
-MODE=${1:-full}
+MODE=${1:-start}
 
 case $MODE in
     update)
@@ -60,6 +60,7 @@ case $MODE in
             ["chat-service"]="a2g-chat-service"
             ["tracing-service"]="a2g-tracing-service"
             ["admin-service"]="a2g-admin-service"
+            ["llm-proxy-service"]="a2g-llm-proxy"
         )
 
         SUCCESS_COUNT=0
@@ -154,151 +155,10 @@ case $MODE in
 
         exit 0
         ;;
-    setup)
-        echo "🔧 Setting up development databases..."
-        cd repos/infra
-        
-        # Start only PostgreSQL first
-        echo "📦 Starting PostgreSQL container..."
-        $DOCKER_COMPOSE -f docker-compose.dev.yml up -d postgres
-        
-        # Wait for PostgreSQL to be ready
-        echo "⏳ Waiting for PostgreSQL to be ready..."
-        timeout=60
-        counter=0
-        while ! docker exec a2g-postgres-dev pg_isready -U dev_user > /dev/null 2>&1; do
-            if [ $counter -ge $timeout ]; then
-                echo "❌ PostgreSQL failed to start within $timeout seconds"
-                exit 1
-            fi
-            echo "   Waiting... ($counter/$timeout)"
-            sleep 2
-            counter=$((counter + 2))
-        done
-        
-        echo "✅ PostgreSQL is ready!"
-        
-        # Check if databases already exist
-        echo "🔍 Checking existing databases..."
-        existing_dbs=$(docker exec a2g-postgres-dev psql -U dev_user -d postgres -t -c "SELECT datname FROM pg_database WHERE datname LIKE '%_service_db';" 2>/dev/null | tr -d ' \n' || echo "")
-        
-        if [ -n "$existing_dbs" ]; then
-            echo "⚠️  Service databases already exist: $existing_dbs"
-            echo "   Do you want to recreate them? This will delete all data! (y/N)"
-            read -r response
-            if [[ "$response" =~ ^[Yy]$ ]]; then
-                echo "🗑️  Dropping existing databases..."
-                docker exec a2g-postgres-dev psql -U dev_user -d postgres -c "DROP DATABASE IF EXISTS user_service_db;"
-                docker exec a2g-postgres-dev psql -U dev_user -d postgres -c "DROP DATABASE IF EXISTS agent_service_db;"
-                docker exec a2g-postgres-dev psql -U dev_user -d postgres -c "DROP DATABASE IF EXISTS chat_service_db;"
-                docker exec a2g-postgres-dev psql -U dev_user -d postgres -c "DROP DATABASE IF EXISTS tracing_service_db;"
-                docker exec a2g-postgres-dev psql -U dev_user -d postgres -c "DROP DATABASE IF EXISTS admin_service_db;"
-            else
-                echo "✅ Using existing databases"
-                cd ../..
-                exit 0
-            fi
-        fi
-        
-        # Initialize databases
-        echo "🏗️  Creating service databases..."
-        docker exec a2g-postgres-dev psql -U dev_user -d postgres -f /docker-entrypoint-initdb.d/init.sql
-
-        # Note: All service database schemas are managed by Alembic migrations
-        # Tables will be created when services start and run migrations
-
-        echo "✅ Empty databases created. Tables will be created by Alembic migrations."
-        
-        if [ $? -eq 0 ]; then
-            echo "✅ Database setup completed successfully!"
-            echo ""
-            echo "📋 Created databases:"
-            echo "   - user_service_db"
-            echo "   - agent_service_db"
-            echo "   - chat_service_db"
-            echo "   - tracing_service_db"
-            echo "   - admin_service_db"
-            echo ""
-
-            # Start services to run migrations
-            echo "🚀 Starting services to run database migrations..."
-            $DOCKER_COMPOSE -f docker-compose.dev.yml up -d
-
-            # Wait for services to be ready
-            echo "⏳ Waiting for services to start..."
-            sleep 10
-
-            # Run migrations for all services
-            echo "📝 Running database migrations..."
-
-            # Define services with Alembic support
-            SERVICES_WITH_MIGRATIONS=("user-service" "agent-service" "chat-service" "tracing-service" "admin-service")
-
-            for service in "${SERVICES_WITH_MIGRATIONS[@]}"; do
-                CONTAINER_NAME="a2g-$service"
-
-                if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-                    if [ -f "../$service/alembic.ini" ]; then
-                        echo "   Running $service migrations..."
-                        if docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>/dev/null; then
-                            echo "   ✅ $service migrations applied"
-                        else
-                            echo "   ⚠️  Could not run $service migrations"
-                        fi
-                    fi
-                else
-                    echo "   ⏭️  $service container not running, skipping..."
-                fi
-            done
-
-            # Create initial admin users for user-service
-            echo "👥 Creating initial admin users..."
-            docker exec a2g-postgres-dev psql -U dev_user -d user_service_db -c "
-            INSERT INTO users (username, username_kr, username_en, email, role, department_kr, department_en, is_active)
-            VALUES
-                ('syngha.han', '한승하', 'Syngha Han', 'syngha.han@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
-                ('byungju.lee', '이병주', 'Byungju Lee', 'byungju.lee@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
-                ('youngsub.kim', '김영섭', 'Youngsub Kim', 'youngsub.kim@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
-                ('junhyung.ahn', '안준형', 'Junhyung Ahn', 'junhyung.ahn@company.com', 'ADMIN', 'AI Platform Team', 'AI Platform Team', true),
-                ('test.user', '테스트유저', 'Test User', 'test.user@company.com', 'PENDING', 'Test Team', 'Test Team', true)
-            ON CONFLICT (username) DO NOTHING;
-            " && echo "   ✅ Initial users created" || echo "   ⚠️  Could not create initial users"
-
-            echo ""
-            echo "✅ Database migrations completed!"
-            echo ""
-            echo "🎉 Setup complete! Services are now running."
-            echo ""
-            echo "📌 Next steps:"
-            echo "   1. Start frontend: cd frontend && npm install && npm run dev"
-            echo "   2. Access app at: http://localhost:9060"
-            echo "   3. API Gateway at: http://localhost:9050"
-            echo ""
-            echo "📝 After 'git pull', run: ./start-dev.sh update"
-        else
-            echo "❌ Database setup failed!"
-            exit 1
-        fi
-
-        cd ../..
-        exit 0
-        ;;
-    full)
+    start)
         echo "📦 Starting all services..."
         cd repos/infra
         $DOCKER_COMPOSE -f docker-compose.dev.yml up -d
-        cd ../..
-        ;;
-    minimal)
-        echo "📦 Starting minimal services (API Gateway + Mock SSO + Database)..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.dev.yml up -d api-gateway mock-sso postgres redis
-        cd ../..
-        ;;
-    gateway)
-        echo "📦 Starting only API Gateway and dependencies..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.dev.yml up -d api-gateway postgres redis
         cd ../..
         ;;
     stop)
@@ -309,12 +169,9 @@ case $MODE in
         exit 0
         ;;
     *)
-        echo "Usage: ./start-dev.sh [setup|update|full|minimal|gateway|stop]"
-        echo "  setup   - Initialize development databases (run this first!)"
+        echo "Usage: ./start-dev.sh [start|update|stop]"
+        echo "  start   - Start all services (default)"
         echo "  update  - Update all service databases with latest migrations (after git pull)"
-        echo "  full    - Start all services (default)"
-        echo "  minimal - Start API Gateway, Mock SSO, and databases only"
-        echo "  gateway - Start API Gateway and databases only"
         echo "  stop    - Stop all services"
         exit 1
         ;;

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create New Agent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#EA2831", "background-light": "#f8f6f6", "background-dark": "#211111"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a59db8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="relative flex min-h-screen w-full flex-col items-center justify-center p-4" style="font-family: Manrope, 'Noto Sans', sans-serif;">
+<div aria-hidden="true" class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
+<div class="relative w-full max-w-2xl transform rounded-xl bg-background-light dark:bg-[#1f1c26] text-gray-800 dark:text-white shadow-2xl transition-all">
+<div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-[#433c53]">
+<div class="flex flex-col gap-1">
+<h2 class="text-xl font-bold">Create New Agent</h2>
+<p class="text-sm text-gray-500 dark:text-[#a59db8]">Fill in the details below to set up your new agent.</p>
+</div>
+<button class="p-1 rounded-full text-gray-400 dark:text-[#a59db8] hover:bg-gray-100 dark:hover:bg-[#433c53] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-background-dark" type="button">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+<div class="grid grid-cols-1 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 items-start">
+<div class="space-y-6">
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Name</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="Enter a unique name for your agent" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Description</p>
+<textarea class="form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] min-h-28 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] p-4 text-base font-normal leading-normal" placeholder="Provide a brief description of what this agent does"></textarea>
+</label>
+</div>
+<div class="flex flex-col gap-4 items-center">
+<p class="text-base font-medium leading-normal w-full md:text-center">Logo &amp; Color</p>
+<div class="flex flex-row md:flex-col gap-4">
+<div class="shrink-0">
+<label class="cursor-pointer group" for="logo-upload">
+<div class="relative w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 dark:border-[#433c53] bg-white dark:bg-[#131118] flex items-center justify-center text-gray-400 dark:text-gray-500 group-hover:border-primary group-hover:text-primary transition-colors">
+<div class="text-center">
+<span class="material-symbols-outlined text-3xl">upload_file</span>
+<p class="text-xs mt-1">Upload</p>
+</div>
+</div>
+<input class="hidden" id="logo-upload" type="file"/>
+</label>
+</div>
+<div>
+<div class="grid grid-cols-4 gap-2">
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#DBEAFE"/><div class="w-8 h-8 rounded-full bg-blue-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#D1FAE5"/><div class="w-8 h-8 rounded-full bg-green-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#FEF3C7"/><div class="w-8 h-8 rounded-full bg-amber-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#FEE2E2"/><div class="w-8 h-8 rounded-full bg-red-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input checked="" class="sr-only peer" name="agent-color" type="radio" value="#F3E8FF"/><div class="w-8 h-8 rounded-full bg-purple-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#E5E7EB"/><div class="w-8 h-8 rounded-full bg-gray-200 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#E0F2FE"/><div class="w-8 h-8 rounded-full bg-sky-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+<label class="cursor-pointer"><input class="sr-only peer" name="agent-color" type="radio" value="#FCE7F3"/><div class="w-8 h-8 rounded-full bg-pink-100 ring-2 ring-transparent peer-checked:ring-primary"></div></label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">URL</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="https://example.com/agent" type="url" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Version</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="e.g., 1.0.0" value=""/>
+</label>
+</div>
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Documentation URL <span class="text-sm text-gray-400 dark:text-[#a59db8]">(Optional)</span></p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="https://docs.example.com/agent" type="url" value=""/>
+</label>
+<div class="p-4 rounded-lg border border-gray-300 dark:border-[#433c53]">
+<p class="text-base font-medium leading-normal pb-4">Provider</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<label class="flex flex-col">
+<p class="text-sm font-medium leading-normal pb-2 text-gray-600 dark:text-gray-300">Organization</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="Provider name" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-sm font-medium leading-normal pb-2 text-gray-600 dark:text-gray-300">URL</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="https://provider.com" type="url" value=""/>
+</label>
+</div>
+</div>
+<div class="p-4 rounded-lg border border-gray-300 dark:border-[#433c53]">
+<p class="text-base font-medium leading-normal pb-4">Capabilities</p>
+<div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="form-checkbox size-4 rounded bg-white dark:bg-[#131118] border-gray-300 dark:border-[#433c53] text-primary focus:ring-primary/50" type="checkbox"/>
+<span class="text-base">Streaming</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="form-checkbox size-4 rounded bg-white dark:bg-[#131118] border-gray-300 dark:border-[#433c53] text-primary focus:ring-primary/50" type="checkbox"/>
+<span class="text-base">Push Notifications</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="form-checkbox size-4 rounded bg-white dark:bg-[#131118] border-gray-300 dark:border-[#433c53] text-primary focus:ring-primary/50" type="checkbox"/>
+<span class="text-base">State Transition History</span>
+</label>
+</div>
+</div>
+<div class="p-4 rounded-lg border border-gray-300 dark:border-[#433c53]">
+<p class="text-base font-medium leading-normal pb-4">Authentication</p>
+<div class="grid grid-cols-1 gap-6">
+<label class="flex flex-col">
+<p class="text-sm font-medium leading-normal pb-2 text-gray-600 dark:text-gray-300">Schemes</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="e.g., Bearer, APIKey (comma-separated)" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-sm font-medium leading-normal pb-2 text-gray-600 dark:text-gray-300">Credentials <span class="text-xs text-gray-400 dark:text-[#a59db8]">(Optional)</span></p>
+<textarea class="form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] min-h-20 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] p-4 text-base font-normal leading-normal" placeholder="Enter credentials as JSON"></textarea>
+</label>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Default Input Modes</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="e.g., text, voice (comma-separated)" value=""/>
+</label>
+<label class="flex flex-col">
+<p class="text-base font-medium leading-normal pb-2">Default Output Modes</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal" placeholder="e.g., text, image (comma-separated)" value=""/>
+</label>
+</div>
+<div class="p-4 rounded-lg border border-gray-300 dark:border-[#433c53] space-y-4">
+<div class="flex items-center justify-between">
+<p class="text-base font-medium leading-normal">Skills</p>
+<button class="inline-flex items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20 px-3 py-1.5 text-sm font-semibold text-primary dark:text-white hover:bg-primary/20 dark:hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-[#1f1c26]" type="button">
+<span class="material-symbols-outlined mr-2 text-base">add</span>
+Add Skill
+</button>
+</div>
+<div class="space-y-3">
+<div class="p-3 rounded-md bg-white/50 dark:bg-[#131118]">
+<div class="flex items-center justify-between">
+<p class="font-semibold">Get Weather</p>
+<button class="p-1 rounded-full text-gray-400 dark:text-[#a59db8] hover:bg-gray-100 dark:hover:bg-[#433c53]">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<p class="text-sm text-gray-500 dark:text-[#a59db8] mt-1">Retrieves the current weather for a specified location.</p>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-purple-300">weather</span>
+<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-purple-300">api</span>
+</div>
+</div>
+<div class="p-3 rounded-md bg-white/50 dark:bg-[#131118]">
+<div class="flex items-center justify-between">
+<p class="font-semibold">Send Email</p>
+<button class="p-1 rounded-full text-gray-400 dark:text-[#a59db8] hover:bg-gray-100 dark:hover:bg-[#433c53]">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+<p class="text-sm text-gray-500 dark:text-[#a59db8] mt-1">Sends an email to a specified recipient.</p>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-purple-300">communication</span>
+<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary dark:bg-primary/20 dark:text-purple-300">email</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-end gap-4 p-6 border-t border-gray-200 dark:border-[#433c53]">
+<button class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-background-dark" type="button">
+                    Cancel
+                </button>
+<button class="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary dark:focus:ring-offset-background-dark disabled:opacity-50" type="button">
+                    Create Agent
+                </button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Agent Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#359EFF", "background-light": "#f5f7f8", "background-dark": "#0f1923", "hub-accent": {DEFAULT: "#0284c7", light: "#E0F2FE", dark: "#0369a1"}}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="relative flex w-full min-h-screen">
+<aside class="flex flex-col h-screen w-64 bg-white dark:bg-[#110d1a] border-r border-slate-200 dark:border-slate-800 sticky top-0">
+<div class="flex items-center gap-3 h-16 border-b border-slate-200 dark:border-slate-800 px-6">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_6_535)">
+<path clip-rule="evenodd" d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z" fill="currentColor" fill-rule="evenodd"></path>
+</g>
+<defs><clippath id="clip0_6_535"><rect fill="white" height="48" width="48"></rect></clippath></defs>
+</svg>
+</div>
+<h2 class="text-slate-800 dark:text-white text-lg font-bold">A2G Platform</h2>
+</div>
+<div class="flex flex-col justify-between flex-1 p-4">
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">code_blocks</span>
+<p class="text-sm font-medium">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-hub-accent-light text-hub-accent-dark dark:bg-hub-accent/20 dark:text-hub-accent-light" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">apps</span>
+<p class="text-sm font-medium">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">hub</span>
+<p class="text-sm font-medium">Flow</p>
+</a>
+</nav>
+</div>
+</aside>
+<div class="flex-1 flex flex-col">
+<header class="flex items-center justify-end h-16 bg-white dark:bg-[#110d1a]/50 backdrop-blur-sm border-b border-solid border-slate-200 dark:border-slate-800 px-6 sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with a gradient background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDb-6lzZMKTCxvQS53OQ-5WdC4CGdqiLsbiEJj9-dkKzjL3Fcn8l_o5bN0vCENS6BNzDoSsRIWCnsWT7l5Joa0j3DucZOnXTc027MawsWRxB-eNyeg3lvzQlb5xm26CQMJ-vRVHxMqkAdgiEEk9tlYyB_4A1_kIgLZ3WftPrd2adLbp8r6NbSuj1tPJQ9VxMEdNFZW9ho3EPhORVcJgi27amH7PtkgWFKS-Afb6M7s4AabBnBP_Pn7ztwrmEIbS5GMxy-Y0jzeyRUl5");'></div>
+</div>
+</header>
+<main class="flex-1 p-6 lg:p-10">
+<div class="max-w-7xl mx-auto">
+<div class="mb-8">
+<h1 class="text-slate-900 dark:text-white text-4xl font-black tracking-tighter">Agent Hub</h1>
+<p class="text-slate-500 dark:text-slate-400 mt-2">Discover and launch production-ready agents.</p>
+</div>
+<div class="relative mb-10">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full h-14 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-hub-accent focus:border-hub-accent transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-200" placeholder="Search for agents by name, tag, or description..." type="text"/>
+</div>
+<h2 class="text-slate-900 dark:text-white text-2xl font-bold tracking-tight mb-4">Top Picks for You</h2>
+<div class="mb-12 overflow-x-auto [-ms-scrollbar-style:none] [scrollbar-width:none] [&amp;::-webkit-scrollbar]:hidden">
+<div class="flex items-stretch pb-4 gap-6">
+<div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 w-72 flex-shrink-0 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover rounded-t-xl" data-alt="Abstract blue and purple waves" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAFvpJtfAyetRXQCCQrpijWJzLJ74V_-Sw18ooQYgHRLOR4ucBIwxuctUOQDoTcmrGF8RBTgt62wH579RFUFKU6z2iFxQZK7sCOrfmyivHmMkKbSd1XKfL6W8Y3f4P5Sre2zEMP4w3HurGQgeLDfATMeZw0FH3zUHGhJEJGPsAsuq2rY98REffYQ1npMo85oRIg7oq8TrLNaA17NU4co30acOnSEJSlON_ZqPljnec2d5xjJX8OnJbOfAR3TLBj937JtjPi0a_VdRAV");'></div>
+<div class="flex flex-col flex-1 justify-between p-4 pt-0">
+<div>
+<p class="text-slate-800 dark:text-white text-base font-bold">Customer Support Bot</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Handles customer queries instantly.</p>
+</div>
+<button class="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 w-72 flex-shrink-0 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover rounded-t-xl" data-alt="Abstract green and blue gradient" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAzLn9Pq6SaAKUIE4cbYNnVP_mRClcoufZFaSY6iUOmNgORHCH_eelSJbGPrTn01zx72uMyLxwYSv_WXAAtb5WKs91ji_4qd1ORJX25L14PXKx55nbWRwAZ-SZ5YI2sBOWQ5CJn_NHZv-qJX3wPBAcNFooPNee1WCN6WBLMMKUmiEPRlJkqN_sdgTt-WBRtCUNmun0XVsMMO6xMIAfJ2dYrwqbWmY7pQeidNkDJFClcl068lvPapXAoQdk9YZrb96mqBQmAZCvpwJQ2");'></div>
+<div class="flex flex-col flex-1 justify-between p-4 pt-0">
+<div>
+<p class="text-slate-800 dark:text-white text-base font-bold">Sales Assistant</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Automates lead qualification and follow-ups.</p>
+</div>
+<button class="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 w-72 flex-shrink-0 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+<div class="w-full bg-center bg-no-repeat aspect-[16/9] bg-cover rounded-t-xl" data-alt="Abstract purple and pink flowing colors" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBKIVIoNcEJvqr1xrUem2BaBYGeINg2rfzfu-hhz1436AtZKYHroRNuIJtZ0JQeT1DH0shxuZUaOX1kDa1VPgplEIl942ZwoHFZ-2t3k3UuHU-_PAYQv7-U8tmZDEh_hOZDGXOxI2wRb5LhIvunJ63ehlq-sWTQVISAkGvWbd19LUS5k1XGs3UfoWT4gyB_hRc1Q79cXGqkYolJhfH5dSPW3N36efhaxbcWuERDDniDs_tE7huhq2WpIUI0w6JWIO4_qH42vBxtpzzz");'></div>
+<div class="flex flex-col flex-1 justify-between p-4 pt-0">
+<div>
+<p class="text-slate-800 dark:text-white text-base font-bold">Data Analyst AI</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Generates deep insights from your data.</p>
+</div>
+<button class="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<h2 class="text-slate-900 dark:text-white text-2xl font-bold tracking-tight mb-6">All Agents</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<div class="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
+<div class="flex items-center gap-4 mb-3">
+<div class="size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl text-indigo-500 dark:text-indigo-400">support_agent</span>
+</div>
+<p class="text-slate-900 dark:text-white font-bold">Support Agent</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">A friendly bot to answer common customer questions and resolve tickets.</p>
+<div class="flex items-center gap-2 mb-4">
+<span class="text-xs font-medium text-sky-600 bg-sky-100 dark:text-sky-300 dark:bg-sky-900/50 px-2 py-1 rounded-full">Support</span>
+<span class="text-xs font-medium text-emerald-600 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/50 px-2 py-1 rounded-full">Customer</span>
+</div>
+<button class="w-full flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 group-hover:bg-hub-accent group-hover:text-white text-slate-700 dark:text-slate-300 text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+<div class="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
+<div class="flex items-center gap-4 mb-3">
+<div class="size-12 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl text-rose-500 dark:text-rose-400">monitoring</span>
+</div>
+<p class="text-slate-900 dark:text-white font-bold">Marketing Analyst</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">Analyze campaign performance and suggest optimizations for better ROI.</p>
+<div class="flex items-center gap-2 mb-4">
+<span class="text-xs font-medium text-rose-600 bg-rose-100 dark:text-rose-300 dark:bg-rose-900/50 px-2 py-1 rounded-full">Marketing</span>
+<span class="text-xs font-medium text-amber-600 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/50 px-2 py-1 rounded-full">Data</span>
+</div>
+<button class="w-full flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 group-hover:bg-hub-accent group-hover:text-white text-slate-700 dark:text-slate-300 text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+<div class="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
+<div class="flex items-center gap-4 mb-3">
+<div class="size-12 rounded-lg bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl text-teal-500 dark:text-teal-400">group_add</span>
+</div>
+<p class="text-slate-900 dark:text-white font-bold">HR Onboarding</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">Guides new hires through the onboarding process, from paperwork to introductions.</p>
+<div class="flex items-center gap-2 mb-4">
+<span class="text-xs font-medium text-teal-600 bg-teal-100 dark:text-teal-300 dark:bg-teal-900/50 px-2 py-1 rounded-full">HR</span>
+<span class="text-xs font-medium text-fuchsia-600 bg-fuchsia-100 dark:text-fuchsia-300 dark:bg-fuchsia-900/50 px-2 py-1 rounded-full">Internal</span>
+</div>
+<button class="w-full flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 group-hover:bg-hub-accent group-hover:text-white text-slate-700 dark:text-slate-300 text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+<div class="group flex flex-col p-5 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
+<div class="flex items-center gap-4 mb-3">
+<div class="size-12 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl text-amber-500 dark:text-amber-400">code</span>
+</div>
+<p class="text-slate-900 dark:text-white font-bold">Code Reviewer</p>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm mb-4 flex-1">Automatically reviews code for style, best practices, and potential bugs.</p>
+<div class="flex items-center gap-2 mb-4">
+<span class="text-xs font-medium text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-900/50 px-2 py-1 rounded-full">Developer</span>
+</div>
+<button class="w-full flex cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-slate-100 dark:bg-slate-800 group-hover:bg-hub-accent group-hover:text-white text-slate-700 dark:text-slate-300 text-sm font-bold transition-colors">
+<span>Start Chat</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

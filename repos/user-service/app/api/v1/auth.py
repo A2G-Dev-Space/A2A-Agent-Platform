@@ -118,9 +118,9 @@ async def handle_callback(
             user.last_login = datetime.utcnow()
             await db.commit()
 
-        # Create access token
-        access_token = create_access_token(data={"sub": username})
-        
+        # Create access token with role included
+        access_token = create_access_token(data={"sub": username, "role": user.role})
+
         return CallbackResponse(
             access_token=access_token,
             expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,

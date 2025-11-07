@@ -27,7 +27,19 @@
         "newAgent": "New Agent",
         "filterPlaceholder": "Filter agents...",
         "noAgentSelectedTitle": "Select an Agent",
-        "noAgentSelectedSubtitle": "Choose an agent from the list to start a session."
+        "noAgentSelectedSubtitle": "Choose an agent from the list to start a session.",
+        "chatPlayground": "Chat Playground",
+        "trace": "Trace",
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "clearSession": "Clear Session",
+        "clearLogs": "Clear Logs",
+        "startConversation": "Start a conversation",
+        "typeMessage": "Type a message...",
+        "noLogs": "No logs yet",
+        "scrollToBottom": "Scroll to bottom",
+        "you": "You",
+        "creatingSession": "Creating session..."
     },
     "createAgent": {
         "title": "Create New Agent",
@@ -60,6 +72,7 @@
         "subtitle": "Manage your account and platform settings.",
         "tabs": {
             "general": "General",
+            "platformKeys": "Platform Keys",
             "userManagement": "User Management",
             "llmManagement": "LLM Model Management",
             "statistics": "Statistics"

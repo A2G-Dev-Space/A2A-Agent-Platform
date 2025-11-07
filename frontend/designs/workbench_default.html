@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Workbench</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#EA2831", "background-light": "#f8f6f6", "background-dark": "#211111"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="flex h-screen w-full">
+<aside class="flex h-full w-64 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-background-dark">
+<div class="flex h-full flex-col p-4">
+<div class="flex flex-col gap-6">
+<div class="flex items-center gap-3">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="Abstract purple and blue gradient logo" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCC6lIn7PsBEoCc1zRtutwp7VPMtrZqwhqY3ALeeNELD5254SlSW2C3SeuAPIZtpIhnlGqN8S2R1cL_rPFOfqC9EI9EwJ4Uy1OZF4OLtTqITgA5HhfJpfFgcHCiYXy0vf72u97x_kdExl_aSBk5tYC8_77TrKO4bamyIXpXKoTZ1GxBZ6jOyz3mZBIdXDGoIqQnptHhz13bUzzlCy41pp_zZyXpBhMroX6q-9pb05O856b9_-DDrYBVj6hflfMu6PyhdzHGfPIVaF7t");'></div>
+<div class="flex flex-col">
+<h1 class="text-gray-900 dark:text-white text-base font-bold leading-normal">A2G Platform</h1>
+</div>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/20 dark:bg-primary/20 text-gray-900 dark:text-primary" href="#">
+<span class="material-symbols-outlined">
+                                terminal
+                            </span>
+<p class="text-sm font-bold leading-normal">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined">
+                                widgets
+                            </span>
+<p class="text-sm font-medium leading-normal">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined">
+                                account_tree
+                            </span>
+<p class="text-sm font-medium leading-normal">Flow</p>
+</a>
+</nav>
+</div>
+</div>
+</aside>
+<div class="flex flex-1 flex-col overflow-y-auto">
+<header class="flex h-16 items-center justify-end whitespace-nowrap border-b border-solid border-gray-200 dark:border-gray-800 px-8 py-3 bg-white dark:bg-background-dark sticky top-0 z-10">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with a colorful background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAsbXQoXR7KaFjJjqRRjYhySLtXteDgrnT2rM7BZf-k0Wtclj4LvZOl3j-z9TKrjcE9i-cfSPqtpVEMSlicGAwC8WebdclPlfiFtl1_aYlgVTYiEf37oqUDGT9lp6xGAOLQPQwx49aTL0MhqRKJ7IMRVp_glpF1eYglAo8uk1MfBsxWiNuBivhVSVin7dGm_D_6kuK0FS8kHSlRKbtK76kl6ee3mEu9IOxvYsR1F5YUKzsu9KwxCheueLJLyd1J22pPe0YQ38iaeqM-");'></div>
+</header>
+<main class="flex flex-col flex-1 p-8">
+<div class="flex flex-wrap justify-between gap-3 mb-6">
+<h1 class="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">My Development Agents</h1>
+</div>
+<div class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
+<div class="flex min-h-[198px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-black/20 text-gray-500 dark:text-gray-400 transition-all hover:border-primary hover:text-primary dark:hover:border-primary/50 dark:hover:text-primary">
+<span class="material-symbols-outlined text-5xl">add</span>
+<p class="text-base font-semibold">Add New Agent</p>
+</div>
+<div class="flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black/20 p-4 transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-start justify-between">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-12" data-alt="Icon for Data Analyst Agent" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjI3fBh-qZ7SxcTQeRGoQinrKrfMCdQC1yDLh57CzQ_aWPXw5a31-jZN0gUEcNqMl6V4eR9OJa_E8ouWNmRH70XuRkWDb-ZT9cQ5DeQZcEqq3nIo7-UNlUOMy0Hax8RrmkO1OkvUaeHG5RsllY68DsIn-sribCRgPN8RFDR_QHWM8bF4ROem7NMgzY7Nm98aLO-ruR-FQxfjzcLH0rWfwNB7AWRW3I2zxj32xwlEGihapAAvrrI52tw2j9PPJ3hUuXhMi3yYfKNl-A");'></div>
+<span class="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:text-green-200">DEPLOY TO ALL</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-normal">Data Analyst Agent</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">An agent for processing and visualizing data from various sources.</p>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-blue-600 text-white text-sm font-bold leading-normal hover:bg-blue-700">Edit</button>
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-amber-400 text-gray-900 text-sm font-bold leading-normal hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-600">UnDeploy</button>
+<button class="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-transparent text-red-500 hover:bg-red-500/10"><span class="material-symbols-outlined text-xl">delete</span></button>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black/20 p-4 transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-start justify-between">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-12" data-alt="Icon for Customer Support Bot" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDwjDBLOXuEu49lisMmArN4KwDXKa6vjGcxk84YYkG3_xmmdbDsWMhYj5KldbENxxkY050xwaGsCfbrGghslW-Lsz6h7mrrajutBW-ld-E_xC8h8cY2r-h4kygDohmdPa0oc_Auw9TIScB772co84GPGQlDJYhfBeFN_xkVzXK0_yrH327o_vJqVeVgwjHsdazBiSyK-iB2U3vcjNTpcBQyA6PjcG88vo2uv0MTjlhV7R2TKeM6JXy9_ouylUpd05dOKjMVphr0Aoio");'></div>
+<span class="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900 px-2.5 py-0.5 text-xs font-semibold text-sky-800 dark:text-sky-200">DEPLOY TO DEPARTMENT</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-normal">Customer Support Bot</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">A chatbot to handle frequently asked customer questions and issues.</p>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-blue-600 text-white text-sm font-bold leading-normal hover:bg-blue-700">Edit</button>
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-amber-400 text-gray-900 text-sm font-bold leading-normal hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-600">UnDeploy</button>
+<button class="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-transparent text-red-500 hover:bg-red-500/10"><span class="material-symbols-outlined text-xl">delete</span></button>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black/20 p-4 transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-start justify-between">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-12" data-alt="Icon for Content Generator" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCWgwwVZxpmLg3gtIwscXFFPOKrleEPRll1oKV97lSt4nYQW-9wJHADE4iIzMpbH9LHCnrrSQkf99WFqOBzLt9FtJLfNSnAfWKcvZ1-PmaQXRLSAtGDUsk6NNKnME_rJDjXbv_eqcX3E13UDUDSfhC3K6FrBM33LffeKe3IJH6P8B5yvY5Cn6Vujb9VwrMHxqSgtj6LSR9v_oSWq7kABhE5MhtlvCNDdCUTLunPS7cWB31NJhIRKNn55mSxhZAoie9hPhXjz9YCCtBn");'></div>
+<span class="inline-flex items-center rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:text-primary">DEVELOPMENT</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-normal">Content Generator</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Generates marketing copy and blog posts based on given prompts.</p>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-blue-600 text-white text-sm font-bold leading-normal hover:bg-blue-700">Edit</button>
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary text-gray-900 text-sm font-bold leading-normal hover:bg-primary/80">Deploy</button>
+<button class="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-transparent text-red-500 hover:bg-red-500/10"><span class="material-symbols-outlined text-xl">delete</span></button>
+</div>
+</div>
+<div class="flex flex-col gap-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black/20 p-4 transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="flex items-start justify-between">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-12" data-alt="Icon for Scheduler Agent" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCunbxh5wQE6FQ67VQXaJ5xkigyv8dBS2yflMRi7LShGHcR4N9e6YJiJDb8btJPKfEOzIFVzOid3fJ8iGOfhitv8G0C_X1ixrdbR5NiBjUVCrndAi4THHhSFYXwlSw_uOLqFzljybIUr9-76PeqJ0bYWuLob3qdYNUKSqWRAIqeLDL8_sD60043OjkrnWN9lgECh8cAhDJg5CGU2YmgHsYg8XQw3PnOX1WSoyxFuapjm4d8HKaPAbAEnvLQqkFOTsKUv384ZNwbcqR5");'></div>
+<span class="inline-flex items-center rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-semibold text-gray-800 dark:text-primary">DEVELOPMENT</span>
+</div>
+<div class="flex flex-col gap-1">
+<p class="text-gray-900 dark:text-white text-base font-bold leading-normal">Scheduler Agent</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Helps manage and organize calendar events and meetings.</p>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-blue-600 text-white text-sm font-bold leading-normal hover:bg-blue-700">Edit</button>
+<button class="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-primary text-gray-900 text-sm font-bold leading-normal hover:bg-primary/80">Deploy</button>
+<button class="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-transparent text-red-500 hover:bg-red-500/10"><span class="material-symbols-outlined text-xl">delete</span></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

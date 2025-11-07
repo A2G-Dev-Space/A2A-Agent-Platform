@@ -16,6 +16,7 @@ dependencies = [
     "httpx>=0.25.0",
     "alembic>=1.13.0",
     "email-validator>=2.0.0",
+    "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]

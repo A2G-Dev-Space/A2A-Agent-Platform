@@ -1,27 +1,20 @@
 """
 Chat Service - A2G Platform
-채팅 세션 관리, WebSocket 실시간 통신 담당
+채팅 세션 관리, REST + SSE 스트리밍 통신 담당
 """
-from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 import uvicorn
 import logging
-import json
-import asyncio
 from contextlib import asynccontextmanager
-from typing import Dict, List
 
 from app.core.config import settings
-from app.api.v1 import sessions, messages
-from app.websocket.manager import ConnectionManager
+from app.api.v1 import sessions, messages, llm_proxy
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# WebSocket connection manager
-manager = ConnectionManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,7 +22,6 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Chat Service...")
     # NOTE: Database tables are created by Alembic migrations, not by ORM
-    # Removed init_db() call to prevent schema conflicts with migrations
     logger.info("Chat Service started successfully")
 
     yield
@@ -40,7 +32,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="A2G Chat Service",
-    description="Chat Session and WebSocket Communication Service",
+    description="Chat Session and REST + SSE Streaming Communication Service",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -57,28 +49,7 @@ app.add_middleware(
 # Include routers
 app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
-
-@app.websocket("/ws/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    """WebSocket endpoint for real-time chat"""
-    await manager.connect(websocket, session_id)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            message_data = json.loads(data)
-            
-            # Echo back with timestamp
-            response = {
-                "type": "message",
-                "content": f"Echo: {message_data.get('content', '')}",
-                "timestamp": "2025-01-01T00:00:00Z",
-                "session_id": session_id
-            }
-            
-            await manager.send_personal_message(json.dumps(response), session_id)
-            
-    except WebSocketDisconnect:
-        manager.disconnect(session_id)
+app.include_router(llm_proxy.router, prefix="/api", tags=["llm-proxy"])
 
 @app.get("/health")
 async def health_check():

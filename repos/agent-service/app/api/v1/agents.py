@@ -7,10 +7,14 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+import httpx
+import logging
 
 from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
 from app.core.security import get_current_user
 from sqlalchemy import select, and_
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -61,6 +65,69 @@ class AgentListResponse(BaseModel):
 
 class AgentSearchRequest(BaseModel):
     query: str
+
+
+async def validate_agent_endpoint(a2a_endpoint: str) -> Dict[str, Any]:
+    """
+    Validate agent A2A endpoint by checking agent card
+
+    Args:
+        a2a_endpoint: Base URL of the agent (e.g. http://localhost:8011)
+
+    Returns:
+        Agent card JSON if valid
+
+    Raises:
+        HTTPException: If endpoint is invalid or unreachable
+    """
+    logger.info(f"[Agent Validation] Validating endpoint: {a2a_endpoint}")
+
+    # Transform localhost to host.docker.internal for Docker environments
+    validation_endpoint = a2a_endpoint.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+    logger.info(f"[Agent Validation] Using validation endpoint: {validation_endpoint}")
+
+    # Try both agent card endpoints (.well-known/agent-card.json and .well-known/agent.json)
+    card_endpoints = [
+        f"{validation_endpoint}/.well-known/agent-card.json",
+        f"{validation_endpoint}/.well-known/agent.json"
+    ]
+
+    last_error = None
+
+    for card_url in card_endpoints:
+        try:
+            logger.info(f"[Agent Validation] Trying: {card_url}")
+
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(card_url)
+
+                if response.status_code == 200:
+                    agent_card = response.json()
+                    logger.info(f"[Agent Validation] Success! Agent card retrieved from {card_url}")
+                    logger.debug(f"[Agent Validation] Agent card: {agent_card}")
+                    return agent_card
+                else:
+                    last_error = f"HTTP {response.status_code} from {card_url}"
+                    logger.warning(f"[Agent Validation] {last_error}")
+
+        except httpx.TimeoutException as e:
+            last_error = f"Timeout connecting to {card_url}"
+            logger.warning(f"[Agent Validation] {last_error}")
+        except httpx.ConnectError as e:
+            last_error = f"Connection error to {card_url}: {str(e)}"
+            logger.warning(f"[Agent Validation] {last_error}")
+        except Exception as e:
+            last_error = f"Error fetching {card_url}: {str(e)}"
+            logger.warning(f"[Agent Validation] {last_error}")
+
+    # If we get here, all attempts failed
+    logger.error(f"[Agent Validation] Failed to validate endpoint {a2a_endpoint}: {last_error}")
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"Failed to validate agent endpoint: {last_error}. "
+               f"Please ensure the agent is running and accessible at {a2a_endpoint}."
+    )
+
 
 @router.get("/", response_model=AgentListResponse)
 async def get_agents(
@@ -172,15 +239,26 @@ async def create_agent(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create new agent"""
+    """
+    Create new agent without endpoint validation
+
+    Agent can be created without an endpoint. The endpoint can be added later
+    via Chat&Debug interface after the agent is hosted.
+    """
+    logger.info(f"[Create Agent] User {current_user['username']} creating agent: {request.name}")
+
     # Check if agent name already exists
     existing = await db.execute(select(Agent).where(Agent.name == request.name))
     if existing.scalar_one_or_none():
+        logger.warning(f"[Create Agent] Agent name '{request.name}' already exists")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Agent with this name already exists"
         )
-    
+
+    # No endpoint validation during creation - endpoint will be added later via Chat&Debug
+    logger.info(f"[Create Agent] Creating agent without endpoint validation (endpoint will be configured later)")
+
     agent = Agent(
         name=request.name,
         description=request.description,
@@ -259,25 +337,31 @@ async def update_agent(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update agent"""
+    """Update agent with optional endpoint validation"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agent not found"
         )
-    
+
     # Check ownership
     if agent.owner_id != current_user["username"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this agent"
         )
-    
-    # Update fields
+
+    # Validate A2A endpoint if it's being updated
     update_data = request.dict(exclude_unset=True)
+    if "a2a_endpoint" in update_data and update_data["a2a_endpoint"]:
+        logger.info(f"[Update Agent] Validating new endpoint: {update_data['a2a_endpoint']}")
+        agent_card = await validate_agent_endpoint(update_data["a2a_endpoint"])
+        logger.info(f"[Update Agent] Endpoint validation successful for agent {agent_id}")
+
+    # Update fields
     for field, value in update_data.items():
         setattr(agent, field, value)
     

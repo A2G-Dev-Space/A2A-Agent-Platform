@@ -158,6 +158,31 @@ async def register_agent(
         ) from e
 
 
+@router.get("/agents/by-id/{agent_id}", response_model=dict[str, Any])
+async def get_agent_by_numeric_id(
+    agent_id: int,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db)
+) -> dict[str, Any]:
+    """
+    Get an agent by numeric ID
+
+    Access Control: Users can only view agents they have access to
+    """
+    logger.info(f"[Registry] Getting agent by numeric ID: {agent_id} for user {current_user.get('username')}")
+    storage = RegistryStorage(db)
+    agent_card = await storage.get_agent_by_numeric_id(agent_id, current_user)
+
+    if agent_card:
+        logger.info(f"[Registry] Found agent: {agent_card.get('name')}")
+        return {"agent_card": dict(agent_card)}
+    else:
+        logger.error(f"[Registry] Agent {agent_id} not found or access denied for user {current_user.get('username')}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found or access denied"
+        )
+
 @router.get("/agents/{agent_id}", response_model=dict[str, Any])
 async def get_agent(
     agent_id: str,

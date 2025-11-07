@@ -1,104 +1,350 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
-import { AgentFramework } from '@/types';
+import { Modal, Input, Textarea, Button } from '@/components/ui';
+import { AgentFramework, AgentStatus, HealthStatus } from '@/types';
+import { agentService } from '@/services/agentService';
 
 interface AddAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const cardColors = [
-  'rgb(239, 68, 68)',
-  'rgb(249, 115, 22)',
-  'rgb(234, 179, 8)',
-  'rgb(34, 197, 94)',
-  'rgb(59, 130, 246)',
-  'rgb(99, 102, 241)',
-  'rgb(139, 92, 246)',
-  'rgb(217, 70, 239)',
+const agentSchema = z.object({
+  name: z.string().min(3, 'Agent name must be at least 3 characters').max(50, 'Agent name must be less than 50 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description must be less than 500 characters'),
+  framework: z.nativeEnum(AgentFramework, { required_error: 'Framework selection is required' }),
+  url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)'),
+  documentationUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  logo: z.instanceof(File).optional(),
+  color: z.string(),
+  capabilities: z.array(z.string()).min(1, 'Select at least one capability'),
+});
+
+type AgentFormData = z.infer<typeof agentSchema>;
+
+const colorSwatches = [
+  '#DBEAFE', // blue
+  '#D1FAE5', // green
+  '#FEF3C7', // amber
+  '#FEE2E2', // red
+  '#F3E8FF', // purple
+  '#E5E7EB', // gray
+  '#E0F2FE', // sky
+  '#FCE7F3', // pink
+];
+
+const capabilities = [
+  'Chat',
+  'Code Generation',
+  'Data Analysis',
+  'File Processing',
+  'Image Generation',
+  'Web Search',
+  'API Integration',
+  'Task Automation',
 ];
 
 const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  // TODO: Replace this with useMutation for createAgent
-  const [isLoading] = useState(false); // Read-only placeholder
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [framework, setFramework] = useState<AgentFramework | ''>('');
-  const [color, setColor] = useState(cardColors[3]);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AgentFormData>({
+    resolver: zodResolver(agentSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      url: '',
+      version: '',
+      documentationUrl: '',
+      color: colorSwatches[4], // purple default
+      capabilities: [],
+    },
+  });
 
-  const handleSubmit = async () => {
-    // ... (submission logic will be updated later)
-    onClose();
+  const selectedColor = watch('color');
+  const selectedCapabilities = watch('capabilities');
+
+  const onSubmit = async (data: AgentFormData) => {
+    console.log('Form data:', data);
+    try {
+      // Call the agent service to create the agent
+      await agentService.createAgent({
+        name: data.name,
+        description: data.description,
+        framework: data.framework,
+        a2a_endpoint: data.url || undefined, // Optional - can be added later via Chat&Debug
+        capabilities: {
+          skills: data.capabilities,
+          version: data.version,
+          description: data.description,
+        },
+        card_color: data.color,
+        logo_url: data.logo ? URL.createObjectURL(data.logo) : undefined,
+        status: AgentStatus.DEVELOPMENT,
+        visibility: 'private', // Default to private for new agents
+        is_public: false,
+        health_status: HealthStatus.UNKNOWN,
+      });
+
+      // Close modal on success
+      onClose();
+
+      // Refresh agent list (React Query will handle this automatically)
+      window.location.reload(); // Temporary solution - should use query invalidation
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      // TODO: Show error toast notification
+    }
   };
 
-  if (!isOpen) return null;
+  const handleLogoUpload = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+      setValue('logo', file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleLogoUpload(file);
+  };
+
+  const toggleCapability = (capability: string) => {
+    const current = selectedCapabilities || [];
+    if (current.includes(capability)) {
+      setValue(
+        'capabilities',
+        current.filter((c) => c !== capability)
+      );
+    } else {
+      setValue('capabilities', [...current, capability]);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="relative w-full max-w-2xl transform rounded-xl bg-background-light dark:bg-[#1f1c26] text-gray-800 dark:text-white shadow-2xl transition-all">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-[#433c53]">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-bold">{t('createAgent.title')}</h2>
-            <p className="text-sm text-gray-500 dark:text-[#a59db8]">{t('createAgent.subtitle')}</p>
+    <Modal
+      open={isOpen}
+      onOpenChange={onClose}
+      title={t('createAgent.title', 'Create New Agent')}
+      description={t('createAgent.subtitle', 'Fill in the details below to set up your new agent.')}
+      size="lg"
+    >
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Modal.Body className="space-y-6">
+          {/* Logo & Color + Name & Description Section */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 items-start">
+            {/* Left: Name & Description */}
+            <div className="space-y-6">
+              <Input
+                label={t('createAgent.nameLabel', 'Name')}
+                placeholder={t('createAgent.namePlaceholder', 'Enter a unique name for your agent')}
+                error={errors.name?.message}
+                {...register('name')}
+              />
+              <Textarea
+                label={t('createAgent.descriptionLabel', 'Description')}
+                placeholder={t('createAgent.descriptionPlaceholder', 'Provide a brief description of what this agent does')}
+                error={errors.description?.message}
+                {...register('description')}
+              />
+            </div>
+
+            {/* Right: Logo & Color */}
+            <div className="flex flex-col gap-4 items-center">
+              <p className="text-base font-medium w-full md:text-center">Logo & Color</p>
+              <div className="flex flex-row md:flex-col gap-4">
+                {/* Logo Upload */}
+                <div className="shrink-0">
+                  <label
+                    htmlFor="logo-upload"
+                    className="cursor-pointer group block"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div
+                      className={`relative w-24 h-24 rounded-xl border-2 border-dashed ${
+                        isDragging
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border-light dark:border-border-dark'
+                      } bg-panel-light dark:bg-panel-dark flex items-center justify-center text-text-light-secondary dark:text-text-dark-secondary group-hover:border-primary group-hover:text-primary transition-colors overflow-hidden`}
+                    >
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-center">
+                          <span className="material-symbols-outlined text-3xl">upload_file</span>
+                          <p className="text-xs mt-1">Upload</p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoUpload(file);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* Color Picker */}
+                <div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {colorSwatches.map((color) => (
+                      <label key={color} className="cursor-pointer">
+                        <input
+                          type="radio"
+                          className="sr-only peer"
+                          value={color}
+                          {...register('color')}
+                        />
+                        <div
+                          className={`w-8 h-8 rounded-full ring-2 transition-all ${
+                            selectedColor === color
+                              ? 'ring-workbench-primary'
+                              : 'ring-transparent'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-400 dark:text-[#a59db8] hover:bg-gray-100 dark:hover:bg-[#433c53]">
-            <X />
-          </button>
-        </div>
-        <div className="p-6 space-y-6">
-          <label className="flex flex-col">
-            <p className="text-base font-medium leading-normal pb-2">{t('createAgent.nameLabel')}</p>
-            <input
-              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] px-4 text-base font-normal leading-normal"
-              placeholder={t('createAgent.namePlaceholder')}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+
+          {/* URL & Version */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label={t('createAgent.urlLabel', 'URL')}
+              placeholder="https://example.com/agent"
+              type="url"
+              error={errors.url?.message}
+              {...register('url')}
             />
-          </label>
-          <label className="flex flex-col">
-            <p className="text-base font-medium leading-normal pb-2">{t('createAgent.descriptionLabel')}</p>
-            <textarea
-              className="form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] min-h-28 placeholder:text-gray-400 dark:placeholder:text-[#a59db8] p-4 text-base font-normal leading-normal"
-              placeholder={t('createAgent.descriptionPlaceholder')}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+            <Input
+              label={t('createAgent.versionLabel', 'Version')}
+              placeholder="e.g., 1.0.0"
+              error={errors.version?.message}
+              {...register('version')}
             />
-          </label>
-          <label className="flex flex-col">
-            <p className="text-base font-medium leading-normal pb-2">{t('createAgent.frameworkLabel')}</p>
+          </div>
+
+          {/* Documentation URL */}
+          <Input
+            label={
+              <span>
+                {t('createAgent.documentationUrlLabel', 'Documentation URL')}{' '}
+                <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">(Optional)</span>
+              </span>
+            }
+            placeholder="https://docs.example.com/agent"
+            type="url"
+            error={errors.documentationUrl?.message}
+            {...register('documentationUrl')}
+          />
+
+          {/* Framework */}
+          <div className="flex flex-col">
+            <label className="text-base font-medium text-text-light-primary dark:text-text-dark-primary mb-2">
+              {t('createAgent.frameworkLabel', 'Framework')}
+            </label>
             <select
-              className="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-white dark:bg-[#131118] text-gray-800 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-[#433c53] h-12 px-4 text-base font-normal leading-normal"
-              value={framework}
-              onChange={(e) => setFramework(e.target.value as AgentFramework)}
+              className={`w-full rounded-lg px-4 py-3 text-base bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary border transition-colors ${
+                errors.framework
+                  ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/50'
+                  : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-2 focus:ring-primary/50'
+              } focus:outline-none`}
+              {...register('framework')}
             >
-              <option value="" disabled>{t('createAgent.frameworkPlaceholder')}</option>
-              {Object.values(AgentFramework).map(f => <option key={f} value={f}>{f}</option>)}
+              <option value="">Select a framework</option>
+              {Object.values(AgentFramework).map((fw) => (
+                <option key={fw} value={fw}>
+                  {fw}
+                </option>
+              ))}
             </select>
-          </label>
-          <div>
-            <p className="text-base font-medium leading-normal pb-2">{t('createAgent.colorLabel')}</p>
-            <div className="flex flex-wrap gap-3 pt-1">
-              {cardColors.map((c) => (
-                <label key={c} className={`relative size-9 cursor-pointer rounded-full border-2 border-transparent ring-2 ${color === c ? 'ring-primary' : 'ring-gray-200 dark:ring-[#433c53]'} ring-offset-2 ring-offset-background-light dark:ring-offset-[#1f1c26]`} style={{ backgroundColor: c }}>
-                  <input type="radio" name="card-color" className="invisible absolute" value={c} checked={color === c} onChange={() => setColor(c)} />
+            {errors.framework && (
+              <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">error</span>
+                {errors.framework.message}
+              </p>
+            )}
+          </div>
+
+          {/* Capabilities */}
+          <div className="flex flex-col">
+            <label className="text-base font-medium text-text-light-primary dark:text-text-dark-primary mb-2">
+              {t('createAgent.capabilitiesLabel', 'Capabilities')}
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {capabilities.map((capability) => (
+                <label
+                  key={capability}
+                  className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCapabilities?.includes(capability)}
+                    onChange={() => toggleCapability(capability)}
+                    className="rounded border-border-light dark:border-border-dark text-primary focus:ring-primary/50"
+                  />
+                  <span className="text-sm text-text-light-primary dark:text-text-dark-primary">
+                    {capability}
+                  </span>
                 </label>
               ))}
             </div>
+            {errors.capabilities && (
+              <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">error</span>
+                {errors.capabilities.message}
+              </p>
+            )}
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-200 dark:border-[#433c53]">
-          <button onClick={onClose} className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-white/10">
-            {t('common.cancel')}
-          </button>
-          <button onClick={handleSubmit} className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90" disabled={!name || !description || !framework || isLoading}>
-            {isLoading ? t('common.creating') : t('createAgent.createButton')}
-          </button>
-        </div>
-      </div>
-    </div>
+        </Modal.Body>
+
+        <Modal.Footer className="flex items-center justify-end gap-4">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('common.cancel', 'Cancel')}
+          </Button>
+          <Button type="submit" variant="primary" isLoading={isSubmitting}>
+            {t('createAgent.createButton', 'Create Agent')}
+          </Button>
+        </Modal.Footer>
+      </form>
+    </Modal>
   );
 };
 

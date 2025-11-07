@@ -247,15 +247,49 @@ async def health_check_llm_model(
 
     try:
         async with httpx.AsyncClient() as client:
-            # Simple GET request to endpoint (adjust based on provider)
-            response = await client.get(
-                model.endpoint,
-                timeout=10.0
-            )
+            # Different health check based on provider
+            if model.provider == 'openai_compatible' or model.provider == 'openai':
+                # For OpenAI-compatible endpoints, send a minimal chat completion request
+                headers = {
+                    "Authorization": f"Bearer {model.api_key_encrypted}",
+                    "Content-Type": "application/json"
+                }
+                # Adjust model name for Gemini API
+                model_name = model.name
+                if 'gemini' in model.name.lower():
+                    model_name = f"models/{model.name}"
+
+                data = {
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 1
+                }
+
+                # Ensure endpoint ends with /chat/completions for OpenAI compatibility
+                endpoint = model.endpoint
+                if not endpoint.endswith('/chat/completions'):
+                    if endpoint.endswith('/'):
+                        endpoint += 'chat/completions'
+                    else:
+                        endpoint += '/chat/completions'
+
+                response = await client.post(
+                    endpoint,
+                    headers=headers,
+                    json=data,
+                    timeout=10.0
+                )
+            else:
+                # For other providers, try a simple GET request
+                response = await client.get(
+                    model.endpoint,
+                    timeout=10.0
+                )
+
             end_time = datetime.utcnow()
             response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
-            if response.status_code == 200:
+            if response.status_code in [200, 201]:
                 model.health_status = HealthStatus.HEALTHY
             else:
                 model.health_status = HealthStatus.UNHEALTHY

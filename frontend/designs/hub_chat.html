@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>A2G Platform - Agent Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#359EFF", "background-light": "#f5f7f8", "background-dark": "#0f1923", "hub-accent": {DEFAULT: "#0284c7", light: "#E0F2FE", dark: "#0369a1"}}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="relative flex w-full min-h-screen">
+<aside class="flex flex-col h-screen w-64 bg-white dark:bg-[#110d1a] border-r border-slate-200 dark:border-slate-800 sticky top-0">
+<div class="flex items-center gap-3 h-16 border-b border-slate-200 dark:border-slate-800 px-6">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_6_535)">
+<path clip-rule="evenodd" d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z" fill="currentColor" fill-rule="evenodd"></path>
+</g>
+<defs>
+<clippath id="clip0_6_535">
+<rect fill="white" height="48" width="48"></rect>
+</clippath>
+</defs>
+</svg>
+</div>
+<h2 class="text-slate-800 dark:text-white text-lg font-bold">A2G Platform</h2>
+</div>
+<div class="flex flex-col justify-between flex-1 p-4">
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">code_blocks</span>
+<p class="text-sm font-medium">Workbench</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-hub-accent-light text-hub-accent-dark dark:bg-hub-accent/20 dark:text-hub-accent-light" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">apps</span>
+<p class="text-sm font-medium">Hub</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">hub</span>
+<p class="text-sm font-medium">Flow</p>
+</a>
+</nav>
+</div>
+</aside>
+<div class="flex-1 flex flex-col max-h-screen">
+<header class="flex items-center justify-end h-16 bg-white dark:bg-[#110d1a]/50 backdrop-blur-sm border-b border-solid border-slate-200 dark:border-slate-800 px-6 sticky top-0 z-10 shrink-0">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar with a gradient background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDb-6lzZMKTCxvQS53OQ-5WdC4CGdqiLsbiEJj9-dkKzjL3Fcn8l_o5bN0vCENS6BNzDoSsRIWCnsWT7l5Joa0j3DucZOnXTc027MawsWRxB-eNyeg3lvzQlb5xm26CQMJ-vRVHxMqkAdgiEEk9tlYyB_4A1_kIgLZ3WftPrd2adLbp8r6NbSuj1tPJQ9VxMEdNFZW9ho3EPhORVcJgi27amH7PtkgWFKS-Afb6M7s4AabBnBP_Pn7ztwrmEIbS5GMxy-Y0jzeyRUl5");'></div>
+</div>
+</header>
+<main class="flex-1 flex overflow-hidden">
+<aside class="w-72 flex flex-col h-full border-r border-slate-200 dark:border-slate-800 shrink-0">
+<div class="p-4 border-b border-slate-200 dark:border-slate-800">
+<button class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors">
+<span class="material-symbols-outlined text-lg">add</span>
+<span class="text-sm font-medium">New Chat</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-2">
+<div class="flex flex-col gap-1">
+<p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1">Today</p>
+<a class="block p-3 rounded-lg bg-hub-accent-light dark:bg-hub-accent/20" href="#">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">Q2 Campaign Performance Summary</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Gave summary, showed code, and visualized...</p>
+</a>
+<a class="block p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" href="#">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">Social Media Engagement Analysis</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Lower than expected, need to investigate...</p>
+</a>
+</div>
+<div class="flex flex-col gap-1 mt-4">
+<p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1">Yesterday</p>
+<a class="block p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" href="#">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">Email Marketing ROI Calculation</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Calculated a 35% conversion rate for the...</p>
+</a>
+<a class="block p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" href="#">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">Competitor Ad Spend Breakdown</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">They are focusing heavily on video content...</p>
+</a>
+</div>
+<div class="flex flex-col gap-1 mt-4">
+<p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1">Previous 7 Days</p>
+<a class="block p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" href="#">
+<p class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">Q3 Budget Allocation Strategy</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Reallocating from social to email campaigns.</p>
+</a>
+</div>
+</div>
+</aside>
+<div class="flex flex-col h-full max-w-4xl mx-auto w-full flex-1">
+<div class="text-center pt-8 pb-6 border-b border-slate-200 dark:border-slate-800 shrink-0">
+<h1 class="text-slate-900 dark:text-white text-3xl font-bold">Marketing Analyst</h1>
+<p class="text-slate-500 dark:text-slate-400 mt-1">Analyze campaign performance and suggest optimizations.</p>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8">
+<div class="flex justify-end gap-4">
+<div>
+<div class="bg-primary text-white p-4 rounded-lg rounded-br-none">
+<p>Can you give me a quick summary of the Q2 marketing campaign performance?</p>
+</div>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shrink-0" data-alt="User avatar with a gradient background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDb-6lzZMKTCxvQS53OQ-5WdC4CGdqiLsbiEJj9-dkKzjL3Fcn8l_o5bN0vCENS6BNzDoSsRIWCnsWT7l5Joa0j3DucZOnXTc027MawsWRxB-eNyeg3lvzQlb5xm26CQMJ-vRVHxMqkAdgiEEk9tlYyB_4A1_kIgLZ3WftPrd2adLbp8r6NbSuj1tPJQ9VxMEdNFZW9ho3EPhORVcJgi27amH7PtkgWFKS-Afb6M7s4AabBnBP_Pn7ztwrmEIbS5GMxy-Y0jzeyRUl5");'></div>
+</div>
+<div class="flex gap-4">
+<div class="size-10 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">monitoring</span>
+</div>
+<div class="flex-1">
+<div class="bg-hub-accent-light dark:bg-hub-accent/10 p-4 rounded-lg rounded-tl-none prose prose-slate dark:prose-invert prose-p:my-2 prose-headings:my-3 max-w-none text-slate-800 dark:text-slate-200">
+<h4 class="text-slate-900 dark:text-white">Q2 Campaign Summary</h4>
+<p>Certainly! Here's a breakdown of the Q2 performance:</p>
+<ul class="text-slate-700 dark:text-slate-300">
+<li><strong>Overall ROI:</strong> 150%</li>
+<li><strong>Top Channel:</strong> Email marketing with a 35% conversion rate.</li>
+<li><strong>Areas for Improvement:</strong> Social media ads showed lower engagement.</li>
+</ul>
+<p>I recommend reallocating some budget from social media to email campaigns for Q3.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-4">
+<div>
+<div class="bg-primary text-white p-4 rounded-lg rounded-br-none">
+<p>Interesting. Can you show me the Python code you'd use to calculate the ROI?</p>
+</div>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shrink-0" data-alt="User avatar with a gradient background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDb-6lzZMKTCxvQS53OQ-5WdC4CGdqiLsbiEJj9-dkKzjL3Fcn8l_o5bN0vCENS6BNzDoSsRIWCnsWT7l5Joa0j3DucZOnXTc027MawsWRxB-eNyeg3lvzQlb5xm26CQMJ-vRVHxMqkAdgiEEk9tlYyB_4A1_kIgLZ3WftPrd2adLbp8r6NbSuj1tPJQ9VxMEdNFZW9ho3EPhORVcJgi27amH7PtkgWFKS-Afb6M7s4AabBnBP_Pn7ztwrmEIbS5GMxy-Y0jzeyRUl5");'></div>
+</div>
+<div class="flex gap-4">
+<div class="size-10 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">monitoring</span>
+</div>
+<div class="flex-1">
+<div class="bg-hub-accent-light dark:bg-hub-accent/10 p-4 rounded-lg rounded-tl-none">
+<p class="text-slate-800 dark:text-slate-200 mb-2">Here's a simple Python snippet for that:</p>
+<div class="bg-slate-900 dark:bg-black/50 rounded-lg overflow-hidden text-sm">
+<div class="flex items-center justify-between px-4 py-1.5 bg-slate-800 dark:bg-slate-900/50 text-slate-300">
+<span>python</span>
+<button class="flex items-center gap-1.5 text-xs hover:text-white">
+<span class="material-symbols-outlined text-base">content_copy</span>
+Copy
+</button>
+</div>
+<pre class="p-4 overflow-x-auto"><code class="language-python text-sky-300"><span class="text-fuchsia-400">def</span> <span class="text-blue-400">calculate_roi</span>(gain_from_investment, cost_of_investment):
+  <span class="text-green-400">"""Calculates the return on investment."""</span>
+  <span class="text-fuchsia-400">if</span> cost_of_investment == <span class="text-orange-400">0</span>:
+    <span class="text-fuchsia-400">return</span> <span class="text-orange-400">0</span>
+  roi = ((gain_from_investment - cost_of_investment) / cost_of_investment) * <span class="text-orange-400">100</span>
+  <span class="text-fuchsia-400">return</span> roi</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-4">
+<div>
+<div class="bg-primary text-white p-4 rounded-lg rounded-br-none">
+<p>Great, thanks! Can you visualize the channel performance in a bar chart?</p>
+</div>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 shrink-0" data-alt="User avatar with a gradient background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsGy9QLbcJodoUS3zJ5T6HS9Ocj7_2_-ERwtGasXAUybd2wYGWJcA5bU3HibywQ1BhGKY2j7WovIf_isnuIPcmhyYe_6V_NaPBkn1JjwXzjffvJYWxbBRJDQ_8vGB-hrNL0U8t-yPicimL9VlYo2pvycuO6OEqF44dEnA-KKUrDA3MKYpbB-Dl54sVrDTvO2KM1Xg4Jn5gatc0aRUDv9-ahSwR-lJmRgLjWNO3E8k3W-hiVFAJ71VW_goiN4jZsMFqe0eZojxRY9dp");'></div>
+</div>
+<div class="flex gap-4">
+<div class="size-10 rounded-lg bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl text-rose-500 dark:text-rose-400">monitoring</span>
+</div>
+<div class="flex-1 space-y-3">
+<div class="bg-hub-accent-light dark:bg-hub-accent/10 p-4 rounded-lg rounded-tl-none">
+<p class="text-slate-800 dark:text-slate-200">No problem. Here's a chart showing the conversion rates by channel for Q2.</p>
+</div>
+<img alt="Bar chart showing marketing channel performance for Q2" class="rounded-lg border border-slate-200 dark:border-slate-800 max-w-md" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMFo8jhM2MBFxS2V_A1tIrNK1SKP2sXNBGQnbVqcuuC02xAlCeAU7TadBmZprrA6Lj68kZAgHo0U4mBvXDXFoIWQs-Ox6CShQKi0sdC-jtzIfgEUDJVTAmKNgKlCwasKp_OwkUBjz8mocGIMIGLbcTL3EW34TzUJ7RgOH7nVa34DnFsI5tEJ1Tn788sqgIbKB7vDbEV3362B-YoagvBALWGP31cJdqNXP0uLWzKfiqGMzS0ZIIpR1tmloDLyy5lGRod45-AHkwjFDQ"/>
+</div>
+</div>
+</div>
+<div class="p-6 shrink-0 bg-background-light dark:bg-background-dark">
+<div class="relative max-w-4xl mx-auto">
+<div class="flex items-end gap-2 bg-white dark:bg-[#110d1a] border border-slate-300 dark:border-slate-700 rounded-xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-hub-accent focus-within:border-hub-accent transition-shadow">
+<button class="size-10 rounded-lg flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0">
+<span class="material-symbols-outlined text-xl">attach_file</span>
+</button>
+<textarea class="flex-1 bg-transparent border-0 resize-none p-2 focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-200 max-h-48" placeholder="Type your message..." rows="1" style="field-sizing: content;"></textarea>
+<button class="size-10 rounded-lg flex items-center justify-center bg-hub-accent text-white hover:bg-hub-accent-dark transition-colors shrink-0">
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>
