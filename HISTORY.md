@@ -1,6 +1,6 @@
 # HISTORY.md - Index Document for HISTORY_ALL.md
 
-**Version 2.1** | **Last Updated: 2025-11-07** | **Total Lines: 925**
+**Version 2.1** | **Last Updated: 2025-11-07** | **Total Lines: ~1240**
 
 > 🔍 This is an INDEX document. For detailed implementation, refer to [HISTORY_ALL.md](./HISTORY_ALL.md) using the line numbers below.
 
@@ -37,7 +37,7 @@
 - **2.3 Tech Stack** (Lines 76-98)
   - Detailed tech stack table with versions
 
-### **3. Core Implemented Features** (Lines 99-559)
+### **3. Core Implemented Features** (Lines 99-700)
 
 #### **3.1 A2A Protocol & Universal Proxy** (Lines 101-145)
 - **3.1.1 Framework Classification System** (Lines 104-133)
@@ -67,7 +67,20 @@
 #### **3.7 Settings & Administration** (Lines 230-242)
 - User settings, LLM management, Statistics
 
-#### **3.8 Frontend UI/UX Features** (Lines 243-559)
+#### **3.8 Role-Based Settings Access Control (v2.1)** (Lines 243-365) - **NEW 2025-11-07**
+- **3.8.1 Critical Security Fix: Settings Tab Filtering** (Lines 247-295)
+  - Problem: Admin tabs visible to all users (security/UX bug)
+  - Solution: Role-based filtering using Zustand useAuthStore
+  - Verification: Playwright testing confirms proper access control
+  - Files: frontend/src/pages/Settings/SettingsPage.tsx
+- **3.8.2 LLM Model Management Implementation** (Lines 297-365)
+  - Admin-only LLM model configuration
+  - Added gemini-2.5-pro via OpenAI Compatible endpoint
+  - API endpoint: POST /api/admin/llm-models/ (requires ADMIN role)
+  - Database: LLMModel table with provider, model_name, api_config (JSONB)
+  - Security Note: API keys stored in plain text (requires encryption for production)
+
+#### **3.9 Frontend UI/UX Features** (Lines 367-700)
 - **3.8.1 Theming System** (Lines 245-253)
 - **3.8.2 Internationalization** (Lines 254-262)
 - **3.8.3 State Management** (Lines 263-283)

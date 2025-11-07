@@ -32,6 +32,209 @@
 
 ## 🚀 End-to-End Test Scenarios
 
+### 📌 시나리오 0: **[CRITICAL]** 완전한 Workbench 워크플로우 검증
+**Priority**: 🔴 HIGHEST | **Status**: ❌ NOT TESTED | **Tool**: Playwright MCP
+**목표**: LLM 프록시, WebSocket 트레이스, A2A 통신, 사용자 격리를 포함한 전체 에이전트 개발 워크플로우 검증
+
+> **⚠️ 중요**: 이 시나리오는 **단 하나의 예외 없이** 모든 단계가 순서대로 성공해야 합니다. 각 단계는 실제 사용자 경험을 정확히 모방해야 하며, 모든 UI 인터랙션, API 응답, WebSocket 이벤트가 밀리초 단위로 검증되어야 합니다.
+
+#### **환경 준비**
+```bash
+# 1. 모든 서비스 실행 확인
+./start-dev.sh full
+
+# 2. Frontend 실행
+cd frontend && npm run dev
+
+# 3. 테스트 에이전트 디렉토리 준비
+cd test_agents
+
+# 4. Playwright MCP Tool 실행 준비
+# Playwright를 사용하여 아래 모든 단계를 자동화 검증
+```
+
+#### **Phase 1: 환경 초기화 (에이전트 삭제)**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 | 실패 시 조치 |
+|------|----------------|-----------|-------------|-------------|
+| 1.1 | `page.goto('http://localhost:9060/workbench')` | Workbench 페이지 로드 | 타이틀: "Workbench" | 재시도 3회 |
+| 1.2 | `page.locator('.agent-card').count()` | 기존 에이전트 수 확인 | N개 에이전트 표시 | 0개면 Phase 2로 |
+| 1.3 | `page.locator('.agent-card button[aria-label="Delete"]').first().click()` | 삭제 버튼 클릭 | 확인 모달 표시 | **CRITICAL** UI 안정성 확인 |
+| 1.4 | `page.locator('button:has-text("확인")').click()` | 삭제 확인 | 에이전트 카드 사라짐 | API 응답 200 확인 |
+| 1.5 | 1.3-1.4 반복 | 모든 에이전트 삭제 | `count() === 0` | 에이전트 0개 상태 |
+| 1.6 | `page.locator('text=에이전트가 없습니다').isVisible()` | Empty state 표시 | 텍스트 렌더링 확인 | **CRITICAL** |
+
+**Database 확인**:
+```sql
+SELECT COUNT(*) FROM agents WHERE owner_id = ${TEST_USER_ID} AND deleted_at IS NULL;
+-- Expected: 0
+```
+
+#### **Phase 2: 사용자 API 키 발급**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 | 저장 변수 |
+|------|----------------|-----------|-------------|----------|
+| 2.1 | `page.locator('.user-dropdown').click()` | 드롭다운 오픈 | "Settings" 옵션 표시 | - |
+| 2.2 | `page.locator('text=Settings').click()` | Settings 페이지 이동 | URL: `/settings/general` | - |
+| 2.3 | `page.locator('button:has-text("Generate Platform Key")').click()` | 키 생성 요청 | API POST 호출 | - |
+| 2.4 | `await page.waitForSelector('.api-key-display')` | 생성된 키 표시 | 형식: `a2g_[64-hex]` | `API_KEY` |
+| 2.5 | `const apiKey = await page.locator('.api-key-display').textContent()` | 키 복사 | 환경 변수 저장 | `PLATFORM_API_KEY` |
+| 2.6 | **검증**: `apiKey.startsWith('a2g_') && apiKey.length === 68` | 키 형식 검증 | Boolean true | **MUST PASS** |
+
+**키 저장**:
+```javascript
+// Playwright context에 저장
+await page.evaluate((key) => {
+  window.sessionStorage.setItem('TEST_PLATFORM_API_KEY', key);
+}, apiKey);
+```
+
+#### **Phase 3: 신규 에이전트 생성**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 | 저장 변수 |
+|------|----------------|-----------|-------------|----------|
+| 3.1 | `page.goto('http://localhost:9060/workbench')` | Workbench로 복귀 | Empty state 표시 | - |
+| 3.2 | `page.locator('button:has-text("New Agent")').click()` | 모달 오픈 | `AddAgentModal` 렌더 | - |
+| 3.3 | `page.fill('input[name="name"]', 'math agent')` | 이름 입력 | 실시간 유효성 검사 | - |
+| 3.4 | `page.fill('textarea[name="description"]', '수학 계산 에이전트')` | 설명 입력 | - | - |
+| 3.5 | `page.selectOption('select[name="framework"]', 'ADK')` | ADK 프레임워크 선택 | 동적 필드 표시 | - |
+| 3.6 | `page.locator('button:has-text("Create")').click()` | 에이전트 생성 | API POST `/api/agents` | - |
+| 3.7 | `await page.waitForSelector('.agent-card:has-text("math agent")')` | 생성 완료 확인 | 리스트에 표시 | `AGENT_ID` |
+| 3.8 | `const agentId = await page.locator('.agent-card').getAttribute('data-agent-id')` | Agent ID 추출 | 숫자 ID | `TEST_AGENT_ID` |
+
+**Database 확인**:
+```sql
+SELECT id, name, status FROM agents WHERE name = 'math agent';
+-- Expected: status = 'DEVELOPMENT'
+```
+
+#### **Phase 4: Platform LLM Endpoint 확인**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 | 저장 변수 |
+|------|----------------|-----------|-------------|----------|
+| 4.1 | `page.locator('.agent-card:has-text("math agent")').click()` | 에이전트 선택 | Chat&Debug 페이지 로드 | - |
+| 4.2 | `await page.waitForSelector('.config-panel')` | Configuration Panel 표시 | 패널 렌더링 확인 | - |
+| 4.3 | `await page.locator('.openai-compatible-endpoint-label').isVisible()` | 엔드포인트 라벨 확인 | "OpenAI Compatible Endpoint" 표시 | - |
+| 4.4 | `const endpoint = await page.locator('.openai-endpoint-display').textContent()` | 엔드포인트 URL 읽기 | 형식 검증 | `LLM_ENDPOINT` |
+| 4.5 | **검증**: `endpoint === \`http://localhost:9050/api/llm/agent/${agentId}/v1\`` | **/v1 suffix 확인** | **CRITICAL** | **MUST PASS** |
+| 4.6 | `page.locator('button[aria-label="Copy endpoint"]').click()` | 클립보드 복사 | Toast: "Copied!" | - |
+
+**Endpoint 저장**:
+```javascript
+// 환경 변수로 저장
+await page.evaluate((endpoint) => {
+  window.sessionStorage.setItem('TEST_LLM_ENDPOINT', endpoint);
+}, endpoint);
+```
+
+#### **Phase 5: ADK 에이전트 구성 및 Hosting**
+
+| 단계 | Bash/Python 액션 | 예상 결과 | 검증 포인트 |
+|------|-----------------|-----------|-------------|
+| 5.1 | `cd test_agents/math_agent` | 에이전트 디렉토리 이동 | - |
+| 5.2 | `export PLATFORM_LLM_ENDPOINT="${LLM_ENDPOINT}"` | 환경 변수 설정 | Phase 4에서 추출한 URL |
+| 5.3 | `export PLATFORM_API_KEY="${API_KEY}"` | API 키 설정 | Phase 2에서 생성한 키 |
+| 5.4 | `export AGENT_ID="math-agent-${TEST_AGENT_ID}"` | 에이전트 ID 설정 | - |
+| 5.5 | `uv run math_agent/agent.py &` | 에이전트 실행 (백그라운드) | Port 8011 리스닝 |
+| 5.6 | `curl http://localhost:8011/.well-known/agent.json` | Agent Card 확인 | HTTP 200, JSON 응답 |
+| 5.7 | **검증**: Agent Card에 `capabilities`, `description` 포함 | 메타데이터 검증 | **MUST PASS** |
+
+**Agent Card 예시**:
+```json
+{
+  "name": "math_agent",
+  "description": "수학 계산 에이전트",
+  "capabilities": ["math", "calculation"],
+  "a2a_version": "2.0"
+}
+```
+
+#### **Phase 6: 에이전트 연결 테스트**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 |
+|------|----------------|-----------|-------------|
+| 6.1 | `page.goto(\`http://localhost:9060/workbench/agents/${TEST_AGENT_ID}/chat\`)` | Chat&Debug UI 로드 | Configuration Panel 표시 |
+| 6.2 | `page.fill('input[name="agentEndpoint"]', 'http://localhost:8011')` | Hosted endpoint 입력 | 입력 필드 업데이트 |
+| 6.3 | `page.locator('button:has-text("Connect")').click()` | 연결 요청 | WebSocket handshake |
+| 6.4 | `await page.waitForSelector('.connection-status:has-text("Connected")')` | 연결 성공 표시 | **CRITICAL** 상태 인디케이터 |
+| 6.5 | **검증**: Network 탭에서 `GET /.well-known/agent.json` 호출 확인 | Agent Card fetch | HTTP 200 |
+| 6.6 | **검증**: `page.locator('.agent-info').textContent()` 포함: "수학 계산 에이전트" | 에이전트 정보 표시 | - |
+
+#### **Phase 7: Chat & Trace 동시 검증 (CRITICAL)**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 | 타임아웃 |
+|------|----------------|-----------|-------------|---------|
+| 7.1 | **Setup**: `const traceMonitor = new TraceWebSocketMonitor(page)` | Trace WebSocket 리스너 초기화 | - | - |
+| 7.2 | `page.fill('textarea[name="chatInput"]', '2+2는?')` | 메시지 입력 | 입력 필드 업데이트 | - |
+| 7.3 | `page.locator('button:has-text("Send")').click()` | 메시지 전송 | A2A `sendMessage` 호출 | 5s |
+| 7.4 | `await page.waitForSelector('.chat-message.user:has-text("2+2는?")')` | 사용자 메시지 표시 | Chat window 업데이트 | 1s |
+| 7.5 | **CRITICAL**: Trace 패널 동시 모니터링 시작 | WebSocket 이벤트 수신 | `ws://localhost:9050/ws/trace/${TRACE_ID}` | - |
+| 7.6 | **Chat 검증**: `await page.waitForSelector('.chat-message.assistant')` | 에이전트 응답 스트리밍 | 토큰별 표시 | 10s |
+| 7.7 | **Chat 검증**: 최종 응답 `page.locator('.chat-message.assistant').last().textContent()` | "4" 또는 "2+2는 4입니다" 포함 | **MUST CONTAIN "4"** | - |
+| 7.8 | **Trace 검증**: `traceMonitor.getEntries().length > 0` | 트레이스 로그 수신 확인 | 최소 1개 이상 | - |
+| 7.9 | **Trace 검증**: 각 entry 검증 | `{type: 'llm_call', request: {...}, response: {...}}` | Request/Response 쌍 존재 | - |
+| 7.10 | **Trace 검증**: `traceMonitor.getEntries().every(e => e.agent_id === TEST_AGENT_ID)` | **격리 검증** | **NO CROSS-CONTAMINATION** | - |
+
+**Trace WebSocket Monitor 예시**:
+```typescript
+class TraceWebSocketMonitor {
+  private entries: TraceEntry[] = [];
+
+  constructor(page: Page) {
+    page.on('websocket', ws => {
+      if (ws.url().includes('/ws/trace/')) {
+        ws.on('framereceived', event => {
+          const data = JSON.parse(event.payload);
+          if (data.type === 'trace_log') {
+            this.entries.push(data.log);
+          }
+        });
+      }
+    });
+  }
+
+  getEntries() {
+    return this.entries;
+  }
+}
+```
+
+#### **Phase 8: 대화 히스토리 & 격리 검증**
+
+| 단계 | Playwright 액션 | 예상 결과 | 검증 포인트 |
+|------|----------------|-----------|-------------|
+| 8.1 | `page.fill('textarea[name="chatInput"]', '이전 대화 내용을 기억해?')` | 후속 질문 입력 | - |
+| 8.2 | `page.locator('button:has-text("Send")').click()` | 메시지 전송 | A2A with history |
+| 8.3 | **Chat 검증**: `await page.waitForSelector('.chat-message.assistant')` | 에이전트 응답 | "2+2", "4" 등 언급 |
+| 8.4 | **Chat 검증**: 대화 스레드 유지 | 3개 메시지 표시 (사용자2, 에이전트2) | - |
+| 8.5 | **Trace 검증**: 새로운 트레이스 로그 추가 | `traceMonitor.getEntries().length` 증가 | 이전 로그 유지 |
+| 8.6 | **Trace 검증**: 모든 로그의 `session_id` 동일 | 같은 세션 내 통신 | **MUST BE SAME** |
+| 8.7 | **격리 검증**: 다른 브라우저 탭에서 다른 에이전트 테스트 | 트레이스 로그 절대 섞이지 않음 | **CRITICAL** |
+
+#### **최종 성공 조건**
+
+모든 단계가 통과해야 하며, 다음 조건을 만족해야 함:
+
+1. ✅ **에이전트 삭제**: UI에서 안정적으로 작동
+2. ✅ **API 키 생성**: `a2g_[64-hex]` 형식 준수
+3. ✅ **에이전트 생성**: Database에 올바르게 저장
+4. ✅ **Endpoint 표시**: `/v1` suffix 자동 포함
+5. ✅ **ADK Hosting**: Agent Card 접근 가능
+6. ✅ **연결 성공**: WebSocket handshake 완료
+7. ✅ **Chat 동작**: A2A 프로토콜로 응답 수신
+8. ✅ **Trace 실시간**: WebSocket으로 로그 스트리밍
+9. ✅ **완벽한 격리**: 에이전트/사용자 간 데이터 혼합 없음
+10. ✅ **히스토리 유지**: 대화 문맥 기억
+
+**실패 시 보고사항**:
+- 실패한 Phase 번호
+- 구체적인 오류 메시지
+- 스크린샷 (UI 문제 시)
+- Network 로그 (API/WebSocket 문제 시)
+- Database 상태 (데이터 불일치 시)
+
+---
+
 ### 📌 시나리오 1: 신규 사용자 온보딩
 **목표**: SSO 로그인부터 승인까지의 전체 프로세스 테스트
 

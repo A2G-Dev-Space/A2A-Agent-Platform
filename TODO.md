@@ -12,14 +12,14 @@
 
 User-requested verification and implementation tasks that must be completed immediately:
 
-1. **Frontend UI/UX Fixes** (Lines 10-39) - Remove settings from sidebar, move user to header
-2. **Agent Integration** (Lines 41-90) - Add ADK/Agno agents to workbench with streaming chat
-3. **Publishing Workflow** (Lines 92-157) - Implement agent publishing and Hub integration
-4. **Platform LLM Proxy** (Lines 286-362) - Admin LLM management, user key issuance, proxy architecture
-5. **Settings UI Differentiation** (Lines 364-395) - Role-based settings pages (admin vs user)
-6. **User Management** (Lines 397-430) - User approval/rejection, role management
-7. **Statistics** (Lines 432-485) - Agent and LLM usage statistics tracking
-8. **Verification** (Lines 487-520) - Playwright E2E tests for all features
+1. **Frontend UI/UX Fixes** (Lines 10-39) - ✅ COMPLETED - Remove settings from sidebar, move user to header
+2. **Agent Integration** (Lines 41-90) - 🟡 IN PROGRESS - Add ADK/Agno agents to workbench with streaming chat
+3. **Publishing Workflow** (Lines 92-157) - ❌ NOT STARTED - Implement agent publishing and Hub integration
+4. **Platform LLM Proxy** (Lines 286-330) - 🟡 PARTIALLY COMPLETED - Admin LLM management (basic UI done, encryption needed), user key issuance pending
+5. **Settings UI Differentiation** (Lines 354-359) - ✅ COMPLETED - See HISTORY_ALL.md Section 3.8.1
+6. **User Management** (Lines 361-393) - ❌ NOT STARTED - User approval/rejection, role management
+7. **Statistics** (Lines 395-448) - ❌ NOT STARTED - Agent and LLM usage statistics tracking
+8. **Verification** (Lines 450-483) - ❌ NOT STARTED - Playwright E2E tests for all features
 
 ---
 

@@ -1,7 +1,7 @@
 # A2G Agent Platform: Implemented Features & Architecture (HISTORY_ALL.md)
 
-**Version**: 2.0
-**Last Updated**: 2025-11-06
+**Version**: 2.1
+**Last Updated**: 2025-11-07
 
 ---
 
@@ -240,9 +240,133 @@ A dedicated settings area (`/settings`) provides administrators with tools to ma
     - **Function**: A dashboard displaying key platform metrics, such as the number of active users, agent usage, and token counts.
     - **Code Location**: `frontend/src/pages/Settings/StatisticsPage.tsx`
 
-### 3.8. Frontend UI/UX Features
+### 3.8. Role-Based Settings Access Control (v2.1 - November 2025)
 
-#### 3.8.1. Theming System
+**Status**: ✅ **IMPLEMENTED AND VERIFIED** (2025-11-07)
+
+#### 3.8.1. Critical Security Fix: Settings Tab Filtering
+
+**Problem Discovered**: Settings page was showing admin-only tabs (User Management, LLM Model Management, Statistics) to all users regardless of their role. This was a critical security/UX bug that needed immediate fixing.
+
+**Root Cause**: The original implementation of `SettingsPage.tsx` did not check the user's role before displaying tabs. All tabs were visible to everyone, though the backend properly enforced ADMIN role requirements via `require_admin` dependency.
+
+**Initial Mistake and Correction**:
+1. **First Attempt - Wrong Auth Pattern**: Initially attempted to import from `../../contexts/AuthContext`
+   - **Error**: `Failed to resolve import "../../contexts/AuthContext" from "src/pages/Settings/SettingsPage.tsx"`
+   - **Reason**: The project uses Zustand for state management, not React Context API
+
+2. **Correct Solution - Zustand Store**: Changed to use `useAuthStore` from `@/stores/authStore`
+   - **Pattern**: `const { user } = useAuthStore();`
+   - **User Object**: Contains `role` property ('USER', 'ADMIN', etc.)
+
+**Implementation** (`frontend/src/pages/Settings/SettingsPage.tsx`):
+```typescript
+import { useAuthStore } from '@/stores/authStore';
+
+const SettingsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const { user } = useAuthStore();
+
+  // Define all tabs with their required roles
+  const allTabs = [
+    { name: t('settings.tabs.general'), path: '/settings/general', requiredRole: null },
+    { name: t('settings.tabs.platformKeys'), path: '/settings/platform-keys', requiredRole: null },
+    { name: t('settings.tabs.userManagement'), path: '/settings/user-management', requiredRole: 'ADMIN' },
+    { name: t('settings.tabs.llmManagement'), path: '/settings/llm-management', requiredRole: 'ADMIN' },
+    { name: t('settings.tabs.statistics'), path: '/settings/statistics', requiredRole: 'ADMIN' },
+  ];
+
+  // Filter tabs based on user role
+  const tabs = allTabs.filter(tab => {
+    if (!tab.requiredRole) return true;
+    return user?.role === tab.requiredRole;
+  });
+
+  // ... rest of component
+};
+```
+
+**Verification** (via Playwright automated testing - 2025-11-07):
+- ✅ **Non-admin users (USER role)**: Only 2 tabs visible - "General" and "Platform Keys"
+- ✅ **Admin users (ADMIN role)**: All 5 tabs visible - General, Platform Keys, User Management, LLM Model Management, Statistics
+- ✅ **Backend Protection**: All admin endpoints properly protected with `Depends(require_admin)` in `/repos/admin-service/app/core/security.py`
+
+**Files Modified**:
+- `frontend/src/pages/Settings/SettingsPage.tsx` - Added role-based filtering logic (lines 1-54)
+
+#### 3.8.2. LLM Model Management Implementation
+
+**Workflow**: Admin-only feature for managing LLM models used by the platform.
+
+**Implementation Steps** (2025-11-07):
+1. **Login as Admin**: Used Mock SSO to log in as admin user (syngha.han with ADMIN role)
+2. **Navigate to LLM Management**: Accessed via Settings → LLM Model Management (visible only to ADMIN)
+3. **Add New Model**: Clicked "Add New Model" button to open modal
+4. **Configure Gemini Model**:
+   - **Provider**: OpenAI Compatible (Custom)
+   - **Model Name**: gemini-2.5-pro
+   - **Endpoint**: https://generativelanguage.googleapis.com/v1beta/openai/
+   - **API Key**: AIzaSyA88_jZGuybTQ4NYnVFQXemfLSt1utHAkE
+5. **Save Configuration**: Successfully saved to database
+
+**API Integration** (`repos/admin-service/app/api/v1/llm_models.py`):
+- **Endpoint**: `POST /api/admin/llm-models/`
+- **Authentication**: Requires ADMIN role via `Depends(require_admin)`
+- **Request Body**:
+  ```json
+  {
+    "provider": "openai_compatible",
+    "model_name": "gemini-2.5-pro",
+    "api_config": {
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "api_key": "AIzaSyA88_jZGuybTQ4NYnVFQXemfLSt1utHAkE"
+    }
+  }
+  ```
+- **Response**: Returns created LLM model with ID, health status, and metadata
+
+**Current Platform LLM Models** (as of 2025-11-07):
+1. **gemini-2.0-flash-exp** (OpenAI Compatible)
+   - Status: Healthy
+   - Active: Yes
+   - Already configured in system
+
+2. **gemini-2.5-pro** (OpenAI Compatible) - ✅ **NEWLY ADDED**
+   - Endpoint: https://generativelanguage.googleapis.com/v1beta/openai/
+   - Status: Unknown (normal for newly added models)
+   - Active: No (can be activated later)
+   - Purpose: Verification of OpenAI-compatible endpoint integration
+
+**Backend Authorization Flow**:
+```
+Frontend Request → API Gateway → Admin Service
+                                    ↓
+                        Check JWT token → Extract user role
+                                    ↓
+                        require_admin() dependency
+                                    ↓
+              If role != 'ADMIN' → 403 Forbidden
+              If role == 'ADMIN' → Process request
+```
+
+**Database Storage** (`repos/admin-service/app/core/database.py`):
+```python
+class LLMModel(Base):
+    id: int (primary_key)
+    provider: str  # 'openai_compatible', 'google', 'anthropic', etc.
+    model_name: str
+    api_config: JSONB  # Contains endpoint, api_key, etc.
+    health_status: str  # 'healthy', 'unhealthy', 'unknown'
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+```
+
+**Security Note**: API keys are currently stored in plain text in the `api_config` JSONB column. This should be encrypted in production (see TODO.md for security enhancements).
+
+### 3.9. Frontend UI/UX Features
+
+#### 3.9.1. Theming System
 - **Dark/Light Mode Toggle**: Automatic system preference detection with manual override
 - **Implementation**: `frontend/src/stores/themeStore.ts`
 - **Features**:
@@ -251,7 +375,7 @@ A dedicated settings area (`/settings`) provides administrators with tools to ma
     - CSS class-based theming (`dark` class on root element)
     - Smooth transitions between themes
 
-#### 3.8.2. Internationalization (i18n)
+#### 3.9.2. Internationalization (i18n)
 - **Supported Languages**: English (`en.json`), Korean (`ko.json`)
 - **Implementation**: `frontend/src/i18n.ts`, `frontend/src/locales/`
 - **Features**:

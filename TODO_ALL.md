@@ -1,7 +1,7 @@
 # A2G Agent Platform: TODO & Implementation Roadmap (TODO_ALL.md)
 
-**Version**: 2.1
-**Last Updated**: 2025-11-06
+**Version**: 2.2
+**Last Updated**: 2025-11-07
 
 ---
 
@@ -318,26 +318,16 @@ Key findings:
 - `repos/user-service/app/models/platform_key.py` - NEW: Platform key model
 
 #### 0.4.2. Admin-Only LLM Management
-**Requirements**:
-- Admin-only Settings page for LLM configuration
-- Store real LLM API keys (encrypted) that platform uses
-- Fields: Provider, Model Name, API Key, Rate Limits
-- Test connection before saving
-- Display available models to users (without exposing keys)
-- Track costs and usage per model
+**Status**: 🟡 PARTIALLY COMPLETED (2025-11-07)
 
-**Implementation Steps**:
-1. Create admin-only LLM management UI
-2. Store real API keys encrypted in admin database
-3. Add connection testing endpoint
-4. Create model listing API for users (no keys exposed)
-5. Implement cost tracking based on token usage
+> **Note**: Basic LLM management UI and database storage completed and documented in HISTORY_ALL.md (Section 3.8.2). Remaining tasks listed below.
 
-**Files to Create/Modify**:
-- `frontend/src/pages/admin/LLMManagement.tsx` - NEW: Admin LLM page
-- `frontend/src/components/admin/AddLLMModal.tsx` - NEW: Add LLM form
-- `repos/admin-service/app/routers/llm_admin.py` - NEW: Admin LLM CRUD
-- `repos/admin-service/app/models/admin_llm_model.py` - NEW: Admin LLM model
+**Remaining Tasks**:
+- ❌ **CRITICAL**: Encrypt API keys in database (currently stored in plain text - security risk)
+- ❌ Add connection testing endpoint before saving models
+- ❌ Implement cost tracking based on token usage
+- ❌ Add rate limits configuration UI
+- ❌ Expose model listing API for users to see available models
 
 #### 0.4.3. User Platform Key & Endpoint Management
 **Requirements**:
@@ -362,37 +352,11 @@ Key findings:
 - `repos/user-service/app/models/platform_key.py` - Platform key model
 
 ### 0.5. Settings UI Role Differentiation
-**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+**Status**: ✅ COMPLETED (2025-11-07)
 
-#### 0.5.1. Role-Based Settings Pages
-**Requirements**:
-- Settings modal shows different pages based on user role
-- Regular users see: General, Platform Keys
-- Admins see: General, Platform Keys, LLM Management, User Management, Statistics
-- Settings accessible only from header user dropdown (not sidebar)
-- Each section has proper access control
-
-**User Settings Pages**:
-1. **General**: Profile info, preferences, theme
-2. **Platform Keys**: Generate/revoke platform API keys
-
-**Admin Settings Pages** (in addition to user pages):
-3. **LLM Management**: Add/edit/delete real LLM configurations
-4. **User Management**: Approve/reject users, change roles
-5. **Statistics**: Usage metrics, costs, agent performance
-
-**Implementation Steps**:
-1. Check user role from JWT token
-2. Conditionally render settings sections
-3. Add role-based route protection
-4. Create separate components for each section
-5. Test access control thoroughly
-
-**Files to Create/Modify**:
-- `frontend/src/components/settings/SettingsModal.tsx` - Role-based rendering
-- `frontend/src/pages/settings/GeneralSettings.tsx` - User profile
-- `frontend/src/pages/settings/PlatformKeys.tsx` - Key management
-- `frontend/src/pages/admin/*` - Admin-only pages
+> **✅ COMPLETED**: This feature was fully implemented and documented in HISTORY_ALL.md (Section 3.8.1). See HISTORY_ALL.md lines 247-295 for complete implementation details, verification results, and file references.
+>
+> **Summary**: Settings page now properly filters tabs based on user role using Zustand `useAuthStore`. Non-admin users see only General and Platform Keys tabs, while admin users see additional tabs for User Management, LLM Management, and Statistics.
 
 ### 0.6. User Management & Admin Features
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
@@ -495,54 +459,97 @@ Key findings:
 - `repos/admin-service/app/models/agent_stats.py` - Agent stats model
 - `frontend/src/pages/admin/AgentStatistics.tsx` - Agent dashboard
 
-### 0.8. Verification Requirements
-**Priority**: 🔴 CRITICAL | **Effort**: Ongoing | **Status**: ❌ Not Started
+### 0.8. E2E Verification Requirements (COMPREHENSIVE)
+**Priority**: 🔴 CRITICAL | **Effort**: 2 weeks | **Status**: ❌ Not Started
 
-#### 0.8.1. Playwright E2E Verification
-**Requirements**: After implementing each feature above, verify with Playwright MCP tool
+#### 0.8.1. Complete Workbench Workflow E2E Test
+**Status**: ❌ NOT STARTED
+**Objective**: Verify entire Agent Workbench workflow from environment setup to trace isolation using Playwright MCP
 
-**Test Scenarios**:
-1. **UI/UX Tests**:
-   - Settings accessible only from user dropdown in header
-   - User info displayed in header, not sidebar
+**Critical Test Phases** (Must pass ALL steps without exception):
 
-2. **Agent Integration Tests**:
-   - ADK agents visible in Workbench
-   - Can select agent and open chat
-   - Streaming chat works with token-by-token display
-   - Trace logs appear in real-time
+**Phase 1: Environment Initialization & Agent Deletion**
+- ❌ Navigate to Workbench and delete ALL existing agents
+- ❌ Verify deletion UI works correctly (reported as unstable)
+- ❌ Confirm agents disappear completely from UI after deletion
+- ❌ Verify empty state message appears when no agents exist
 
-3. **Publishing Tests**:
-   - Can publish agent from DEVELOPMENT to STAGING
-   - Can publish agent from STAGING to PRODUCTION
-   - Published agents appear in Hub
-   - Hub chat works with streaming
+**Phase 2: User API Key Generation**
+- ❌ Navigate to Settings page (accessible from header user dropdown)
+- ❌ Generate new Platform API Key for test user
+- ❌ Copy and store API key securely
+- ❌ Verify key format matches: `a2g_[64-char-hex]`
 
-4. **Settings Tests**:
-   - Can add LLM model
-   - LLM proxy endpoint accessible
-   - Personal key validation works
-   - Invalid keys show error
+**Phase 3: Agent Creation**
+- ❌ Create new agent named "math agent" in Workbench
+- ❌ Verify agent appears in agent list
+- ❌ Verify agent has DEVELOPMENT status
+- ❌ Navigate to agent's Chat&Debug interface
 
-5. **Admin Tests**:
-   - Can approve/reject pending users
-   - Can change user roles
-   - Statistics display correctly
-   - Usage data tracked accurately
+**Phase 4: Platform Endpoint Verification**
+- ❌ Verify "OpenAI Compatible Endpoint" is displayed in Chat&Debug UI
+- ❌ Verify endpoint format: `http://localhost:9050/api/llm/agent/{agent_id}/v1`
+- ❌ **CRITICAL**: Verify `/v1` suffix is automatically appended to display
+- ❌ Copy endpoint URL accurately
 
-**Implementation**:
-- Create Playwright test suite for each scenario
-- Run tests after each implementation
-- Update verification report with test results
-- Fix any issues found during testing
+**Phase 5: Agent Configuration & Hosting (ADK)**
+- ❌ Configure math agent code to use Platform endpoint from Phase 4
+- ❌ Configure math agent to use API key from Phase 2
+- ❌ Set `AGENT_ID` environment variable correctly
+- ❌ Deploy agent using `to_a2a` (e.g., on port 8011)
+- ❌ Verify agent hosting is successful (agent card accessible)
+
+**Phase 6: Agent Connection Test**
+- ❌ Return to Chat&Debug UI in Workbench
+- ❌ Enter hosted agent endpoint (e.g., `http://localhost:8011`) in connection field
+- ❌ Click "Connect" button
+- ❌ Verify connection success indicator appears in UI
+- ❌ Verify no connection errors or timeouts
+
+**Phase 7: Simultaneous Chat & Trace Verification (CRITICAL)**
+- ❌ Send test message: "2+2는?" in Chat interface
+- ❌ **Chat Verification**:
+  - User message appears in chat window
+  - Agent response streams via A2A protocol
+  - Final answer (e.g., "4") displays correctly
+- ❌ **Trace Verification (SIMULTANEOUS)**:
+  - Trace panel shows real-time WebSocket streaming
+  - All internal LLM calls appear (Normal Chat Call, Tool Call, etc.)
+  - Each trace entry shows Request/Response pairs
+  - Trace logs are completely isolated (no data from other agents/users)
+  - **No mixed traces from different sessions**
+
+**Phase 8: Conversation History & Isolation**
+- ❌ Send follow-up message: "이전 대화 내용을 기억해?"
+- ❌ Verify agent references previous conversation (A2A history support)
+- ❌ Verify Chat window maintains conversation thread
+- ❌ Verify Trace window appends new logs without clearing previous ones
+- ❌ Verify no cross-contamination between multiple agent sessions
+
+**Verification Success Criteria**:
+- ALL 8 phases must pass without ANY failures
+- No UI rendering errors or blank screens
+- No WebSocket disconnections or reconnection loops
+- No mixed trace data between agents
+- Chat and Trace must update in real-time (< 500ms latency)
+- Platform LLM Proxy must correctly route requests based on API key
 
 **Files to Create**:
-- `e2e/tests/0.1-ui-fixes.spec.ts` - UI/UX tests
-- `e2e/tests/0.2-agent-integration.spec.ts` - Agent tests
-- `e2e/tests/0.3-publishing.spec.ts` - Publishing tests
-- `e2e/tests/0.4-settings.spec.ts` - Settings tests
-- `e2e/tests/0.5-admin.spec.ts` - Admin tests
-- `e2e/tests/0.6-statistics.spec.ts` - Statistics tests
+- `e2e/tests/workbench-complete-workflow.spec.ts` - Full E2E test
+- `e2e/fixtures/test-agent-config.ts` - ADK agent configuration helper
+- `e2e/utils/websocket-monitor.ts` - WebSocket event capture utility
+
+#### 0.8.2. Critical Missing Features Identified from E2E Test
+**Status**: ❌ NOT STARTED (Pending E2E test results)
+
+Based on the E2E test scenario, these features may need implementation:
+
+- ❌ **Agent Deletion UI Stability**: Fix reported instability in agent deletion
+- ❌ **Endpoint URL Display**: Ensure `/v1` suffix is automatically appended
+- ❌ **Connection Status Indicator**: Clear visual feedback for connection state
+- ❌ **WebSocket Reconnection Logic**: Handle disconnections gracefully
+- ❌ **Trace Isolation Verification**: Ensure no cross-agent contamination
+- ❌ **Chat History Persistence**: Verify conversation history in A2A calls
 
 ---
 

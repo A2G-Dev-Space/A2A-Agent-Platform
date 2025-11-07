@@ -1,17 +1,26 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@/stores/authStore';
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
 
-  const tabs = [
-    { name: t('settings.tabs.general'), path: '/settings/general' },
-    { name: t('settings.tabs.platformKeys'), path: '/settings/platform-keys' },
-    { name: t('settings.tabs.userManagement'), path: '/settings/user-management' },
-    { name: t('settings.tabs.llmManagement'), path: '/settings/llm-management' },
-    { name: t('settings.tabs.statistics'), path: '/settings/statistics' },
+  // Define all tabs with their required roles
+  const allTabs = [
+    { name: t('settings.tabs.general'), path: '/settings/general', requiredRole: null },
+    { name: t('settings.tabs.platformKeys'), path: '/settings/platform-keys', requiredRole: null },
+    { name: t('settings.tabs.userManagement'), path: '/settings/user-management', requiredRole: 'ADMIN' },
+    { name: t('settings.tabs.llmManagement'), path: '/settings/llm-management', requiredRole: 'ADMIN' },
+    { name: t('settings.tabs.statistics'), path: '/settings/statistics', requiredRole: 'ADMIN' },
   ];
+
+  // Filter tabs based on user role
+  const tabs = allTabs.filter(tab => {
+    if (!tab.requiredRole) return true;
+    return user?.role === tab.requiredRole;
+  });
 
   const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
     `flex flex-col items-center justify-center border-b-[3px] pb-[13px] pt-4 ${
