@@ -74,6 +74,31 @@ class RegistryStorage:
 
         return self._agent_to_card(agent)
 
+    async def get_agent_by_numeric_id(self, agent_id: int, current_user: dict) -> Optional[AgentCard]:
+        """
+        Get agent by numeric ID with Access Control check
+
+        Args:
+            agent_id: Agent numeric ID
+            current_user: Current authenticated user
+
+        Returns:
+            AgentCard if found and accessible, None otherwise
+        """
+        result = await self.db.execute(
+            select(Agent).where(Agent.id == agent_id)
+        )
+        agent = result.scalar_one_or_none()
+
+        if not agent:
+            return None
+
+        # Access Control check
+        if not self._check_access(agent, current_user):
+            return None
+
+        return self._agent_to_card(agent)
+
     async def list_agents(
         self,
         current_user: dict,

@@ -123,6 +123,7 @@ class LLMProxy:
         }
 
         try:
+            logger.info(f"[Gemini] Starting stream request to {url}")
             async with httpx.AsyncClient(timeout=300.0) as client:
                 async with client.stream(
                     "POST",
@@ -131,28 +132,40 @@ class LLMProxy:
                     headers={"Content-Type": "application/json"}
                 ) as response:
                     response.raise_for_status()
+                    logger.info(f"[Gemini] Stream response status: {response.status_code}")
 
+                    # Read entire response body
+                    full_response = ""
                     async for line in response.aiter_lines():
-                        if not line or not line.strip():
-                            continue
+                        full_response += line + "\n"
 
-                        try:
-                            # Gemini sends JSON chunks
-                            chunk = json.loads(line)
+                    logger.info(f"[Gemini] Received {len(full_response)} bytes")
 
+                    # Parse the JSON array
+                    try:
+                        chunks = json.loads(full_response)
+                        if not isinstance(chunks, list):
+                            chunks = [chunks]
+
+                        token_count = 0
+                        for chunk in chunks:
                             # Extract text from response
                             if "candidates" in chunk:
                                 for candidate in chunk["candidates"]:
                                     if "content" in candidate and "parts" in candidate["content"]:
                                         for part in candidate["content"]["parts"]:
                                             if "text" in part:
-                                                yield part["text"]
+                                                token_count += 1
+                                                text = part["text"]
+                                                logger.info(f"[Gemini] Token {token_count}: {text[:50]}")
+                                                yield text
 
-                        except json.JSONDecodeError:
-                            continue
-                        except Exception as e:
-                            logger.error(f"Error parsing Gemini chunk: {e}")
-                            continue
+                        logger.info(f"[Gemini] Stream completed. Total tokens: {token_count}")
+
+                    except json.JSONDecodeError as e:
+                        logger.error(f"[Gemini] Failed to parse response: {e}")
+                        logger.error(f"[Gemini] Response preview: {full_response[:500]}")
+                        raise
 
         except httpx.HTTPStatusError as e:
             logger.error(f"Gemini API error: {e.response.status_code} - {e.response.text}")

@@ -1,29 +1,20 @@
 """
 Chat Service - A2G Platform
-채팅 세션 관리, WebSocket 실시간 통신 담당
+채팅 세션 관리, REST + SSE 스트리밍 통신 담당
 """
-from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 import uvicorn
 import logging
-import json
-import asyncio
 from contextlib import asynccontextmanager
-from typing import Dict, List
 
 from app.core.config import settings
 from app.api.v1 import sessions, messages, llm_proxy
-from app.websocket.manager import ConnectionManager
-from app.websocket.chat_handler import ChatWebSocketHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# WebSocket connection manager
-manager = ConnectionManager()
-chat_handler = ChatWebSocketHandler(manager)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +22,6 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Chat Service...")
     # NOTE: Database tables are created by Alembic migrations, not by ORM
-    # Removed init_db() call to prevent schema conflicts with migrations
     logger.info("Chat Service started successfully")
 
     yield
@@ -42,7 +32,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="A2G Chat Service",
-    description="Chat Session and WebSocket Communication Service",
+    description="Chat Session and REST + SSE Streaming Communication Service",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -60,20 +50,6 @@ app.add_middleware(
 app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
 app.include_router(llm_proxy.router, prefix="/api", tags=["llm-proxy"])
-
-@app.websocket("/ws/chat/{session_id}")
-async def websocket_chat_endpoint(websocket: WebSocket, session_id: str, token: str = None):
-    """WebSocket endpoint for real-time chat with agent streaming
-
-    Query params:
-        token: JWT authentication token
-    """
-    if not token:
-        await websocket.close(code=1008, reason="Missing authentication token")
-        return
-
-    # Use enhanced chat handler with A2A proxy integration
-    await chat_handler.handle_connection(websocket, session_id, token)
 
 @app.get("/health")
 async def health_check():

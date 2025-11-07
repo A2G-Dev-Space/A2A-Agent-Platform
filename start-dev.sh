@@ -60,6 +60,7 @@ case $MODE in
             ["chat-service"]="a2g-chat-service"
             ["tracing-service"]="a2g-tracing-service"
             ["admin-service"]="a2g-admin-service"
+            ["llm-proxy-service"]="a2g-llm-proxy"
         )
 
         SUCCESS_COUNT=0
