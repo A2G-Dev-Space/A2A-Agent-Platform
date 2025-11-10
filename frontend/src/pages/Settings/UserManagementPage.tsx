@@ -14,7 +14,8 @@ const UserManagementPage: React.FC = () => {
     queryFn: async () => {
       try {
         const res = await adminService.getAllUsers();
-        return res.data ?? [];
+        // axios interceptor already returns response.data, so res IS the data array
+        return res ?? [];
       } catch (error) {
         console.error('Failed to fetch users:', error);
         return [];
@@ -36,6 +37,14 @@ const UserManagementPage: React.FC = () => {
     },
   });
 
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: number; role: 'PENDING' | 'USER' | 'ADMIN' }) =>
+      adminService.updateUserRole(userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
   const handleApprove = (userId: number) => {
     approveMutation.mutate(userId);
   };
@@ -44,13 +53,15 @@ const UserManagementPage: React.FC = () => {
     rejectMutation.mutate(userId);
   };
 
+  const handleRoleChange = (userId: number, newRole: 'USER' | 'ADMIN') => {
+    updateRoleMutation.mutate({ userId, role: newRole });
+  };
+
   const getStatusChip = (user: UserManagementInfo) => {
-    if (user.role === 'PENDING') {
-      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">{t('settings.userManagement.statusPending')}</span>;
+    if (user.status === 'Active') {
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">{user.status}</span>;
     }
-    // For now, consider all non-pending users as Active.
-    // The 'is_active' property is not available on the User type from the API.
-    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">{t('settings.userManagement.statusActive')}</span>;
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{user.status}</span>;
   };
   
   const getRoleChip = (role: 'ADMIN' | 'USER' | 'PENDING') => {
@@ -99,19 +110,19 @@ const UserManagementPage: React.FC = () => {
                                 <td className="px-4 py-3"><input type="checkbox" className="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary" /></td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{user.username_kr} ({user.username})</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{user.department_kr}</td>
+                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{user.department}</td>
                                 <td className="px-4 py-3">
                                     {getRoleChip(user.role)}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{getStatusChip(user)}</td>
                                 <td className="px-4 py-3 text-sm font-medium">
-                                    {user.role === 'PENDING' && (
+                                    {user.role === 'PENDING' ? (
                                         <div className="flex items-center gap-2">
-                                            <button 
+                                            <button
                                                 onClick={() => handleApprove(user.id)}
                                                 disabled={approveMutation.isPending}
                                                 className="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -119,7 +130,7 @@ const UserManagementPage: React.FC = () => {
                                                 <ShieldCheck className="w-3.5 h-3.5 mr-1" />
                                                 {t('actions.approve')}
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => handleReject(user.id)}
                                                 disabled={rejectMutation.isPending}
                                                 className="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -128,6 +139,16 @@ const UserManagementPage: React.FC = () => {
                                                 {t('actions.reject')}
                                             </button>
                                         </div>
+                                    ) : (
+                                        <select
+                                            value={user.role}
+                                            onChange={(e) => handleRoleChange(user.id, e.target.value as 'USER' | 'ADMIN')}
+                                            disabled={updateRoleMutation.isPending}
+                                            className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-[#483956] bg-white dark:bg-[#211b28] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a1f35] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <option value="USER">{t('roles.user')}</option>
+                                            <option value="ADMIN">{t('roles.admin')}</option>
+                                        </select>
                                     )}
                                 </td>
                             </tr>

@@ -65,8 +65,8 @@ math_agent = LlmAgent(
         model="hosted_vllm/gemini-2.0-flash-exp",
         api_base=PLATFORM_LLM_ENDPOINT,
         api_key=PLATFORM_API_KEY,
-        # Disable streaming for internal LLM calls (UI->Agent uses A2A streaming)
-        stream=False,
+        # Enable streaming for real-time token-by-token responses
+        stream=True,
         # Send Agent ID in headers for trace routing
         extra_headers={
             "X-Agent-ID": AGENT_ID

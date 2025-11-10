@@ -1,6 +1,6 @@
 # TODO.md - Index Document for TODO_ALL.md
 
-**Version 2.2** | **Last Updated: 2025-11-07** | **Total Lines: 1873 (+357)**
+**Version 2.2** | **Last Updated: 2025-11-10** | **Total Lines: 2064 (+191)**
 
 > 🔍 This is an INDEX document. For detailed implementation tasks, refer to [TODO_ALL.md](./TODO_ALL.md) using the line numbers below.
 
@@ -17,8 +17,8 @@ User-requested verification and implementation tasks that must be completed imme
 3. **Publishing Workflow** (Lines 92-157) - ❌ NOT STARTED - Implement agent publishing and Hub integration
 4. **Platform LLM Proxy** (Lines 286-330) - 🟡 PARTIALLY COMPLETED - Admin LLM management (basic UI done, encryption needed), user key issuance pending
 5. **Settings UI Differentiation** (Lines 354-359) - ✅ COMPLETED - See HISTORY_ALL.md Section 3.8.1
-6. **User Management** (Lines 361-393) - ❌ NOT STARTED - User approval/rejection, role management
-7. **Statistics** (Lines 395-448) - ❌ NOT STARTED - Agent and LLM usage statistics tracking
+6. **User Management** (Lines 361-413) - 🟡 PARTIALLY COMPLETED (2025-11-10) - Bug fixes completed, role dropdown added, approval/rejection pending
+7. **Statistics** (Lines 415-462) - ❌ NOT STARTED - Agent and LLM usage statistics tracking
 8. **Verification** (Lines 450-551) - ✅ COMPLETED (2025-11-07) - All 8 E2E test phases passed, 15 bugs fixed, platform production-ready
 
 ---
@@ -322,4 +322,4 @@ Example: To fix WebSocket memory leaks:
 
 ---
 
-*Last generated: 2025-11-06 | Total sections: 12 main, 65 sub-sections*
+*Last generated: 2025-11-10 | Total sections: 12 main, 65 sub-sections | Recent updates: User Management bug fixes and role management*
