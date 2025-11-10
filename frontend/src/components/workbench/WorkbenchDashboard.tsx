@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
 import { chatService } from '@/services/chatService';
@@ -12,6 +12,7 @@ import { TraceView } from './TraceView';
 
 export const WorkbenchDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -36,6 +37,28 @@ export const WorkbenchDashboard: React.FC = () => {
     },
     onError: (error) => {
       console.error('Failed to create session:', error);
+    },
+  });
+
+  // Delete agent mutation
+  const deleteAgentMutation = useMutation({
+    mutationFn: async (agentId: number) => {
+      await agentService.deleteAgent(agentId);
+    },
+    onSuccess: () => {
+      // Invalidate and refetch the agents list
+      queryClient.invalidateQueries({ queryKey: ['developmentAgents'] });
+
+      // If the deleted agent was selected, go back to grid view
+      if (selectedAgent) {
+        setSelectedAgent(null);
+        setSessionId(null);
+        setTraceId(null);
+      }
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete agent:', error);
+      alert(`Failed to delete agent: ${error.message || 'Unknown error'}`);
     },
   });
 
@@ -64,7 +87,19 @@ export const WorkbenchDashboard: React.FC = () => {
   };
 
   const handleDelete = (agent: Agent) => {
-    console.log('Delete agent:', agent);
+    // Show confirmation dialog before deletion
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${agent.name}"?\n\n` +
+      `This will permanently remove the agent and all associated data including:\n` +
+      `- Agent configuration\n` +
+      `- Chat history\n` +
+      `- Trace logs\n\n` +
+      `This action cannot be undone.`
+    );
+
+    if (confirmDelete) {
+      deleteAgentMutation.mutate(agent.id);
+    }
   };
 
   const handleDeploy = (agent: Agent) => {

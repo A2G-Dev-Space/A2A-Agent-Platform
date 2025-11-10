@@ -9,6 +9,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from google.adk.tools.function_tool import FunctionTool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
 
 # Platform Configuration
 # User gets these from Platform:
@@ -97,6 +98,20 @@ async def start_math_agent():
         math_agent,
         port=8011
     )
+
+    # Add trace_id capture middleware
+    @a2a_app.middleware("http")
+    async def trace_middleware(request: Request, call_next):
+        # Extract X-Trace-Id from request headers
+        trace_id = request.headers.get("x-trace-id")
+        if trace_id:
+            # Dynamically update LiteLLM extra_headers to forward trace_id
+            if hasattr(math_agent.model, 'extra_headers'):
+                math_agent.model.extra_headers["X-Trace-Id"] = trace_id
+                print(f"[Trace Middleware] Forwarding trace_id to LLM Proxy: {trace_id}")
+
+        response = await call_next(request)
+        return response
 
     # Add CORS middleware
     a2a_app.add_middleware(

@@ -11,7 +11,15 @@ const UserManagementPage: React.FC = () => {
 
   const { data: users, isLoading, isError, error } = useQuery({
     queryKey: ['users'],
-    queryFn: () => adminService.getAllUsers().then(res => res.data),
+    queryFn: async () => {
+      try {
+        const res = await adminService.getAllUsers();
+        return res.data ?? [];
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        return [];
+      }
+    },
   });
 
   const approveMutation = useMutation({

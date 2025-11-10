@@ -36,7 +36,7 @@ export const agentService = {
   },
 
   deleteAgent: async (id: number): Promise<void> => {
-    await api.delete<void>(`/agents/${id}/`);
+    await api.delete<void>(`/agents/${id}`);
   },
 
   searchAgents: async (query: string): Promise<AgentSearchResponse> => {

@@ -96,24 +96,34 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              console.log('[SSE] Received event:', data.type, data);
 
               if (data.type === 'stream_start') {
                 console.log('[SSE] Stream started');
               } else if (data.type === 'text_token') {
+                console.log('[SSE] Processing text_token:', data.content);
                 streamingMessageRef.current += data.content;
                 setStreamingMessage(streamingMessageRef.current);
               } else if (data.type === 'stream_end') {
                 console.log('[SSE] Stream ended');
+                console.log('[SSE] Final accumulated content:', streamingMessageRef.current);
+                console.log('[SSE] Final accumulated content length:', streamingMessageRef.current.length);
                 // Add complete assistant message
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    id: `msg-${Date.now()}`,
-                    role: 'assistant',
-                    content: streamingMessageRef.current,
-                    timestamp: new Date(),
-                  },
-                ]);
+                const finalContent = streamingMessageRef.current;
+                console.log('[SSE] Adding message with content:', finalContent);
+                setMessages((prev) => {
+                  const newMessages = [
+                    ...prev,
+                    {
+                      id: `msg-${Date.now()}`,
+                      role: 'assistant',
+                      content: finalContent,
+                      timestamp: new Date(),
+                    },
+                  ];
+                  console.log('[SSE] New messages array:', newMessages);
+                  return newMessages;
+                });
                 setStreamingMessage('');
                 streamingMessageRef.current = '';
                 setIsStreaming(false);
@@ -344,11 +354,11 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               </h4>
               <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded">
                 <code className="text-xs text-gray-700 dark:text-gray-300">
-                  http://localhost:9050/api/llm/agent/{agent.id}
+                  http://localhost:9050/api/llm/v1
                 </code>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`http://localhost:9050/api/llm/agent/${agent.id}`);
+                    navigator.clipboard.writeText(`http://localhost:9050/api/llm/v1`);
                   }}
                   className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1"
                   title="Copy to clipboard"

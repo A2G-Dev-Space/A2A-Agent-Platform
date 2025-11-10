@@ -268,10 +268,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/llm_proxy_db
       ADMIN_SERVICE_URL: http://admin-service:8005
+      USER_SERVICE_URL: http://user-service:8001
       LOG_LEVEL: DEBUG
       # LLM Provider API Keys
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_API_KEY: AIzaSyDXVahR7moDwJep7GHRmxzagzVEVF_a_Gc
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
       CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-http://localhost:8000/v1}

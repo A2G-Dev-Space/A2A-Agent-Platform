@@ -95,8 +95,10 @@ async def send_message_stream(
 
             # Stream from agent via A2A
             async for event in _stream_from_agent_a2a(agent_url, request.content, session_id, trace_id):
+                logger.info(f"[SSE] Received event from agent: type={event.get('type')}, content={str(event.get('content', ''))[:50]}")
                 if event["type"] == "text_token":
                     accumulated_response += event["content"]
+                    logger.info(f"[SSE] Sending text_token to client: {event['content'][:50]}")
                     # Send text token to client
                     yield f"data: {json.dumps(event)}\n\n"
 
@@ -270,7 +272,10 @@ async def _stream_from_agent_a2a(
                 "POST",
                 agent_url,
                 json=a2a_stream_request,
-                headers={"Accept": "text/event-stream"}
+                headers={
+                    "Accept": "text/event-stream",
+                    "X-Trace-Id": trace_id  # Pass trace_id to agent
+                }
             ) as response:
                 response.raise_for_status()
                 logger.info(f"[A2A] Stream response status: {response.status_code}")
@@ -346,7 +351,10 @@ async def _stream_from_agent_a2a(
             response = await client.post(
                 agent_url,
                 json=a2a_send_request,
-                headers={"Content-Type": "application/json"}
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Trace-Id": trace_id  # Pass trace_id to agent
+                }
             )
 
             logger.info(f"[A2A] Response status: {response.status_code}")
@@ -364,8 +372,21 @@ async def _stream_from_agent_a2a(
                 result = result_data["result"]
                 logger.debug(f"[A2A] Result type: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
 
-                # Handle task format (ADK agents return this)
-                if isinstance(result, dict) and "status" in result:
+                # Handle artifacts format (ADK agents return this for successful completions)
+                if isinstance(result, dict) and "artifacts" in result:
+                    artifacts = result.get("artifacts", [])
+                    logger.info(f"[A2A] Artifacts format detected with {len(artifacts)} artifact(s)")
+
+                    for artifact in artifacts:
+                        if isinstance(artifact, dict) and "parts" in artifact:
+                            for part in artifact.get("parts", []):
+                                if part.get("kind") == "text":
+                                    text_content = part.get("text", "")
+                                    logger.info(f"[A2A] Extracted text from artifact: {text_content[:100]}")
+                                    yield {"type": "text_token", "content": text_content}
+
+                # Handle task format (ADK agents return this for errors/failures)
+                elif isinstance(result, dict) and "status" in result:
                     status_message = result.get("status", {}).get("message", {})
                     logger.info(f"[A2A] Task status format detected: state={result.get('status', {}).get('state')}")
 
@@ -396,7 +417,13 @@ async def _stream_from_agent_a2a(
                 logger.warning(f"[A2A] No result or error in response: {json.dumps(result_data)[:200]}")
 
     except httpx.HTTPStatusError as e:
-        logger.error(f"[A2A] HTTP error: {e.response.status_code} - {e.response.text}")
+        # Don't try to access .text on streaming responses
+        error_detail = f"HTTP {e.response.status_code}"
+        try:
+            error_detail += f" - {e.response.text}"
+        except:
+            pass  # Response may be streaming and not readable
+        logger.error(f"[A2A] HTTP error: {error_detail}")
         raise
     except Exception as e:
         logger.error(f"[A2A] Error calling agent: {e}", exc_info=True)
