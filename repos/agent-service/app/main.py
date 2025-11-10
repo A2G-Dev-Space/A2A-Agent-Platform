@@ -49,11 +49,15 @@ app.add_middleware(
 )
 
 # Include routers
-# A2A Registry endpoints (following A2A spec)
-app.include_router(registry.router, prefix="/api", tags=["registry"])
-
 # Legacy CRUD endpoints (maintained for backward compatibility)
+# NOTE: Must be registered BEFORE registry to avoid route conflicts
+# agents.router has specific DELETE /api/agents/{agent_id} with int type
 app.include_router(agents.router, prefix="/api/agents", tags=["agents-legacy"])
+
+# A2A Registry endpoints (following A2A spec)
+# registry.router has DELETE /api/agents/{agent_id} with str type
+# This will match only if agents.router doesn't match first
+app.include_router(registry.router, prefix="/api", tags=["registry"])
 
 @app.get("/health")
 async def health_check():

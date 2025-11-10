@@ -35,13 +35,18 @@ SERVICE_ROUTES = {
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
     '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
 
-    # LLM Proxy (Chat Service)
-    '/api/llm': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
+    # LLM Proxy Service (OpenAI Compatible Endpoint)
+    '/api/llm': os.getenv('LLM_PROXY_SERVICE_URL', 'http://llm-proxy-service:8006'),
 
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
     '/api/chat': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
     '/api/tracing': os.getenv('TRACING_SERVICE_URL', 'http://tracing-service:8004'),
+}
+
+# Services that need path prefix stripping (prefix will be removed before forwarding)
+STRIP_PREFIX_SERVICES = {
+    '/api/llm',  # LLM Proxy expects /v1/... not /api/llm/v1/...
 }
 
 # WebSocket routes
@@ -104,8 +109,24 @@ def get_service_url(path: str) -> Optional[str]:
             return service_url
     return None
 
+def get_route_prefix(path: str) -> Optional[str]:
+    """Get the matched route prefix for stripping"""
+    for route_prefix in SERVICE_ROUTES.keys():
+        if path.startswith(route_prefix):
+            return route_prefix
+    return None
+
 def get_target_path(path: str) -> str:
-    """Get the target path for the backend service"""
+    """Get the target path for the backend service, optionally stripping the route prefix"""
+    route_prefix = get_route_prefix(path)
+    if route_prefix and route_prefix in STRIP_PREFIX_SERVICES:
+        # Strip the route prefix for services that need it (e.g., /api/llm from /api/llm/v1/chat/completions)
+        target_path = path[len(route_prefix):]
+        # Ensure path starts with /
+        if not target_path.startswith('/'):
+            target_path = '/' + target_path
+        return target_path
+    # For other services, keep the full path
     # Remove any double slashes
     return path.replace('//', '/')
 
@@ -155,8 +176,11 @@ async def proxy_request(request: Request, service_url: str, path: str):
     if not http_client:
         raise HTTPException(status_code=500, detail="HTTP client not initialized")
 
+    # Get target path (with route prefix stripped)
+    target_path = get_target_path(path)
+
     # Build target URL
-    target_url = f"{service_url}{path}"
+    target_url = f"{service_url}{target_path}"
 
     # Get query parameters
     query_params = dict(request.query_params)
