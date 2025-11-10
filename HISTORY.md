@@ -1,6 +1,6 @@
 # HISTORY.md - Index Document for HISTORY_ALL.md
 
-**Version 2.1** | **Last Updated: 2025-11-07** | **Total Lines: ~1240**
+**Version 2.2** | **Last Updated: 2025-11-10** | **Total Lines: ~1907**
 
 > 🔍 This is an INDEX document. For detailed implementation, refer to [HISTORY_ALL.md](./HISTORY_ALL.md) using the line numbers below.
 
@@ -17,6 +17,7 @@
 | **5** | Development & Operations | 428-486 | DevOps |
 | **6** | Backend Service Details | 487-831 | Services |
 | **7** | Implementation Status | 832-925 | Status |
+| **8** | Bug Fixes & Improvements (2025-11-10) | 1715-1907 | Recent |
 
 ---
 
@@ -229,6 +230,31 @@
 - Service organization
 - Frontend component hierarchy
 
+### **8. Bug Fixes & Improvements (2025-11-10)** (Lines 1715-1907) - **NEW**
+
+#### **8.1 User Management Page Fixes** (Lines 1718-1781)
+- **Bug #1**: Authentication token not being sent (Zustand persist storage)
+- **Bug #2**: Field name mismatch (name/department vs username_kr/department_kr)
+- **Bug #3**: Response unwrapping issue (double .data accessor)
+- **Verification**: All 6 users now display correctly with full information
+- **Files Modified**:
+  - frontend/src/services/api.ts
+  - frontend/src/services/adminService.ts
+  - frontend/src/pages/Settings/UserManagementPage.tsx
+
+#### **8.2 Admin Role Change Feature** (Lines 1783-1829)
+- **Backend API**: PUT /api/admin/users/{user_id}/role (already existed)
+- **Frontend**: Added role change dropdown for USER/ADMIN users
+- **UX**: PENDING users show Approve/Reject, others show role dropdown
+- **Verification**: Role changes persist and update UI in real-time
+
+#### **8.3 SSE Streaming Investigation** (Lines 1831-1903)
+- **Root Cause**: ADK's to_a2a() doesn't support message/stream method
+- **Evidence**: Chat service falls back to message/send (non-streaming)
+- **Configuration Attempted**: Changed stream=False to stream=True (no effect)
+- **Conclusion**: Limitation is expected for experimental ADK A2A implementation
+- **Workaround Options**: Accept current behavior or implement custom streaming (2-3 days)
+
 ---
 
 ## 📊 Quick Statistics
@@ -281,4 +307,4 @@ Example: To find Agent Service implementation details:
 
 ---
 
-*Last generated: 2025-11-06 | Total sections: 7 main, 31 sub-sections*
+*Last generated: 2025-11-10 | Total sections: 8 main, 35 sub-sections*

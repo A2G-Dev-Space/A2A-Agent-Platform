@@ -1710,3 +1710,197 @@ A2A-Agent-Platform/
 ├── TODO_ALL.md                  # Detailed implementation plans
 └── SCENARIO.md                  # User scenarios and use cases
 ```
+---
+
+## 8. Bug Fixes & Improvements (2025-11-10)
+
+### 8.1. User Management Page Fixes
+**Date**: 2025-11-10 | **Priority**: Critical | **Status**: ✅ Completed
+
+#### Issue Summary
+User Management page (`/settings/user-management`) was displaying empty table despite successful API calls returning 6 users.
+
+#### Root Causes Identified
+
+**Bug #1: Authentication Token Not Being Sent**
+- **Location**: `frontend/src/services/api.ts:18`
+- **Problem**: Axios request interceptor looking for wrong localStorage key
+  ```typescript
+  // BEFORE (broken)
+  const token = localStorage.getItem('accessToken');
+  
+  // AFTER (fixed)
+  const authStorage = localStorage.getItem('auth-storage');
+  const authData = JSON.parse(authStorage);
+  const token = authData?.state?.accessToken;
+  ```
+- **Impact**: API returned 403 Forbidden "Not authenticated"
+- **Fix**: Updated interceptor to parse Zustand persist storage structure
+
+**Bug #2: Field Name Mismatch Between Frontend and Backend**
+- **Location**: `frontend/src/pages/Settings/UserManagementPage.tsx:100-106`
+- **Problem**: Frontend expected `username_kr` and `department_kr` but V1 API returns simplified model with `name` and `department`
+  ```typescript
+  // Backend V1 API returns:
+  {
+    id: number,
+    name: string,          // NOT username_kr
+    email: string,
+    department: string,    // NOT department_kr  
+    role: 'PENDING' | 'USER' | 'ADMIN',
+    status: string
+  }
+  ```
+- **Impact**: Component rendered empty rows (undefined field values)
+- **Fix**: Updated JSX to use correct field names (`user.name`, `user.department`)
+- **Files Modified**:
+  - `frontend/src/services/adminService.ts` - Updated `UserManagementInfo` interface
+  - `frontend/src/pages/Settings/UserManagementPage.tsx` - Changed field references
+
+**Bug #3: Response Unwrapping Issue**
+- **Location**: `frontend/src/pages/Settings/UserManagementPage.tsx:17`
+- **Problem**: Axios response interceptor already unwraps `response.data`, but component tried to access `.data` again
+  ```typescript
+  // BEFORE (broken)
+  const res = await adminService.getAllUsers();
+  return res.data ?? [];  // res is already the array!
+  
+  // AFTER (fixed)
+  const res = await adminService.getAllUsers();
+  return res ?? [];  // res IS the data array
+  ```
+- **Impact**: React Query received `undefined` instead of user array
+- **Fix**: Removed redundant `.data` accessor
+
+#### Verification
+- ✅ API call returns 200 OK with 6 users
+- ✅ Authorization header correctly includes JWT token
+- ✅ Table displays all 6 users with Korean names, departments, and roles
+- ✅ Role badges (Admin/User/Pending) render correctly
+- ✅ Approve/Reject buttons visible for pending users
+
+### 8.2. Admin Role Change Feature
+**Date**: 2025-11-10 | **Priority**: High | **Status**: ✅ Completed
+
+#### Feature Description
+Added ability for ADMIN users to change other users' roles directly from User Management table.
+
+#### Implementation
+
+**Backend API** (Already existed):
+- Endpoint: `PUT /api/admin/users/{user_id}/role`
+- Location: `repos/user-service/app/api/v1/admin.py:111-161`
+- Requires: ADMIN role
+- Validates: Role must be one of ["PENDING", "USER", "ADMIN"]
+
+**Frontend Changes**:
+1. Added `updateUserRole` mutation in `UserManagementPage.tsx`
+2. Replaced static role badges with dropdown `<select>` for non-pending users
+3. Dropdown shows current role and allows changing between USER/ADMIN
+4. PENDING users still show Approve/Reject buttons (no dropdown)
+
+**Code Added** (`frontend/src/pages/Settings/UserManagementPage.tsx`):
+```typescript
+const updateRoleMutation = useMutation({
+  mutationFn: ({ userId, role }: { userId: number; role: 'PENDING' | 'USER' | 'ADMIN' }) =>
+    adminService.updateUserRole(userId, role),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+  },
+});
+
+const handleRoleChange = (userId: number, newRole: 'USER' | 'ADMIN') => {
+  updateRoleMutation.mutate({ userId, role: newRole });
+};
+```
+
+#### User Experience
+- PENDING users: See Approve/Reject buttons
+- USER/ADMIN users: See dropdown to change role
+- Real-time updates: Table refreshes after role change
+- Disabled state while mutation is pending
+
+#### Verification
+- ✅ Dropdown renders for USER and ADMIN roles
+- ✅ Role change triggers API call to `/api/admin/users/{id}/role`
+- ✅ Success response updates React Query cache
+- ✅ Table reflects new role immediately
+- ✅ Role badge updates to match new role
+
+### 8.3. SSE Streaming Investigation
+**Date**: 2025-11-10 | **Priority**: Medium | **Status**: ⚠️ ADK Limitation Identified
+
+#### Investigation Summary
+Investigated why chat responses appear all at once instead of streaming token-by-token.
+
+#### Findings
+
+**Frontend Implementation**: ✅ Fully Functional
+- `ChatPlayground.tsx` properly implements SSE event handling
+- Correctly processes `stream_start`, `text_token`, and `stream_end` events
+- Updates UI with streaming message state
+
+**Backend Implementation**: ✅ Fully Functional  
+- `chat-service/app/api/v1/messages.py:38-141` implements SSE streaming
+- Returns `StreamingResponse` with `text/event-stream` media type
+- Properly forwards tokens from agent A2A stream
+
+**Root Cause**: ❌ ADK A2A Streaming Not Supported
+- **Location**: Google ADK's `to_a2a()` utility function
+- **Problem**: ADK does not support A2A protocol's `message/stream` method
+- **Evidence**: Chat service logs show:
+  ```
+  [A2A] Stream response status: 200
+  [A2A] Using message/send fallback (non-streaming)
+  ```
+- **Behavior**: Chat service attempts `message/stream`, gets error from agent, automatically falls back to `message/send` (non-streaming)
+
+#### ADK Configuration Attempted
+Changed agent LLM configuration from:
+```python
+# test_agents/math_agent/agent.py:69
+stream=False,  # Disable streaming for internal LLM calls
+```
+
+To:
+```python
+stream=True,  # Enable streaming for real-time token-by-token responses
+```
+
+**Result**: No improvement - ADK's A2A wrapper doesn't propagate LLM streaming to A2A protocol layer
+
+#### Current State
+- ✅ SSE infrastructure works correctly
+- ✅ Frontend can display streaming responses  
+- ✅ Backend can stream SSE events
+- ❌ **ADK agents don't expose streaming A2A endpoint**
+- ⚠️ Responses work but arrive in single `text_token` event
+
+#### Workaround Options
+1. **Accept Current Behavior** (Recommended for now):
+   - Responses work correctly, just not streamed
+   - Wait for ADK to add `message/stream` support
+   - ADK is marked as "EXPERIMENTAL" for A2A support
+
+2. **Implement Custom A2A Streaming** (Future):
+   - Write custom FastAPI endpoint for `message/stream`
+   - Manually stream LLM responses with ADK
+   - Bypass `to_a2a()` utility
+   - Estimated effort: 2-3 days
+
+#### ADK Limitation Warning
+ADK shows this warning on agent startup:
+```
+UserWarning: [EXPERIMENTAL] to_a2a: ADK Implementation for A2A support 
+(A2aAgentExecutor, RemoteA2aAgent and corresponding supporting components etc.) 
+is in experimental mode and is subjected to breaking changes.
+```
+
+**Conclusion**: Streaming limitation is expected for experimental A2A implementation.
+
+#### Files Modified
+- `test_agents/math_agent/agent.py:69` - Changed `stream=False` to `stream=True` (no effect due to ADK limitation)
+
+---
+
+*End of v2.1 Updates - 2025-11-10*

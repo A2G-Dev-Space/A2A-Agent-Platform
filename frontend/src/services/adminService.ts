@@ -1,8 +1,15 @@
 import api from './api';
 import type { User } from '@/types';
 
-// The User type from @/types is sufficient for user management info.
-export type UserManagementInfo = User;
+// V1 API returns simplified user info for management
+export interface UserManagementInfo {
+  id: number;
+  name: string;
+  email: string;
+  department: string;
+  role: 'PENDING' | 'USER' | 'ADMIN';
+  status: string;
+}
 
 export interface UserInvite {
     email: string;

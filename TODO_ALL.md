@@ -359,7 +359,15 @@ Key findings:
 > **Summary**: Settings page now properly filters tabs based on user role using Zustand `useAuthStore`. Non-admin users see only General and Platform Keys tabs, while admin users see additional tabs for User Management, LLM Management, and Statistics.
 
 ### 0.6. User Management & Admin Features
-**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
+**Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: 🟡 Partially Completed
+
+**Recent Bug Fixes** (2025-11-10):
+- ✅ Fixed User Management page empty table display (3 bugs fixed)
+  - Bug #1: Authentication token extraction from Zustand persist storage
+  - Bug #2: Field name mismatch (name/department vs username_kr/department_kr)
+  - Bug #3: Response unwrapping issue (double .data accessor)
+- ✅ Added admin role change dropdown functionality
+- See HISTORY_ALL.md Section 8.1 and 8.2 for complete details
 
 #### 0.6.1. User Approval/Rejection Workflow
 **Requirements**:
@@ -382,24 +390,35 @@ Key findings:
 - `repos/user-service/app/routers/admin.py` - Approve/reject endpoints
 
 #### 0.5.2. Role Management
+**Status**: 🟡 PARTIALLY COMPLETED (2025-11-10)
 **Requirements**:
-- Admin can change user roles: USER, TEAM_LEAD, ADMIN
-- Role dropdown in user management table
-- Confirmation modal for role changes
-- Role changes take effect immediately (token refresh may be needed)
-- Audit log for role changes
+- ✅ Admin can change user roles: USER, ADMIN (TEAM_LEAD not implemented)
+- ✅ Role dropdown in user management table
+- ❌ Confirmation modal for role changes
+- ✅ Role changes take effect immediately (token refresh may be needed)
+- ❌ Audit log for role changes
 
 **Implementation Steps**:
-1. Add role dropdown to user management table
-2. Implement role update API endpoint
-3. Add confirmation modal for role changes
-4. Create audit log entry for role changes
-5. Update user token claims if needed
+1. ✅ Add role dropdown to user management table (2025-11-10)
+2. ✅ Implement role update API endpoint (already existed)
+3. ❌ Add confirmation modal for role changes
+4. ❌ Create audit log entry for role changes
+5. ❌ Update user token claims if needed
 
-**Files to Create/Modify**:
-- `frontend/src/components/admin/UserRoleDropdown.tsx` - Role selector
-- `repos/user-service/app/routers/admin.py` - Role update endpoint
-- `repos/user-service/app/models/audit_log.py` - Audit logging
+**Completed** (2025-11-10):
+- Added `<select>` dropdown to user management table for USER/ADMIN role changes
+- Integrated with existing `PUT /api/admin/users/{user_id}/role` endpoint
+- Real-time UI updates via React Query invalidation
+- See HISTORY_ALL.md Section 8.2 for details
+
+**Remaining Work**:
+- Add confirmation modal before role changes
+- Implement audit logging for role changes
+- Add TEAM_LEAD role support
+- Token refresh mechanism for immediate role effect
+
+**Files Modified**:
+- `frontend/src/pages/Settings/UserManagementPage.tsx` - Added role change dropdown and mutation
 
 ### 0.7. Usage Statistics & Monitoring
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: ❌ Not Started
