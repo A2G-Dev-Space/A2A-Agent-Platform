@@ -21,9 +21,10 @@ interface LogEntry {
   log_id: number;
   timestamp: string;
   service_name: string;
-  agent_id?: number;
+  agent_id?: string;
   level: string;
   message: string;
+  log_type?: string;  // LLM, TOOL, AGENT, AGENT_TRANSFER
   metadata?: Record<string, any>;
   is_transfer: boolean;
 }
@@ -33,21 +34,72 @@ interface TraceViewProps {
 }
 
 // Log type icons and colors
-const getLogIcon = (message: string, isTransfer: boolean) => {
-  if (isTransfer) return { Icon: ArrowRightLeft, color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/50' };
+const getLogIcon = (log: LogEntry) => {
+  const { log_type, message, is_transfer, metadata } = log;
 
-  const lowerMsg = message.toLowerCase();
-  if (lowerMsg.includes('llm') || lowerMsg.includes('calling agent')) {
-    return { Icon: Send, color: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-900/50' };
-  }
-  if (lowerMsg.includes('receive') || lowerMsg.includes('response')) {
-    return { Icon: Phone, color: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-100 dark:bg-purple-900/50' };
-  }
-  if (lowerMsg.includes('tool')) {
-    return { Icon: Wrench, color: 'text-green-600 dark:text-green-300', bg: 'bg-green-100 dark:bg-green-900/50' };
+  // Agent transfer
+  if (is_transfer || log_type === 'AGENT_TRANSFER') {
+    return {
+      Icon: ArrowRightLeft,
+      label: 'Agent Transfer',
+      color: 'text-pink-600 dark:text-pink-400',
+      bg: 'bg-pink-100 dark:bg-pink-900/50'
+    };
   }
 
-  return { Icon: FileText, color: 'text-gray-600 dark:text-gray-300', bg: 'bg-gray-100 dark:bg-gray-800/50' };
+  // LLM events
+  if (log_type === 'LLM') {
+    // Check metadata.event_type for more specific type
+    const eventType = metadata?.event_type;
+    if (eventType === 'llm_request' || message.toLowerCase().includes('request')) {
+      return {
+        Icon: Send,
+        label: 'Send to LLM',
+        color: 'text-blue-600 dark:text-blue-300',
+        bg: 'bg-blue-100 dark:bg-blue-900/50'
+      };
+    } else if (eventType === 'llm_response' || message.toLowerCase().includes('response')) {
+      return {
+        Icon: Phone,
+        label: 'Receive from LLM',
+        color: 'text-purple-600 dark:text-purple-300',
+        bg: 'bg-purple-100 dark:bg-purple-900/50'
+      };
+    }
+    // Default LLM
+    return {
+      Icon: Send,
+      label: 'LLM Event',
+      color: 'text-blue-600 dark:text-blue-300',
+      bg: 'bg-blue-100 dark:bg-blue-900/50'
+    };
+  }
+
+  // Tool events
+  if (log_type === 'TOOL' || message.toLowerCase().includes('tool')) {
+    if (message.toLowerCase().includes('result')) {
+      return {
+        Icon: FileText,
+        label: 'Tool Result',
+        color: 'text-yellow-600 dark:text-yellow-400',
+        bg: 'bg-yellow-100 dark:bg-yellow-900/50'
+      };
+    }
+    return {
+      Icon: Wrench,
+      label: 'Tool Use',
+      color: 'text-green-600 dark:text-green-300',
+      bg: 'bg-green-100 dark:bg-green-900/50'
+    };
+  }
+
+  // Default
+  return {
+    Icon: FileText,
+    label: 'Event',
+    color: 'text-gray-600 dark:text-gray-300',
+    bg: 'bg-gray-100 dark:bg-gray-800/50'
+  };
 };
 
 // Level icons and colors
@@ -65,11 +117,22 @@ const getLevelIcon = (level: string) => {
   }
 };
 
+// Get agent color based on agent_id
+const getAgentColor = (agentId: string | undefined): string => {
+  if (!agentId) return 'gray';
+
+  // Hash agent_id to a consistent color
+  const colors = ['red', 'orange', 'amber', 'lime', 'emerald', 'teal', 'cyan', 'sky', 'indigo', 'violet', 'fuchsia', 'rose'];
+  const hash = agentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
+};
+
 const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { Icon, color, bg } = getLogIcon(log.message, log.is_transfer);
+  const { Icon, label, color, bg } = getLogIcon(log);
   const { Icon: LevelIcon, color: levelColor } = getLevelIcon(log.level);
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
+  const agentColor = getAgentColor(log.agent_id);
 
   return (
     <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -82,23 +145,35 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
         {/* Content */}
         <div className="flex flex-1 flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-xs sm:text-sm text-text-light dark:text-text-dark truncate">
-              {log.message}
+            <p className="font-bold text-xs sm:text-sm text-text-light dark:text-text-dark">
+              {label}
             </p>
-            <LevelIcon className={`h-3 w-3 flex-shrink-0 ${levelColor}`} />
+            {log.agent_id && (
+              <span
+                className={`inline-flex items-center rounded-full bg-${agentColor}-100 dark:bg-${agentColor}-900/30 px-2 py-0.5 text-[10px] font-semibold text-${agentColor}-700 dark:text-${agentColor}-300 border border-${agentColor}-200 dark:border-${agentColor}-800`}
+              >
+                {log.agent_id}
+              </span>
+            )}
+            {log.level !== 'INFO' && <LevelIcon className={`h-3 w-3 flex-shrink-0 ${levelColor}`} />}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+          <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
             <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-            <span>•</span>
-            <span className="truncate">{log.service_name}</span>
-            {log.agent_id && (
+            {log.service_name && (
               <>
                 <span>•</span>
-                <span>Agent {log.agent_id}</span>
+                <span className="truncate">{log.service_name}</span>
               </>
             )}
           </div>
+
+          {/* Message */}
+          {log.message && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              {log.message}
+            </p>
+          )}
 
           {/* Metadata toggle */}
           {hasMetadata && (

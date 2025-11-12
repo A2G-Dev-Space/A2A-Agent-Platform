@@ -9,6 +9,7 @@ import uuid
 
 from app.core.database import get_db, ChatSession
 from app.core.security import get_current_user
+from app.core.redis_client import get_redis_client, RedisClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ class SessionResponse(BaseModel):
     agent_id: int
     title: str
     created_at: datetime
+    llm_endpoint: Optional[str] = None  # Session-specific LLM Proxy endpoint
 
 class SessionListItem(BaseModel):
     session_id: str
@@ -35,7 +37,8 @@ class SessionListItem(BaseModel):
 async def create_session(
     request: SessionCreate,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    redis: RedisClient = Depends(get_redis_client)
 ):
     """Create new chat session"""
     session_id = str(uuid.uuid4())
@@ -53,12 +56,19 @@ async def create_session(
     await db.commit()
     await db.refresh(session)
 
+    # Store session → trace_id mapping in Redis
+    await redis.set_session_trace(session_id, trace_id)
+
+    # Generate session-specific LLM endpoint
+    llm_endpoint = f"http://localhost:9050/api/llm/v1/session/{session_id}"
+
     return SessionResponse(
         id=session_id,
         trace_id=trace_id,
         agent_id=session.agent_id,
         title=session.title,
-        created_at=session.created_at
+        created_at=session.created_at,
+        llm_endpoint=llm_endpoint
     )
 
 @router.get("/sessions/", response_model=List[SessionListItem])
@@ -111,19 +121,24 @@ async def get_session(
             detail="Access denied"
         )
 
+    # Generate session-specific LLM endpoint
+    llm_endpoint = f"http://localhost:9050/api/llm/v1/session/{session.session_id}"
+
     return SessionResponse(
         id=session.session_id,
         trace_id=session.trace_id,
         agent_id=session.agent_id,
         title=session.title,
-        created_at=session.created_at
+        created_at=session.created_at,
+        llm_endpoint=llm_endpoint
     )
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: str,
     current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    redis: RedisClient = Depends(get_redis_client)
 ):
     """Delete a chat session"""
     result = await db.execute(select(ChatSession).where(ChatSession.session_id == session_id))
@@ -144,5 +159,8 @@ async def delete_session(
 
     await db.delete(session)
     await db.commit()
+
+    # Clean up Redis mapping
+    await redis.delete_session_trace(session_id)
 
     return {"status": "deleted", "session_id": session_id}

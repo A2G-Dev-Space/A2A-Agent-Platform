@@ -40,7 +40,168 @@
 - `frontend/src/components/layout/Header.tsx` - Add user avatar with dropdown
 - `frontend/src/components/layout/UserDropdown.tsx` - Create new component
 
-### 0.2. Agent Integration & Workbench
+### 0.2. Session-Based Trace Routing via Chat Service Middleware (v2.3)
+**Priority**: 🔴 CRITICAL | **Effort**: 1 day | **Status**: 🟡 IN PROGRESS (2025-11-10)
+**Approach**: Option B - Chat Service Middleware (Zero Agent Changes)
+
+#### Problem Context
+- Agents are long-running processes with static `PLATFORM_LLM_ENDPOINT` configuration
+- Cannot dynamically receive session-specific endpoints per chat
+- Removing `/v1/chat/completions` endpoint broke existing agents (404 errors)
+- Need transparent session routing without ANY agent code changes
+
+#### Architecture Solution: Transparent Middleware
+
+**Data Flow**:
+```
+1. Frontend creates chat session
+   → Chat Service generates session_id + trace_id
+   → Stores mapping in Redis: session:trace:{session_id} → trace_id
+
+2. Agent calls generic endpoint (unchanged)
+   → POST http://localhost:9050/api/llm/v1/chat/completions
+   → Uses static PLATFORM_LLM_ENDPOINT from env vars
+
+3. Chat Service intercepts LLM calls from agent
+   → Extracts session_id from message context
+   → Injects X-Session-ID header before forwarding to LLM Proxy
+
+4. LLM Proxy receives request
+   → Reads X-Session-ID header
+   → Queries Redis to resolve trace_id
+   → Emits trace events with resolved trace_id
+
+5. Tracing Service receives events
+   → Stores logs with trace_id
+   → Frontend Trace Panel displays real-time logs
+```
+
+#### Implementation Steps
+
+**Step 1: Chat Service - Add session_id to agent A2A calls**
+- Location: `repos/chat-service/app/api/v1/messages.py`
+- Function: `send_message_to_agent()`
+- Modification:
+  ```python
+  async def send_message_to_agent(agent, session_id, message):
+      headers = {
+          "Accept": "text/event-stream",
+          "X-Session-ID": session_id  # Add this header
+      }
+      async with httpx.AsyncClient() as client:
+          async with client.stream("POST", agent_endpoint, headers=headers, json=payload) as response:
+              # ... stream handling
+  ```
+- **Impact**: Agent receives X-Session-ID header but doesn't need to handle it
+
+**Step 2: Chat Service - Use A2A contextId for session routing**
+- Location: `repos/chat-service/app/api/v1/messages.py`
+- Modification: Set contextId to session_id in A2A message
+- Implementation:
+  ```python
+  async def send_message_to_agent(session_id, agent_endpoint, message):
+      a2a_payload = {
+          "jsonrpc": "2.0",
+          "method": "message/send",
+          "params": {
+              "message": {
+                  "parts": [{"kind": "text", "text": message}]
+              },
+              "contextId": session_id  # Use session_id as contextId
+          }
+      }
+      headers = {"Accept": "text/event-stream"}
+      # Agent receives contextId in A2A protocol
+  ```
+- **Why**: A2A protocol's contextId is designed for session tracking
+- **Impact**: Agent receives session context through standard A2A protocol
+
+**Step 3: LLM Proxy - Restore generic endpoint with header-based routing**
+- Location: `repos/llm-proxy-service/app/api/openai_compatible.py`
+- Add back: `POST /v1/chat/completions` endpoint
+- Modification:
+  ```python
+  @openai_router.post("/chat/completions")
+  async def create_chat_completion(
+      request: ChatCompletionRequest,
+      authorization: Optional[str] = Header(None),
+      x_agent_id: Optional[str] = Header(None),
+      x_session_id: Optional[str] = Header(None)  # NEW: Read from header
+  ):
+      agent_id = x_agent_id or "unknown"
+
+      # Resolve trace_id from session_id if provided
+      trace_id = None
+      if x_session_id:
+          redis_client = await get_redis_client()
+          trace_id = await redis_client.get_session_trace(x_session_id)
+          logger.info(f"Resolved trace_id={trace_id} from X-Session-ID={x_session_id}")
+      else:
+          logger.warning("No X-Session-ID header, traces may not appear")
+
+      # ... rest of existing logic with trace_id
+  ```
+
+**Step 4: Keep session-specific endpoint for future use**
+- Location: Keep `/v1/session/{session_id}/chat/completions` endpoint
+- Purpose: For frameworks that support dynamic endpoint configuration
+- Status: Available but not required for ADK agents
+
+#### Files to Modify
+
+**Created**:
+- `repos/chat-service/app/middleware/llm_interceptor.py` - NEW middleware for transparent routing
+
+**Modified**:
+- `repos/chat-service/app/api/v1/messages.py` - Add X-Session-ID to agent calls
+- `repos/chat-service/app/main.py` - Register LLM interceptor middleware
+- `repos/llm-proxy-service/app/api/openai_compatible.py` - Restore /chat/completions with header support
+
+**Unchanged**:
+- `repos/llm-proxy-service/app/core/redis_client.py` - Already implemented
+- `repos/chat-service/app/core/redis_client.py` - Already implemented
+- Agent code - NO CHANGES NEEDED ✅
+
+#### Testing Checklist
+
+**Unit Tests**:
+- [ ] Chat Service middleware intercepts LLM calls
+- [ ] X-Session-ID header correctly injected
+- [ ] LLM Proxy reads header and resolves trace_id
+- [ ] Redis mapping lookup works
+
+**Integration Tests** (Playwright):
+- [ ] Create chat session → Verify session_id generated
+- [ ] Send message to agent → Verify X-Session-ID in logs
+- [ ] Agent calls LLM → Verify trace events emitted
+- [ ] Trace Panel → Verify real-time logs display
+- [ ] Multiple sessions → Verify isolation
+
+**Edge Cases**:
+- [ ] Missing X-Session-ID header → Graceful degradation
+- [ ] Invalid session_id → Log warning, proceed without trace
+- [ ] Expired Redis mapping → Trace unavailable but chat works
+- [ ] Agent restart → No configuration changes needed
+
+#### Success Criteria
+
+✅ **Zero Agent Changes**: Agents use static endpoint, no code modifications
+✅ **Transparent Routing**: Chat Service handles all session context
+✅ **Trace Isolation**: Each session has independent trace stream
+✅ **Backward Compatible**: Both generic and session-specific endpoints work
+✅ **E2E Verified**: Playwright confirms traces appear in UI
+
+#### Rollback Plan
+
+If implementation fails:
+1. Keep generic `/v1/chat/completions` endpoint (current broken state)
+2. Remove middleware (minimal risk)
+3. Agent functionality restored immediately
+4. Investigate alternative approaches
+
+---
+
+### 0.3. Agent Integration & Workbench
 **Priority**: 🔴 CRITICAL | **Effort**: 1 week | **Status**: 🟡 In Progress
 
 #### 0.2.1. Add ADK/Agno Agents to Workbench

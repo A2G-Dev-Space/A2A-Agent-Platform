@@ -4,6 +4,9 @@ import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp } from 'lu
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework } from '@/types';
 import { agentService } from '@/services/agentService';
+import { generateFixedTraceId, getPlatformLlmEndpointUrl } from '@/utils/trace';
+import type { ChatAdapter } from '@/adapters/chat';
+import { ChatAdapterFactory } from '@/adapters/chat';
 
 interface Message {
   id: string;
@@ -13,20 +16,27 @@ interface Message {
 }
 
 interface ChatPlaygroundProps {
-  sessionId: string;
-  agentName: string;
+  sessionId?: string;  // Optional for workbench mode
+  agentName?: string;  // Optional, will use agent.name if not provided
   agent: Agent;
+  onTraceIdReceived?: (traceId: string) => void;  // Callback for dynamic trace_id
 }
 
-export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agentName, agent }) => {
+export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agentName, agent, onTraceIdReceived }) => {
+  // Use agent.name if agentName is not provided
+  const displayName = agentName || agent.name;
   const { t } = useTranslation();
-  const { accessToken } = useAuthStore();
+  const { accessToken, user } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Generate fixed trace_id for this user+agent combination
+  const traceId = user ? generateFixedTraceId(user.username, agent.id) : null;
+  const platformLlmEndpoint = traceId ? getPlatformLlmEndpointUrl(traceId) : null;
 
   // Configuration state
   const [showConfig, setShowConfig] = useState(false);
@@ -38,114 +48,51 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   const [agnoTeams, setAgnoTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [agnoAgents, setAgnoAgents] = useState<Array<{ id: string; name: string }>>([]);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [agentEndpointError, setAgentEndpointError] = useState<string>('');
 
-  // Use ref to track streaming message without causing re-renders
-  const streamingMessageRef = useRef('');
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Chat adapter for framework-specific communication
+  const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
   // API base URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
 
-  // SSE streaming handler
-  const handleSSEStream = async (userMessage: string) => {
-    setIsStreaming(true);
-    setStreamingMessage('');
-    streamingMessageRef.current = '';
+  // Initialize chat adapter when component mounts or agent/framework changes
+  useEffect(() => {
+    if (!accessToken) {
+      console.log('[ChatPlayground] No access token, skipping adapter initialization');
+      return;
+    }
 
-    // Create abort controller for cancellation
-    abortControllerRef.current = new AbortController();
+    console.log('[ChatPlayground] Initializing chat adapter for framework:', agent.framework);
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/chat/sessions/${sessionId}/messages/stream`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ content: userMessage }),
-          signal: abortControllerRef.current.signal,
-        }
-      );
+      // Create adapter for the agent's framework
+      const adapter = ChatAdapterFactory.createAdapter(agent.framework);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // Initialize adapter with configuration
+      adapter.initialize({
+        agentId: agent.id,
+        agentEndpoint: agent.a2a_endpoint || '',
+        apiBaseUrl: API_BASE_URL,
+        accessToken: accessToken,
+        sessionId: sessionId,
+      });
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No response body reader available');
-      }
-
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-
-        // Keep the last incomplete line in the buffer
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              console.log('[SSE] Received event:', data.type, data);
-
-              if (data.type === 'stream_start') {
-                console.log('[SSE] Stream started');
-              } else if (data.type === 'text_token') {
-                console.log('[SSE] Processing text_token:', data.content);
-                streamingMessageRef.current += data.content;
-                setStreamingMessage(streamingMessageRef.current);
-              } else if (data.type === 'stream_end') {
-                console.log('[SSE] Stream ended');
-                console.log('[SSE] Final accumulated content:', streamingMessageRef.current);
-                console.log('[SSE] Final accumulated content length:', streamingMessageRef.current.length);
-                // Add complete assistant message
-                const finalContent = streamingMessageRef.current;
-                console.log('[SSE] Adding message with content:', finalContent);
-                setMessages((prev) => {
-                  const newMessages = [
-                    ...prev,
-                    {
-                      id: `msg-${Date.now()}`,
-                      role: 'assistant',
-                      content: finalContent,
-                      timestamp: new Date(),
-                    },
-                  ];
-                  console.log('[SSE] New messages array:', newMessages);
-                  return newMessages;
-                });
-                setStreamingMessage('');
-                streamingMessageRef.current = '';
-                setIsStreaming(false);
-              } else if (data.type === 'error') {
-                console.error('[SSE] Error:', data.message);
-                setIsStreaming(false);
-              }
-            } catch (err) {
-              console.warn('[SSE] Failed to parse event data:', line);
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('[SSE] Stream aborted');
-      } else {
-        console.error('[SSE] Stream error:', error);
-      }
-      setIsStreaming(false);
+      chatAdapterRef.current = adapter;
+      console.log('[ChatPlayground] Chat adapter initialized successfully');
+    } catch (error) {
+      console.error('[ChatPlayground] Failed to create chat adapter:', error);
     }
-  };
+
+    // Cleanup on unmount or when agent changes
+    return () => {
+      if (chatAdapterRef.current) {
+        console.log('[ChatPlayground] Disposing chat adapter');
+        chatAdapterRef.current.dispose();
+        chatAdapterRef.current = null;
+      }
+    };
+  }, [agent.id, agent.framework, accessToken, sessionId, API_BASE_URL]);
 
   // Fetch Agno teams when agent is Agno framework
   useEffect(() => {
@@ -176,8 +123,15 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
+  // Send trace_id to parent component when available
+  useEffect(() => {
+    if (traceId && onTraceIdReceived) {
+      onTraceIdReceived(traceId);
+    }
+  }, [traceId, onTraceIdReceived]);
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isStreaming) return;
+    if (!inputValue.trim() || isStreaming || !chatAdapterRef.current) return;
 
     const userMessageContent = inputValue.trim();
 
@@ -196,8 +150,53 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
       textareaRef.current.style.height = 'auto';
     }
 
-    // Send message via REST + SSE
-    await handleSSEStream(userMessageContent);
+    // Set streaming state
+    setIsStreaming(true);
+    setStreamingMessage('');
+
+    // Send message via adapter
+    try {
+      // Build conversation history from existing messages (for Workbench mode)
+      const conversationHistory = messages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
+
+      await chatAdapterRef.current.sendMessage(
+        { content: userMessageContent },
+        {
+          onChunk: (chunk) => {
+            console.log('[ChatPlayground] Received chunk, length:', chunk.content.length);
+            setStreamingMessage(chunk.content);
+          },
+          onComplete: (response) => {
+            console.log('[ChatPlayground] Message complete, length:', response.content.length);
+            // Add complete assistant message
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `msg-${Date.now()}`,
+                role: 'assistant',
+                content: response.content,
+                timestamp: response.timestamp,
+              },
+            ]);
+            setStreamingMessage('');
+            setIsStreaming(false);
+          },
+          onError: (error) => {
+            console.error('[ChatPlayground] Chat error:', error);
+            setIsStreaming(false);
+            // Optionally show error to user
+            alert(`Chat error: ${error.message}`);
+          },
+        },
+        conversationHistory // Pass conversation history for context
+      );
+    } catch (error) {
+      console.error('[ChatPlayground] Failed to send message:', error);
+      setIsStreaming(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -208,25 +207,15 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   };
 
   const handleClearSession = () => {
-    // Abort any ongoing stream
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    // Cancel any ongoing message
+    if (chatAdapterRef.current) {
+      chatAdapterRef.current.cancel();
     }
 
     setMessages([]);
     setStreamingMessage('');
     setIsStreaming(false);
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
   // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -303,7 +292,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
       <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
         <div className="flex flex-col">
           <h2 className="text-base font-bold">{t('workbench.chatPlayground')}</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{agentName}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -352,25 +341,31 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
                 Platform LLM Proxy Endpoint
               </h4>
-              <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded">
-                <code className="text-xs text-gray-700 dark:text-gray-300">
-                  http://localhost:9050/api/llm/v1
-                </code>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`http://localhost:9050/api/llm/v1`);
-                  }}
-                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1"
-                  title="Copy to clipboard"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
-                Use this endpoint with your platform API key for LLM access
-              </p>
+              {platformLlmEndpoint ? (
+                <>
+                  <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded">
+                    <code className="text-xs text-gray-700 dark:text-gray-300 break-all">
+                      {platformLlmEndpoint}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(platformLlmEndpoint);
+                      }}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 ml-2 flex-shrink-0"
+                      title="Copy to clipboard"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+                    Use this endpoint with your platform API key for LLM access. Includes trace_id for monitoring.
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400">Loading trace_id...</p>
+              )}
             </div>
 
             {/* Agent A2A Endpoint */}
@@ -575,7 +570,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                   }`}
                 >
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    {message.role === 'user' ? t('workbench.you') : agentName}
+                    {message.role === 'user' ? t('workbench.you') : displayName}
                   </p>
                   <div
                     className={`rounded-lg p-3 text-sm leading-relaxed ${

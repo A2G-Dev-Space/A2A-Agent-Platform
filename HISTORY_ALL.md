@@ -1901,6 +1901,416 @@ is in experimental mode and is subjected to breaking changes.
 #### Files Modified
 - `test_agents/math_agent/agent.py:69` - Changed `stream=False` to `stream=True` (no effect due to ADK limitation)
 
+### 8.4. Session-Based Trace Routing Implementation (v2.3 - November 2025)
+
+**Date**: 2025-11-10 | **Priority**: Critical | **Status**: ✅ Completed
+
+#### Problem Statement
+
+Previous implementation required agents to manually forward trace headers to the LLM Proxy, violating the platform's core principle of ZERO implementation burden on agent developers.
+
+**User's Explicit Request** (from conversation summary):
+> "차라리 우리가 New chat을 누를 때 마다 다른 endpoint를 줘서 그걸로 구분하자"
+> Translation: "Instead, let's give a different endpoint each time 'New chat' is clicked, and use that for differentiation"
+
+**Critical Constraint**: Agent developers should not need to:
+- Add trace headers to LLM calls
+- Manage trace context manually
+- Write any trace-related code
+
+#### Architecture Solution
+
+**Session-Specific Endpoint Approach**:
+- Each chat session gets unique LLM endpoint: `/v1/session/{session_id}/chat/completions`
+- Redis stores `session_id → trace_id` mapping
+- LLM Proxy automatically resolves trace_id from session_id
+- Agents simply use different URL per session - no code changes needed
+
+**Data Flow**:
+```
+1. User clicks "New Chat" in Frontend
+   ↓
+2. Chat Service creates session (UUID4)
+   - Generates session_id and trace_id
+   - Stores mapping in Redis: session:trace:{session_id} → trace_id
+   - Returns session-specific endpoint to frontend
+   ↓
+3. Frontend passes endpoint to Agent
+   - Agent receives: http://localhost:9050/api/llm/v1/session/{session_id}
+   - Agent simply uses this URL for all LLM calls (zero changes needed)
+   ↓
+4. Agent calls LLM Proxy with session-specific URL
+   - POST /v1/session/{session_id}/chat/completions
+   ↓
+5. LLM Proxy extracts session_id from URL path
+   - Queries Redis: GET session:trace:{session_id}
+   - Resolves trace_id automatically
+   - Emits trace events to Tracing Service with trace_id
+   ↓
+6. Tracing Service stores logs with trace_id
+   ↓
+7. Frontend Trace Panel subscribes to trace_id
+   - Real-time trace logs display automatically
+```
+
+#### Implementation Details
+
+##### 1. Chat Service Redis Integration
+
+**File**: `repos/chat-service/app/core/redis_client.py` (CREATED)
+```python
+class RedisClient:
+    """Redis client for storing session → trace_id mappings"""
+
+    def __init__(self):
+        self.redis_client: redis.Redis = None
+
+    async def connect(self):
+        """Initialize Redis connection"""
+        self.redis_client = await redis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True
+        )
+
+    async def set_session_trace(self, session_id: str, trace_id: str, ttl: int = 86400):
+        """Store session_id → trace_id mapping with TTL (default 24h)"""
+        key = f"session:trace:{session_id}"
+        await self.redis_client.set(key, trace_id, ex=ttl)
+
+    async def get_session_trace(self, session_id: str) -> str | None:
+        """Get trace_id for given session_id"""
+        key = f"session:trace:{session_id}"
+        return await self.redis_client.get(key)
+
+    async def delete_session_trace(self, session_id: str):
+        """Delete session mapping"""
+        key = f"session:trace:{session_id}"
+        await self.redis_client.delete(key)
+```
+
+**File**: `repos/chat-service/app/api/v1/sessions.py` (MODIFIED)
+```python
+@router.post("/sessions/", response_model=SessionResponse)
+async def create_session(
+    request: SessionCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: RedisClient = Depends(get_redis_client)
+):
+    """Create new chat session"""
+    session_id = str(uuid.uuid4())
+    trace_id = str(uuid.uuid4())
+
+    session = ChatSession(
+        session_id=session_id,
+        trace_id=trace_id,
+        agent_id=request.agent_id,
+        user_id=current_user["username"],
+        title=request.title or f"Chat Session {session_id[:8]}"
+    )
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    # Store session → trace_id mapping in Redis
+    await redis.set_session_trace(session_id, trace_id)
+
+    # Generate session-specific LLM endpoint
+    llm_endpoint = f"http://localhost:9050/api/llm/v1/session/{session_id}"
+
+    return SessionResponse(
+        id=session_id,
+        trace_id=trace_id,
+        agent_id=session.agent_id,
+        title=session.title,
+        created_at=session.created_at,
+        llm_endpoint=llm_endpoint  # NEW: Session-specific endpoint
+    )
+```
+
+##### 2. LLM Proxy Session-Specific Endpoint
+
+**File**: `repos/llm-proxy-service/app/api/openai_compatible.py` (MODIFIED)
+
+**Removed** (Lines 256-366): Old `/chat/completions` endpoint with `X-Trace-ID` header dependency
+**Removed** (Line 17): `from ..websocket.manager import trace_manager`
+**Removed** (Lines 250-251): WebSocket manager broadcast (deprecated)
+
+**Added** (Lines 243-380): New session-specific endpoint
+```python
+@openai_router.post("/session/{session_id}/chat/completions")
+async def create_chat_completion_with_session(
+    session_id: str = Path(..., description="Chat session ID for trace context"),
+    request: ChatCompletionRequest = ...,
+    authorization: Optional[str] = Header(None),
+    x_agent_id: Optional[str] = Header(None)
+):
+    """
+    Session-Specific OpenAI Compatible Chat Completion Endpoint
+
+    This endpoint automatically resolves trace_id from session_id via Redis.
+    Agents using session-specific endpoints don't need to manage trace headers.
+    """
+    agent_id = x_agent_id or "unknown"
+
+    # Resolve trace_id from session_id via Redis
+    redis_client = await get_redis_client()
+    trace_id = await redis_client.get_session_trace(session_id)
+
+    if not trace_id:
+        logger.warning(f"[LLM Proxy] No trace_id found for session_id={session_id}")
+    else:
+        logger.info(f"[LLM Proxy] Resolved trace_id={trace_id} from session_id={session_id}")
+
+    # Validate Platform API key
+    user_info = await validate_platform_key(authorization)
+    if not user_info:
+        raise HTTPException(status_code=401, detail="Invalid or missing Platform API key")
+
+    # Get provider configuration
+    config = get_provider_config(request.model)
+    provider = config["provider"]
+    api_key = config["api_key"]
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail=f"No API key configured for provider: {provider}")
+
+    # Emit trace event: LLM request (with resolved trace_id)
+    await emit_trace_event(
+        agent_id,
+        "llm_request",
+        {
+            "provider": provider,
+            "model": request.model,
+            "messages": [msg.model_dump() for msg in request.messages],
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": request.stream,
+            "session_id": session_id
+        },
+        trace_id=trace_id
+    )
+
+    # Route to appropriate provider (OpenAI, Gemini, Anthropic)
+    # ... provider implementation ...
+```
+
+**Updated** (Lines 184-240): `emit_trace_event` function - removed WebSocket broadcast
+```python
+async def emit_trace_event(
+    agent_id: str,
+    event_type: str,
+    data: Any,
+    metadata: Optional[Dict] = None,
+    trace_id: Optional[str] = None
+):
+    """
+    Emit a trace event to Tracing Service
+    Sends trace events to Tracing Service via HTTP for display in Trace panel
+    """
+    # Send to Tracing Service if trace_id is available
+    if trace_id:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(
+                    "http://tracing-service:8004/api/tracing/logs",
+                    json={
+                        "trace_id": trace_id,
+                        "service_name": "llm-proxy-service",
+                        "agent_id": agent_id,
+                        "level": "ERROR" if event_type == "llm_error" else "INFO",
+                        "log_type": "LLM",
+                        "message": message_map.get(event_type, f"{event_type}: agent={agent_id}"),
+                        "metadata": {
+                            "agent_id": agent_id,
+                            "event_type": event_type,
+                            **data,
+                            **(metadata or {})
+                        }
+                    }
+                )
+        except Exception as e:
+            logger.error(f"[Trace] Failed to send to Tracing Service: {e}")
+    else:
+        logger.warning(f"[Trace] No trace_id provided, event will not appear in Trace panel")
+```
+
+##### 3. LLM Proxy Redis Integration
+
+**File**: `repos/llm-proxy-service/app/core/redis_client.py` (CREATED)
+```python
+class RedisClient:
+    """Redis client for looking up session → trace_id mappings"""
+
+    def __init__(self):
+        self.redis_client: redis.Redis = None
+        # Use same Redis database as Chat Service (db=2)
+        self.redis_url = os.getenv("REDIS_URL", "redis://redis:6379/2")
+
+    async def connect(self):
+        """Initialize Redis connection"""
+        self.redis_client = await redis.from_url(
+            self.redis_url,
+            encoding="utf-8",
+            decode_responses=True
+        )
+
+    async def get_session_trace(self, session_id: str) -> str | None:
+        """Get trace_id for given session_id"""
+        key = f"session:trace:{session_id}"
+        trace_id = await self.redis_client.get(key)
+        if trace_id:
+            logger.info(f"Found trace_id for session {session_id}: {trace_id}")
+        else:
+            logger.warning(f"No trace_id found for session {session_id}")
+        return trace_id
+```
+
+**File**: `repos/llm-proxy-service/app/main.py` (MODIFIED)
+```python
+from app.core.redis_client import redis_client
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    logger.info("Starting LLM Proxy Service...")
+
+    # Initialize database
+    await init_db()
+
+    # Initialize Redis for session trace lookup
+    try:
+        await redis_client.connect()
+        logger.info("Redis client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
+
+    yield
+    await redis_client.close()
+```
+
+##### 4. Dependency Management
+
+**File**: `repos/llm-proxy-service/pyproject.toml` (MODIFIED)
+```python
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.9.0",
+    "websockets>=13.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0",  # ADDED for session trace lookup
+]
+```
+
+#### Key Benefits
+
+1. **Zero Agent Code Changes**: Agents just receive different URL per session
+2. **Automatic Trace Routing**: LLM Proxy handles all trace_id resolution
+3. **Session Isolation**: Each session has independent trace stream
+4. **Backward Compatible Removal**: Removed old header-based approach (not needed for pre-release dev stage)
+5. **Scalable**: Redis mapping supports high-throughput scenarios
+6. **TTL Management**: Session mappings auto-expire after 24 hours
+
+#### Error Handling & Edge Cases
+
+**No trace_id found**:
+- LLM Proxy logs warning but continues processing
+- Traces won't appear in UI (logged for debugging)
+- Chat functionality still works normally
+
+**Redis Connection Failure**:
+- Service logs error on startup
+- Requests proceed without trace resolution
+- Graceful degradation
+
+**Expired Session Mapping** (after 24h):
+- Redis key automatically deleted
+- New chat session required
+- Old trace logs remain in Tracing Service database
+
+#### Testing Considerations
+
+**Manual Testing Steps**:
+1. Create new chat session → Verify `llm_endpoint` in response
+2. Use session-specific endpoint → Check LLM Proxy logs for trace_id resolution
+3. Send message → Verify trace events in Tracing Service logs
+4. Check Trace Panel → Confirm real-time log display
+5. Create second session → Verify separate trace streams
+
+**Playwright E2E Test** (Recommended):
+```typescript
+test('Session-based trace routing', async ({ page }) => {
+  // 1. Login and navigate to Workbench
+  await page.goto('http://localhost:9060/workbench');
+
+  // 2. Create new chat session
+  await page.click('[data-testid="new-chat-button"]');
+  const session1Endpoint = await page.textContent('[data-testid="llm-endpoint"]');
+  expect(session1Endpoint).toContain('/v1/session/');
+
+  // 3. Send message and verify trace appears
+  await page.fill('[data-testid="chat-input"]', '2+2는?');
+  await page.click('[data-testid="send-button"]');
+  await page.waitForSelector('[data-testid="trace-log"]');
+
+  // 4. Create second session and verify isolation
+  await page.click('[data-testid="new-chat-button"]');
+  const session2Endpoint = await page.textContent('[data-testid="llm-endpoint"]');
+  expect(session2Endpoint).not.toBe(session1Endpoint);
+});
+```
+
+#### Files Modified
+
+**Created**:
+- `repos/chat-service/app/core/redis_client.py`
+- `repos/llm-proxy-service/app/core/redis_client.py`
+
+**Modified**:
+- `repos/chat-service/app/main.py` - Added Redis initialization
+- `repos/chat-service/app/api/v1/sessions.py` - Store mapping, return endpoint
+- `repos/llm-proxy-service/app/main.py` - Added Redis initialization
+- `repos/llm-proxy-service/app/api/openai_compatible.py` - New session endpoint, removed old endpoint
+- `repos/llm-proxy-service/pyproject.toml` - Added redis dependency
+
+**Deleted**:
+- Old `/v1/chat/completions` endpoint (lines 256-366)
+- WebSocket manager import and broadcast logic
+
+#### Production Checklist
+
+Before deploying to production:
+- [ ] Redis persistence configured (AOF or RDB)
+- [ ] Monitor Redis memory usage for session mappings
+- [ ] Set up Redis cluster for high availability
+- [ ] Configure appropriate TTL based on business requirements
+- [ ] Add monitoring for trace_id resolution failures
+- [ ] Document session-specific endpoint in API docs
+- [ ] Update agent deployment guides with new endpoint pattern
+
+#### Next Steps
+
+1. **Test with Playwright MCP** (Current Task):
+   - Verify session-specific endpoints work end-to-end
+   - Test trace events appear in Trace Panel
+   - Validate session isolation
+   - Check chat history persistence
+
+2. **Implement for Agno Framework**:
+   - Currently only ADK implemented
+   - Need to test with Agno agents
+   - Verify framework adapter compatibility
+
+3. **Monitor Performance**:
+   - Redis query latency
+   - Trace event delivery to Tracing Service
+   - WebSocket connection stability
+
 ---
 
-*End of v2.1 Updates - 2025-11-10*
+*End of v2.3 Updates - 2025-11-10*

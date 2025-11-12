@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Input, Textarea, Button } from '@/components/ui';
 import { AgentFramework, AgentStatus, HealthStatus } from '@/types';
 import { agentService } from '@/services/agentService';
@@ -16,7 +17,6 @@ const agentSchema = z.object({
   name: z.string().min(3, 'Agent name must be at least 3 characters').max(50, 'Agent name must be less than 50 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description must be less than 500 characters'),
   framework: z.nativeEnum(AgentFramework, { required_error: 'Framework selection is required' }),
-  url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)'),
   documentationUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   logo: z.instanceof(File).optional(),
@@ -52,6 +52,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -64,7 +65,6 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     defaultValues: {
       name: '',
       description: '',
-      url: '',
       version: '',
       documentationUrl: '',
       color: colorSwatches[4], // purple default
@@ -74,6 +74,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
 
   const selectedColor = watch('color');
   const selectedCapabilities = watch('capabilities');
+  const [customCapability, setCustomCapability] = useState('');
 
   const onSubmit = async (data: AgentFormData) => {
     console.log('Form data:', data);
@@ -83,7 +84,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
         name: data.name,
         description: data.description,
         framework: data.framework,
-        a2a_endpoint: data.url || undefined, // Optional - can be added later via Chat&Debug
+        // a2a_endpoint will be added later via Chat&Debug connection
         capabilities: {
           skills: data.capabilities,
           version: data.version,
@@ -97,11 +98,11 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
         health_status: HealthStatus.UNKNOWN,
       });
 
-      // Close modal on success
-      onClose();
+      // Invalidate and refetch the agents list
+      queryClient.invalidateQueries({ queryKey: ['developmentAgents'] });
 
-      // Refresh agent list (React Query will handle this automatically)
-      window.location.reload(); // Temporary solution - should use query invalidation
+      // Close modal
+      onClose();
     } catch (error) {
       console.error('Failed to create agent:', error);
       // TODO: Show error toast notification
@@ -147,6 +148,24 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const addCustomCapability = () => {
+    if (customCapability.trim()) {
+      const current = selectedCapabilities || [];
+      if (!current.includes(customCapability.trim())) {
+        setValue('capabilities', [...current, customCapability.trim()]);
+        setCustomCapability('');
+      }
+    }
+  };
+
+  const removeCapability = (capability: string) => {
+    const current = selectedCapabilities || [];
+    setValue(
+      'capabilities',
+      current.filter((c) => c !== capability)
+    );
+  };
+
   return (
     <Modal
       open={isOpen}
@@ -156,7 +175,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       size="lg"
     >
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Modal.Body className="space-y-6">
+          <Modal.Body className="space-y-6">
           {/* Logo & Color + Name & Description Section */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-6 items-start">
             {/* Left: Name & Description */}
@@ -244,22 +263,13 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* URL & Version */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label={t('createAgent.urlLabel', 'URL')}
-              placeholder="https://example.com/agent"
-              type="url"
-              error={errors.url?.message}
-              {...register('url')}
-            />
-            <Input
-              label={t('createAgent.versionLabel', 'Version')}
-              placeholder="e.g., 1.0.0"
-              error={errors.version?.message}
-              {...register('version')}
-            />
-          </div>
+          {/* Version */}
+          <Input
+            label={t('createAgent.versionLabel', 'Version')}
+            placeholder="e.g., 1.0.0"
+            error={errors.version?.message}
+            {...register('version')}
+          />
 
           {/* Documentation URL */}
           <Input
@@ -304,10 +314,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
           </div>
 
           {/* Capabilities */}
-          <div className="flex flex-col">
-            <label className="text-base font-medium text-text-light-primary dark:text-text-dark-primary mb-2">
+          <div className="flex flex-col gap-4">
+            <label className="text-base font-medium text-text-light-primary dark:text-text-dark-primary">
               {t('createAgent.capabilitiesLabel', 'Capabilities')}
             </label>
+
+            {/* Predefined Capabilities */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {capabilities.map((capability) => (
                 <label
@@ -326,8 +338,61 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
                 </label>
               ))}
             </div>
+
+            {/* Custom Capabilities */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
+                Add Custom Capability
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customCapability}
+                  onChange={(e) => setCustomCapability(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomCapability();
+                    }
+                  }}
+                  placeholder="Enter custom capability"
+                  className="flex-1 rounded-lg px-4 py-2 text-sm bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary border border-border-light dark:border-border-dark focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-none transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomCapability}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Display custom capabilities as tags */}
+              {selectedCapabilities && selectedCapabilities.filter(cap => !capabilities.includes(cap)).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedCapabilities
+                    .filter(cap => !capabilities.includes(cap))
+                    .map((capability) => (
+                      <span
+                        key={capability}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-primary/10 text-primary border border-primary/20"
+                      >
+                        {capability}
+                        <button
+                          type="button"
+                          onClick={() => removeCapability(capability)}
+                          className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </span>
+                    ))}
+                </div>
+              )}
+            </div>
+
             {errors.capabilities && (
-              <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+              <p className="text-sm text-red-500 flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">error</span>
                 {errors.capabilities.message}
               </p>

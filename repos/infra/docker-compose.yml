@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: a2g-postgres-dev
+    container_name: a2g-postgres
     environment:
       POSTGRES_USER: dev_user
       POSTGRES_PASSWORD: dev_password
@@ -23,7 +23,7 @@ services:
   # Redis Cache & Message Broker
   redis:
     image: redis:7-alpine
-    container_name: a2g-redis-dev
+    container_name: a2g-redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
@@ -279,8 +279,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
