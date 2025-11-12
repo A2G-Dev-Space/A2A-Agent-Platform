@@ -124,14 +124,41 @@ const getLevelIcon = (level: string) => {
   }
 };
 
-// Get agent color based on agent_id
-const getAgentColor = (agentId: string | undefined): string => {
-  if (!agentId) return 'gray';
+// Get agent color based on agent_id (returns actual color values, not Tailwind class names)
+const getAgentColor = (agentId: string | undefined) => {
+  if (!agentId) return { bg: '#e5e7eb', text: '#6b7280', border: '#d1d5db' };
 
   // Hash agent_id to a consistent color
-  const colors = ['red', 'orange', 'amber', 'lime', 'emerald', 'teal', 'cyan', 'sky', 'indigo', 'violet', 'fuchsia', 'rose'];
+  const colorSchemes = [
+    { bg: '#fee2e2', text: '#dc2626', border: '#f87171' }, // red
+    { bg: '#fed7aa', text: '#ea580c', border: '#fb923c' }, // orange
+    { bg: '#fef3c7', text: '#d97706', border: '#fbbf24' }, // amber
+    { bg: '#ecfccb', text: '#65a30d', border: '#a3e635' }, // lime
+    { bg: '#d1fae5', text: '#059669', border: '#34d399' }, // emerald
+    { bg: '#ccfbf1', text: '#0d9488', border: '#2dd4bf' }, // teal
+    { bg: '#cffafe', text: '#0891b2', border: '#22d3ee' }, // cyan
+    { bg: '#e0f2fe', text: '#0284c7', border: '#38bdf8' }, // sky
+    { bg: '#e0e7ff', text: '#4f46e5', border: '#818cf8' }, // indigo
+    { bg: '#ede9fe', text: '#7c3aed', border: '#a78bfa' }, // violet
+    { bg: '#fae8ff', text: '#c026d3', border: '#e879f9' }, // fuchsia
+    { bg: '#ffe4e6', text: '#e11d48', border: '#fb7185' }, // rose
+  ];
+
   const hash = agentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return colors[hash % colors.length];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  const scheme = colorSchemes[hash % colorSchemes.length];
+
+  // Adjust for dark mode
+  if (isDark) {
+    return {
+      bg: scheme.text + '20', // 20% opacity
+      text: scheme.border,
+      border: scheme.text + '60' // 60% opacity
+    };
+  }
+
+  return scheme;
 };
 
 const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
@@ -157,7 +184,12 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
             </p>
             {log.agent_id && (
               <span
-                className={`inline-flex items-center rounded-full bg-${agentColor}-100 dark:bg-${agentColor}-900/30 px-2 py-0.5 text-[10px] font-semibold text-${agentColor}-700 dark:text-${agentColor}-300 border border-${agentColor}-200 dark:border-${agentColor}-800`}
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{
+                  backgroundColor: agentColor.bg,
+                  color: agentColor.text,
+                  border: `1px solid ${agentColor.border}`
+                }}
               >
                 {log.agent_id}
               </span>
@@ -250,13 +282,26 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   return (
     <div className="flex flex-col bg-surface-light dark:bg-surface-dark md:col-span-1 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
-      {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
+      {/* Header with red accent */}
+      <div
+        className="flex h-16 items-center justify-between px-4"
+        style={{
+          borderBottom: '2px solid',
+          borderColor: 'var(--color-workbench-primary, #EA2831)',
+          backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+            ? 'rgba(234, 40, 49, 0.05)'
+            : 'rgba(234, 40, 49, 0.02)'
+        }}
+      >
         <div className="flex flex-col">
-          <h2 className="text-base font-bold">{t('workbench.trace')}</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+            {t('workbench.trace')}
+          </h2>
           <div className="flex items-center gap-2 text-xs">
             {isConnected ? (
-              <span className="text-green-500">{t('workbench.connected')}</span>
+              <span style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+                {t('workbench.connected')}
+              </span>
             ) : (
               <span className="text-red-500">{t('workbench.disconnected')}</span>
             )}
@@ -265,7 +310,23 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
         </div>
         <button
           onClick={handleClearLogs}
-          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 text-gray-600 dark:text-gray-300 gap-2 text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
+          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 gap-2 text-sm font-medium transition-all"
+          style={{
+            color: '#6b7280',
+            border: '1px solid var(--color-border-light, #e5e7eb)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-workbench-primary, #EA2831)';
+            e.currentTarget.style.color = 'var(--color-workbench-primary, #EA2831)';
+            e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+              ? 'rgba(234, 40, 49, 0.1)'
+              : 'rgba(234, 40, 49, 0.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border-light, #e5e7eb)';
+            e.currentTarget.style.color = '#6b7280';
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
           title={t('workbench.clearLogs')}
         >
           <Trash2 className="h-4 w-4" />

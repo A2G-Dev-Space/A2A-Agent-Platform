@@ -288,23 +288,62 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   return (
     <div className="flex flex-col bg-panel-light dark:bg-panel-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
-      {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
+      {/* Header with red accent */}
+      <div
+        className="flex h-16 items-center justify-between px-4"
+        style={{
+          borderBottom: '2px solid',
+          borderColor: 'var(--color-workbench-primary, #EA2831)',
+          backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+            ? 'rgba(234, 40, 49, 0.05)'
+            : 'rgba(234, 40, 49, 0.02)'
+        }}
+      >
         <div className="flex flex-col">
-          <h2 className="text-base font-bold">{t('workbench.chatPlayground')}</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+            {t('workbench.chatPlayground')}
+          </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowConfig(!showConfig)}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
+            style={{
+              color: showConfig ? 'var(--color-workbench-primary, #EA2831)' : '#6b7280',
+              backgroundColor: showConfig
+                ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.1)' : 'rgba(234, 40, 49, 0.08)')
+                : 'transparent',
+              border: '1px solid',
+              borderColor: showConfig ? 'var(--color-workbench-primary, #EA2831)' : 'var(--color-border-light, #e5e7eb)'
+            }}
             title="Configuration"
           >
             <Settings className="h-4 w-4" />
           </button>
           <button
             onClick={handleClearSession}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 text-gray-600 dark:text-gray-300 gap-2 text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 gap-2 text-sm font-medium transition-all hover:border-red-400"
+            style={{
+              color: '#6b7280',
+              border: '1px solid var(--color-border-light, #e5e7eb)',
+              ':hover': {
+                borderColor: 'var(--color-workbench-primary, #EA2831)',
+                color: 'var(--color-workbench-primary, #EA2831)'
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-workbench-primary, #EA2831)';
+              e.currentTarget.style.color = 'var(--color-workbench-primary, #EA2831)';
+              e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                ? 'rgba(234, 40, 49, 0.1)'
+                : 'rgba(234, 40, 49, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-light, #e5e7eb)';
+              e.currentTarget.style.color = '#6b7280';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
           >
             <RefreshCw className="h-4 w-4" />
             <span className="hidden sm:inline truncate">{t('workbench.clearSession')}</span>
