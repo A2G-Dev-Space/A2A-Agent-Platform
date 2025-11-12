@@ -28,20 +28,59 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }
   // Mode-specific colors for active states
   const getModeColors = (mode: string, isActive: boolean) => {
     if (!isActive) {
-      return 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800';
+      return {
+        className: 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+        style: {}
+      };
     }
 
     switch (mode) {
       case 'workbench':
-        return 'bg-red-50 dark:bg-workbench-primary/20 text-workbench-primary';
+        return {
+          className: 'transition-colors',
+          style: {
+            backgroundColor: 'var(--color-workbench-bg-light)',
+            color: 'var(--color-workbench-primary)',
+            ...(document.documentElement.getAttribute('data-theme') === 'dark' && {
+              backgroundColor: 'rgba(234, 40, 49, 0.1)', // workbench-primary with opacity
+              color: '#EA2831'
+            })
+          }
+        };
       case 'hub':
-        return 'bg-hub-accent-light dark:bg-hub-accent/20 text-hub-accent-dark dark:text-hub-accent-light';
+        return {
+          className: 'transition-colors',
+          style: {
+            backgroundColor: '#E0F2FE',
+            color: 'var(--color-hub-primary)',
+            ...(document.documentElement.getAttribute('data-theme') === 'dark' && {
+              backgroundColor: 'rgba(53, 158, 255, 0.1)', // hub-primary with opacity
+              color: '#359EFF'
+            })
+          }
+        };
       case 'flow':
-        return 'bg-yellow-50 dark:bg-flow-primary/20 text-flow-primary';
+        return {
+          className: 'transition-colors',
+          style: {
+            backgroundColor: '#FEF3C7',
+            color: 'var(--color-flow-primary)',
+            ...(document.documentElement.getAttribute('data-theme') === 'dark' && {
+              backgroundColor: 'rgba(250, 198, 56, 0.1)', // flow-primary with opacity
+              color: '#FAC638'
+            })
+          }
+        };
       case 'settings':
-        return 'bg-primary/10 text-primary';
+        return {
+          className: 'bg-primary/10 text-primary',
+          style: {}
+        };
       default:
-        return 'bg-primary/10 text-primary';
+        return {
+          className: 'bg-primary/10 text-primary',
+          style: {}
+        };
     }
   };
 
@@ -103,15 +142,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }
         <nav className="flex flex-col gap-2 p-4">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.to);
+            const colorConfig = getModeColors(item.mode, isActive);
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
                 onClick={onMobileClose}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${getModeColors(
-                  item.mode,
-                  isActive
-                )}`}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg ${colorConfig.className}`}
+                style={colorConfig.style}
               >
                 <span
                   className="material-symbols-outlined text-lg"

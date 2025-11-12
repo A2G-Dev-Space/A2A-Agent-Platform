@@ -214,7 +214,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId, sessionId }) =>
   };
 
   return (
-    <div className="flex flex-col bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark overflow-hidden h-full">
+    <div className="flex flex-col bg-panel-light dark:bg-panel-dark rounded-lg border border-border-light dark:border-border-dark overflow-hidden h-full">
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
         <div className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId, sessionId }) =>
                   {/* Content */}
                   <div className="flex flex-1 flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-xs text-text-light dark:text-text-dark">
+                      <p className="font-bold text-xs text-text-light-primary dark:text-text-dark-primary">
                         {config.label}
                       </p>
                       {event.agent_id && (
