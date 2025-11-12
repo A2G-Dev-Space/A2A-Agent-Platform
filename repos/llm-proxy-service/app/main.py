@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db
+from app.core.redis_client import redis_client
 
 # Configure logging
 logging.basicConfig(
@@ -24,9 +25,17 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized successfully")
 
+    # Initialize Redis for session trace lookup
+    try:
+        await redis_client.connect()
+        logger.info("Redis client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
+
     logger.info("LLM Proxy Service started successfully")
     yield
     logger.info("Shutting down LLM Proxy Service...")
+    await redis_client.close()
 
 # Create FastAPI app
 app = FastAPI(
@@ -52,11 +61,13 @@ app.add_middleware(
 # Import routers
 from app.api import proxy_router
 from app.api.openai_compatible import openai_router
+from app.api.trace_openai import trace_openai_router
 from app.websocket import websocket_router
 
 # Include routers
 app.include_router(proxy_router, prefix="/api/proxy", tags=["proxy"])
 app.include_router(openai_router, prefix="/v1", tags=["openai-compatible"])
+app.include_router(trace_openai_router, prefix="/trace/{trace_id}/v1", tags=["trace-openai"])
 app.include_router(websocket_router, prefix="/ws", tags=["websocket"])
 
 @app.get("/health")

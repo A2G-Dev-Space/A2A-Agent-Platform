@@ -1,25 +1,23 @@
 """
-Log management API endpoints
+Log management API endpoints - Simplified for Workbench
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-import uuid
 
-from app.core.database import async_session_maker, LogEntry
-from app.core.security import get_current_user
+from app.core.database import get_db, LogEntry
 from app.websocket.manager import trace_manager
 from sqlalchemy import select, and_
 
 router = APIRouter()
 
 class LogCreate(BaseModel):
-    trace_id: str
+    trace_id: str  # Encodes user+agent via MD5 hash
     service_name: str
-    agent_id: Optional[int] = None
     level: str
     message: str
+    log_type: Optional[str] = None
     metadata: Dict[str, Any] = {}
 
 class LogResponse(BaseModel):
@@ -29,7 +27,6 @@ class LogResponse(BaseModel):
 class LogEntryResponse(BaseModel):
     timestamp: datetime
     service: str
-    agent_id: Optional[int]
     level: str
     message: str
     is_transfer: bool = False
@@ -42,22 +39,26 @@ class LogTraceResponse(BaseModel):
 @router.post("/logs", response_model=LogResponse)
 async def create_log(
     request: LogCreate,
-    current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ):
-    """Create new log entry"""
+    """Create new log entry - No authentication required for simplicity"""
     # Detect agent transfer
     is_transfer = "Agent Transfer" in request.message or "agent transfer" in request.message.lower()
+
+    # Store log_type in metadata
+    metadata_with_type = {
+        "log_type": request.log_type,
+        **request.metadata
+    }
 
     log_entry = LogEntry(
         trace_id=request.trace_id,
         service_name=request.service_name,
-        agent_id=request.agent_id,
         level=request.level,
         message=request.message,
-        metadata=request.metadata,
-        is_transfer=is_transfer,
-        user_id=current_user["username"]
+        context=metadata_with_type,
+        is_transfer=is_transfer or (request.log_type == "AGENT_TRANSFER"),
+        user_id="system"  # Simplified - no user tracking
     )
 
     db.add(log_entry)
@@ -69,10 +70,10 @@ async def create_log(
         "log_id": log_entry.id,
         "timestamp": log_entry.timestamp.isoformat(),
         "service_name": log_entry.service_name,
-        "agent_id": log_entry.agent_id,
         "level": log_entry.level,
         "message": log_entry.message,
-        "metadata": log_entry.metadata,
+        "log_type": request.log_type,
+        "metadata": metadata_with_type,
         "is_transfer": log_entry.is_transfer
     }
     await trace_manager.broadcast_log(request.trace_id, log_dict)
@@ -87,32 +88,30 @@ async def get_logs_by_trace(
     trace_id: str,
     level: Optional[str] = Query(None),
     service: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
-    db=Depends(async_session_maker)
+    db=Depends(get_db)
 ):
-    """Get logs by trace ID"""
+    """Get logs by trace ID - No authentication required"""
     query = select(LogEntry).where(LogEntry.trace_id == trace_id)
-    
+
     # Apply filters
     filters = []
     if level:
         filters.append(LogEntry.level == level)
     if service:
         filters.append(LogEntry.service_name == service)
-    
+
     if filters:
         query = query.where(and_(*filters))
-    
+
     result = await db.execute(query)
     logs = result.scalars().all()
-    
+
     return LogTraceResponse(
         trace_id=trace_id,
         logs=[
             LogEntryResponse(
                 timestamp=log.timestamp,
                 service=log.service_name,
-                agent_id=log.agent_id,
                 level=log.level,
                 message=log.message,
                 is_transfer=log.is_transfer

@@ -10,7 +10,8 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1 import sessions, messages, llm_proxy
+from app.api.v1 import sessions, messages, llm_proxy, workbench
+from app.core.redis_client import redis_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,12 +23,21 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Chat Service...")
     # NOTE: Database tables are created by Alembic migrations, not by ORM
+
+    # Initialize Redis
+    try:
+        await redis_client.connect()
+        logger.info("Redis client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
+
     logger.info("Chat Service started successfully")
 
     yield
 
     # Shutdown
     logger.info("Shutting down Chat Service...")
+    await redis_client.close()
 
 # Create FastAPI app
 app = FastAPI(
@@ -50,6 +60,7 @@ app.add_middleware(
 app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
 app.include_router(llm_proxy.router, prefix="/api", tags=["llm-proxy"])
+app.include_router(workbench.router, prefix="/api", tags=["workbench"])
 
 @app.get("/health")
 async def health_check():

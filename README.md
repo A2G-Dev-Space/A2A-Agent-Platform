@@ -339,40 +339,52 @@ A2A-Agent-Platform은 **3가지 운영 모드**로 AI 에이전트의 전체 라
 - [Admin Service](./repos/admin-service/README.md) - Port 8005
 - [Worker Service](./repos/worker-service/README.md) - Background Worker
 
-## 🚀 빠른 시작
+## 🚀 시스템 시작하기
 
-### 일반 개발/테스트 (권장)
+### 시스템 관리 스크립트 - start.sh
 
-모든 백엔드 서비스는 Docker로 실행되며, Frontend만 로컬에서 실행합니다.
+**중요**: 모든 시스템 제어는 **`./start.sh` 스크립트 하나로만** 수행합니다.
+
+모든 백엔드 서비스는 Docker로 실행되며, Frontend만 별도 터미널에서 실행합니다.
 
 ```bash
 # 1. 프로젝트 클론
 git clone --recursive https://github.com/A2G-Dev-Space/Agent-Platform-Development.git
 cd Agent-Platform-Development
 
-# 2. 개발 환경 초기 설정 (최초 1회만 실행)
-./start-dev.sh setup
+# 2. 모든 서비스 시작
+./start.sh start
 
-# 3. 모든 서비스 시작 (백엔드는 Docker로 자동 실행됨)
-./start-dev.sh full
-
-# 4. Frontend만 로컬 실행 (별도 터미널)
+# 3. Frontend 실행 (별도 터미널)
 cd frontend
 npm install
 npm run dev
 
-# 5. 브라우저에서 접속
+# 4. 브라우저에서 접속
 # Frontend: http://localhost:9060
 # API Gateway: http://localhost:9050
 ```
 
-### 특정 서비스 개발 시 (Backend 개발자)
+### 시스템 관리 명령어
 
-특정 서비스만 로컬에서 디버깅/개발하고 싶을 때:
+```bash
+# 모든 서비스 시작
+./start.sh start
+
+# 데이터베이스 마이그레이션 업데이트 (git pull 후)
+./start.sh update
+
+# 모든 서비스 중지
+./start.sh stop
+```
+
+### 특정 서비스 로컬 개발 시
+
+특정 서비스만 로컬에서 디버깅하고 싶을 때:
 
 ```bash
 # 1. 모든 서비스 시작
-./start-dev.sh full
+./start.sh start
 
 # 2. 개발할 서비스만 Docker에서 중지
 docker stop a2g-{service-name}
@@ -387,28 +399,6 @@ uvicorn app.main:app --reload --port {port}
 # docker stop a2g-chat-service
 # cd repos/chat-service
 # uvicorn app.main:app --reload --port 8003
-```
-
-### 개발 환경 관리 명령어
-
-```bash
-# 초기 데이터베이스 설정 (처음 한번만)
-./start-dev.sh setup
-
-# 데이터베이스 마이그레이션 업데이트 (git pull 후)
-./start-dev.sh update
-
-# 모든 서비스 시작
-./start-dev.sh full
-
-# 최소 서비스만 시작 (API Gateway + Mock SSO + DB)
-./start-dev.sh minimal
-
-# API Gateway와 데이터베이스만 시작
-./start-dev.sh gateway
-
-# 모든 서비스 중지
-./start-dev.sh stop
 ```
 
 ## 🏗️ 프로젝트 구조
@@ -453,7 +443,7 @@ Agent-Platform-Development/
 git pull origin main
 
 # 2. 모든 서비스의 마이그레이션 자동 업데이트
-./start-dev.sh update
+./start.sh update
 
 # 출력 예시:
 # 🔄 Updating all service databases with latest migrations...
@@ -479,8 +469,8 @@ git pull origin main
 ```
 
 **⚠️ 주의:**
-- `./start-dev.sh update`를 실행하지 않으면 DB 스키마와 코드가 맞지 않아 에러 발생
-- PostgreSQL이 실행 중이어야 합니다 (`./start-dev.sh setup` 또는 `full` 먼저 실행)
+- `./start.sh update`를 실행하지 않으면 DB 스키마와 코드가 맞지 않아 에러 발생
+- PostgreSQL이 실행 중이어야 합니다 (`./start.sh start` 먼저 실행)
 
 ### 새 마이그레이션 생성 시
 
@@ -507,7 +497,7 @@ git commit -m "feat: add user_preferences table migration"
 git push
 
 # 7. 팀원들에게 알리기
-# Slack: "agent-service에 새 마이그레이션 추가했습니다. pull 후 ./start-dev.sh update 실행해주세요!"
+# Slack: "agent-service에 새 마이그레이션 추가했습니다. pull 후 ./start.sh update 실행해주세요!"
 ```
 
 ### 일반적인 워크플로우
@@ -515,8 +505,8 @@ git push
 ```bash
 # 매일 아침 작업 시작 시
 git pull origin main
-./start-dev.sh update    # 새 마이그레이션 적용
-./start-dev.sh full      # 서비스 시작
+./start.sh update    # 새 마이그레이션 적용
+./start.sh start     # 서비스 시작
 cd frontend && npm run dev
 
 # 작업 중
@@ -525,7 +515,7 @@ cd frontend && npm run dev
 # 3. 커밋 & 푸시
 
 # 작업 종료 시
-./start-dev.sh stop
+./start.sh stop
 ```
 
 ## 📞 지원

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
-import { chatService } from '@/services/chatService';
+import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentStatus } from '@/types';
 import AddAgentModal from './AddAgentModal';
 import { AgentCard } from './AgentCard';
@@ -13,31 +13,24 @@ import { TraceView } from './TraceView';
 export const WorkbenchDashboard: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Dynamic trace_id from SSE stream_start event
   const [traceId, setTraceId] = useState<string | null>(null);
+
+  // Callback to receive trace_id from ChatPlayground
+  const handleTraceIdReceived = useCallback((newTraceId: string) => {
+    console.log('[WorkbenchDashboard] Received trace_id:', newTraceId);
+    setTraceId(newTraceId);
+  }, []);
 
   // Fetch development agents
   const { data: developmentAgents, isLoading } = useQuery({
     queryKey: ['developmentAgents'],
     queryFn: () => agentService.getAgents({ status: AgentStatus.DEVELOPMENT }),
     select: (data: GetAgentsResponse) => data.agents,
-  });
-
-  // Create session mutation
-  const createSessionMutation = useMutation({
-    mutationFn: async (agentId: number) => {
-      const response = await chatService.createSession(agentId);
-      return response;
-    },
-    onSuccess: (data) => {
-      setSessionId(data.id);
-      setTraceId(data.trace_id);
-    },
-    onError: (error) => {
-      console.error('Failed to create session:', error);
-    },
   });
 
   // Delete agent mutation
@@ -52,8 +45,6 @@ export const WorkbenchDashboard: React.FC = () => {
       // If the deleted agent was selected, go back to grid view
       if (selectedAgent) {
         setSelectedAgent(null);
-        setSessionId(null);
-        setTraceId(null);
       }
     },
     onError: (error: any) => {
@@ -62,24 +53,12 @@ export const WorkbenchDashboard: React.FC = () => {
     },
   });
 
-  // Create session when agent is selected
-  useEffect(() => {
-    if (selectedAgent) {
-      createSessionMutation.mutate(selectedAgent.id);
-    } else {
-      setSessionId(null);
-      setTraceId(null);
-    }
-  }, [selectedAgent]);
-
   const handleAgentClick = (agent: Agent) => {
     setSelectedAgent(agent);
   };
 
   const handleBackToGrid = () => {
     setSelectedAgent(null);
-    setSessionId(null);
-    setTraceId(null);
   };
 
   const handleEdit = (agent: Agent) => {
@@ -153,38 +132,30 @@ export const WorkbenchDashboard: React.FC = () => {
   // Agent selected view: Chat + Trace (2-column)
   return (
     <div className="fixed inset-0 flex flex-col" style={{ marginLeft: '240px', marginTop: '64px' }}>
-      {/* Back button */}
+      {/* Back button and Endpoint Info */}
       <div className="px-4 sm:px-6">
-        <div className="flex items-center gap-3 h-16 border-b border-border-light dark:border-border-dark">
-          <button
-            onClick={handleBackToGrid}
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-dark dark:hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Agents</span>
-          </button>
-          <div className="h-6 w-px bg-border-light dark:bg-border-dark" />
-          <h2 className="text-base font-bold">{selectedAgent.name}</h2>
+        <div className="flex flex-col gap-2 py-3 border-b border-border-light dark:border-border-dark">
+          {/* Top row: Back button and agent name */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleBackToGrid}
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-dark dark:hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Agents</span>
+            </button>
+            <div className="h-6 w-px bg-border-light dark:bg-border-dark" />
+            <h2 className="text-base font-bold">{selectedAgent.name}</h2>
+          </div>
+
         </div>
       </div>
 
       {/* Chat + Trace Grid */}
       <main className="flex-1 px-4 sm:px-6 py-4 overflow-hidden">
         <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
-          {sessionId && traceId ? (
-            <>
-              <ChatPlayground sessionId={sessionId} agentName={selectedAgent.name} agent={selectedAgent} />
-              <TraceView traceId={traceId} />
-            </>
-          ) : (
-            <div className="col-span-full flex items-center justify-center bg-background-light dark:bg-background-dark rounded-lg">
-              <div className="text-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  {t('workbench.creatingSession') || 'Creating session...'}
-                </p>
-              </div>
-            </div>
-          )}
+          <ChatPlayground agent={selectedAgent} onTraceIdReceived={handleTraceIdReceived} />
+          <TraceView traceId={traceId} />
         </div>
       </main>
 

@@ -230,7 +230,7 @@
 - Service organization
 - Frontend component hierarchy
 
-### **8. Bug Fixes & Improvements (2025-11-10)** (Lines 1715-1907) - **NEW**
+### **8. Bug Fixes & Improvements (2025-11-10)** (Lines 1715-2316) - **NEW**
 
 #### **8.1 User Management Page Fixes** (Lines 1718-1781)
 - **Bug #1**: Authentication token not being sent (Zustand persist storage)
@@ -254,6 +254,30 @@
 - **Configuration Attempted**: Changed stream=False to stream=True (no effect)
 - **Conclusion**: Limitation is expected for experimental ADK A2A implementation
 - **Workaround Options**: Accept current behavior or implement custom streaming (2-3 days)
+
+#### **8.4 Session-Based Trace Routing Implementation (v2.3)** (Lines 1904-2316) - **NEW**
+- **Problem**: Manual trace header forwarding violated zero-burden principle
+- **Solution**: Session-specific endpoints with Redis mapping
+  - Each session gets unique URL: `/v1/session/{session_id}/chat/completions`
+  - LLM Proxy auto-resolves trace_id from session_id via Redis
+  - **Zero agent code changes required**
+- **Architecture**:
+  - Chat Service: Stores session → trace_id mapping in Redis
+  - LLM Proxy: Queries Redis, emits trace events with resolved trace_id
+  - TTL: 24 hours for session mappings
+- **Implementation**:
+  - Created: `chat-service/app/core/redis_client.py`
+  - Created: `llm-proxy-service/app/core/redis_client.py`
+  - Modified: Session creation, LLM Proxy endpoint routing
+  - Removed: Old `/v1/chat/completions` endpoint (backward compatible removed)
+  - Removed: WebSocket manager trace broadcast
+- **Key Benefits**:
+  - Zero agent code changes (just different URL per session)
+  - Automatic trace routing (no manual header management)
+  - Session isolation (independent trace streams)
+  - Scalable (Redis mapping for high throughput)
+- **Testing**: Playwright E2E test recommended (Lines 2245-2266)
+- **Next Steps**: Verify with Playwright MCP, test chat history persistence
 
 ---
 

@@ -11,6 +11,7 @@ import json
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
+from app.core.database import init_db
 from app.api.v1 import logs
 from app.websocket.manager import trace_manager
 
@@ -23,8 +24,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan management"""
     # Startup
     logger.info("Starting Tracing Service...")
-    # NOTE: Database tables are created by Alembic migrations, not by ORM
-    # Removed init_db() call to prevent schema conflicts with migrations
+    # Initialize database (create tables)
+    await init_db()
+    logger.info("Database initialized")
     logger.info("Tracing Service started successfully")
 
     yield
