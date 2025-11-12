@@ -13,6 +13,7 @@ import {
   XCircle,
   ChevronDown,
   ChevronRight,
+  CheckCircle,
 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuthStore } from '@/stores/authStore';
@@ -77,14 +78,20 @@ const getLogIcon = (log: LogEntry) => {
 
   // Tool events
   if (log_type === 'TOOL' || message.toLowerCase().includes('tool')) {
-    if (message.toLowerCase().includes('result')) {
+    // Check metadata.event_type for more specific type
+    const eventType = metadata?.event_type;
+
+    // Tool Response
+    if (eventType === 'tool_response' || message.toLowerCase().includes('response') || message.toLowerCase().includes('result')) {
       return {
-        Icon: FileText,
-        label: 'Tool Result',
-        color: 'text-yellow-600 dark:text-yellow-400',
-        bg: 'bg-yellow-100 dark:bg-yellow-900/50'
+        Icon: CheckCircle,
+        label: 'Tool Response',
+        color: 'text-teal-600 dark:text-teal-400',
+        bg: 'bg-teal-100 dark:bg-teal-900/50'
       };
     }
+
+    // Tool Use (default)
     return {
       Icon: Wrench,
       label: 'Tool Use',
