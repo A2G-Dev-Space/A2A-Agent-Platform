@@ -34,17 +34,18 @@ interface TraceViewProps {
   traceId: string;
 }
 
-// Log type icons and colors
+// Log type icons and colors (returns actual color values for inline styles)
 const getLogIcon = (log: LogEntry) => {
   const { log_type, message, is_transfer, metadata } = log;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
   // Agent transfer
   if (is_transfer || log_type === 'AGENT_TRANSFER') {
     return {
       Icon: ArrowRightLeft,
       label: 'Agent Transfer',
-      color: 'text-pink-600 dark:text-pink-400',
-      bg: 'bg-pink-100 dark:bg-pink-900/50'
+      color: isDark ? '#f9a8d4' : '#ec4899',
+      bg: isDark ? 'rgba(236, 72, 153, 0.2)' : '#fce7f3'
     };
   }
 
@@ -56,23 +57,23 @@ const getLogIcon = (log: LogEntry) => {
       return {
         Icon: Send,
         label: 'Send to LLM',
-        color: 'text-blue-600 dark:text-blue-300',
-        bg: 'bg-blue-100 dark:bg-blue-900/50'
+        color: isDark ? '#93c5fd' : '#2563eb',
+        bg: isDark ? 'rgba(37, 99, 235, 0.2)' : '#dbeafe'
       };
     } else if (eventType === 'llm_response' || message.toLowerCase().includes('response')) {
       return {
         Icon: Phone,
         label: 'Receive from LLM',
-        color: 'text-purple-600 dark:text-purple-300',
-        bg: 'bg-purple-100 dark:bg-purple-900/50'
+        color: isDark ? '#c4b5fd' : '#9333ea',
+        bg: isDark ? 'rgba(147, 51, 234, 0.2)' : '#ede9fe'
       };
     }
     // Default LLM
     return {
       Icon: Send,
       label: 'LLM Event',
-      color: 'text-blue-600 dark:text-blue-300',
-      bg: 'bg-blue-100 dark:bg-blue-900/50'
+      color: isDark ? '#93c5fd' : '#2563eb',
+      bg: isDark ? 'rgba(37, 99, 235, 0.2)' : '#dbeafe'
     };
   }
 
@@ -86,8 +87,8 @@ const getLogIcon = (log: LogEntry) => {
       return {
         Icon: CheckCircle,
         label: 'Tool Response',
-        color: 'text-teal-600 dark:text-teal-400',
-        bg: 'bg-teal-100 dark:bg-teal-900/50'
+        color: isDark ? '#5eead4' : '#0d9488',
+        bg: isDark ? 'rgba(13, 148, 136, 0.2)' : '#ccfbf1'
       };
     }
 
@@ -95,8 +96,8 @@ const getLogIcon = (log: LogEntry) => {
     return {
       Icon: Wrench,
       label: 'Tool Use',
-      color: 'text-green-600 dark:text-green-300',
-      bg: 'bg-green-100 dark:bg-green-900/50'
+      color: isDark ? '#86efac' : '#16a34a',
+      bg: isDark ? 'rgba(22, 163, 74, 0.2)' : '#dcfce7'
     };
   }
 
@@ -104,8 +105,8 @@ const getLogIcon = (log: LogEntry) => {
   return {
     Icon: FileText,
     label: 'Event',
-    color: 'text-gray-600 dark:text-gray-300',
-    bg: 'bg-gray-100 dark:bg-gray-800/50'
+    color: isDark ? '#d1d5db' : '#4b5563',
+    bg: isDark ? 'rgba(75, 85, 99, 0.3)' : '#f3f4f6'
   };
 };
 
@@ -172,8 +173,14 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
     <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
       <div className="flex items-start gap-2 sm:gap-3">
         {/* Icon */}
-        <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${bg}`}>
-          <Icon className={`h-3 w-3 sm:h-4 sm:w-4 ${color}`} />
+        <div
+          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: bg }}
+        >
+          <Icon
+            className="h-3 w-3 sm:h-4 sm:w-4"
+            style={{ color: color }}
+          />
         </div>
 
         {/* Content */}
