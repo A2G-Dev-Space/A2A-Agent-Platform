@@ -14,6 +14,10 @@ import logging
 import hashlib
 
 from app.core.security import get_current_user
+from app.core.database import async_session_maker, WorkbenchSession, get_db
+from sqlalchemy import select, and_, delete
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import attributes
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -88,19 +92,113 @@ async def workbench_chat_stream(
         }
     )
 
+@router.get("/workbench/messages/{agent_id}")
+async def get_workbench_messages(
+    agent_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get stored messages for user+agent combination
+    """
+    user_id = current_user["username"]
+
+    # Find existing session
+    result = await db.execute(
+        select(WorkbenchSession).where(
+            and_(
+                WorkbenchSession.user_id == user_id,
+                WorkbenchSession.agent_id == agent_id
+            )
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if session:
+        return {"messages": session.messages}
+    return {"messages": []}
+
+@router.post("/workbench/messages/{agent_id}")
+async def save_workbench_messages(
+    agent_id: int,
+    messages: list[Message],
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Save messages for user+agent combination
+    """
+    user_id = current_user["username"]
+
+    # Find or create session
+    result = await db.execute(
+        select(WorkbenchSession).where(
+            and_(
+                WorkbenchSession.user_id == user_id,
+                WorkbenchSession.agent_id == agent_id
+            )
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    # Convert messages to dict format for storage
+    message_dicts = [
+        {
+            "role": msg.role,
+            "content": msg.content,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        for msg in messages
+    ]
+
+    if session:
+        # Update existing session
+        session.messages = message_dicts
+        session.updated_at = datetime.utcnow()
+        attributes.flag_modified(session, "messages")
+    else:
+        # Create new session
+        session = WorkbenchSession(
+            user_id=user_id,
+            agent_id=agent_id,
+            messages=message_dicts
+        )
+        db.add(session)
+
+    await db.commit()
+
+    logger.info(f"[Workbench] Saved {len(messages)} messages for {user_id}, agent {agent_id}")
+    return {"status": "success", "message_count": len(messages)}
+
 @router.post("/workbench/clear")
 async def clear_workbench_data(
     agent_id: int,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Clear trace data for the user+agent combination
-    Note: Chat history is not persisted in Workbench mode
+    Clear both chat history and trace data for the user+agent combination
     """
     user_id = current_user["username"]
     trace_id = await generate_fixed_trace_id(user_id, agent_id)
 
-    # Clear trace data from Tracing Service
+    # 1. Clear chat messages from database
+    try:
+        await db.execute(
+            delete(WorkbenchSession).where(
+                and_(
+                    WorkbenchSession.user_id == user_id,
+                    WorkbenchSession.agent_id == agent_id
+                )
+            )
+        )
+        await db.commit()
+        logger.info(f"[Workbench] Cleared chat messages for {user_id}, agent {agent_id}")
+    except Exception as e:
+        logger.error(f"[Workbench] Error clearing chat messages: {e}")
+        await db.rollback()
+
+    # 2. Clear trace data from Tracing Service
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.delete(
@@ -108,13 +206,13 @@ async def clear_workbench_data(
             )
             if response.status_code == 200:
                 logger.info(f"[Workbench] Cleared trace data for {user_id}, agent {agent_id}")
-                return {"status": "success", "message": "Trace data cleared"}
+                return {"status": "success", "message": "Chat and trace data cleared"}
             else:
                 logger.warning(f"[Workbench] Failed to clear trace: {response.status_code}")
-                return {"status": "partial", "message": "Trace data may not be fully cleared"}
+                return {"status": "partial", "message": "Chat cleared, but trace data may not be fully cleared"}
     except Exception as e:
         logger.error(f"[Workbench] Error clearing trace: {e}")
-        return {"status": "error", "message": "Failed to clear trace data"}
+        return {"status": "partial", "message": "Chat cleared, but failed to clear trace data"}
 
 async def _get_agent_url(agent_id: int, token: str) -> Optional[str]:
     """Get agent A2A URL from agent service"""

@@ -18,6 +18,18 @@ export interface NewApiKeyResponse extends APIKey {
   api_key: string;
 }
 
+export interface UserPreferences {
+  theme: 'system' | 'light' | 'dark';
+  language: string;
+  fontScale: number;
+}
+
+export interface UserPreferencesUpdate {
+  theme?: 'system' | 'light' | 'dark';
+  language?: string;
+  fontScale?: number;
+}
+
 /**
  * Service for user-related API calls that are not strictly for authentication.
  */
@@ -51,4 +63,17 @@ export const userService = {
    * Corresponds to: DELETE /api/users/me/api-keys/{key_id}
    */
   deleteApiKey: (keyId: number) => api.delete<{ message: string }>(`/users/me/api-keys/${keyId}`),
+
+  /**
+   * Get user preferences.
+   * Corresponds to: GET /api/users/me/preferences
+   */
+  getUserPreferences: () => api.get<UserPreferences>('/users/me/preferences'),
+
+  /**
+   * Update user preferences.
+   * Corresponds to: PUT /api/users/me/preferences
+   */
+  updateUserPreferences: (preferences: UserPreferencesUpdate) =>
+    api.put<UserPreferences>('/users/me/preferences', preferences),
 };

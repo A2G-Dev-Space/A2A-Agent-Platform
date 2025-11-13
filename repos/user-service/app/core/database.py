@@ -3,9 +3,9 @@ Database configuration and models
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Boolean, DateTime, Text
+from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 import uuid
 
 from app.core.config import settings
@@ -34,6 +34,7 @@ class User(Base):
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default={})
 
     # Relationships (avoiding circular import by using string reference)
     platform_keys = relationship("PlatformKey", back_populates="user", cascade="all, delete-orphan")

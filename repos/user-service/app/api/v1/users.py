@@ -3,7 +3,7 @@ User management API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import secrets
 import hashlib
@@ -195,3 +195,64 @@ async def delete_api_key(
     await db.commit()
 
     return {"message": "API key deleted successfully"}
+
+# User Preferences Models
+class UserPreferences(BaseModel):
+    """User preferences model"""
+    theme: str = "system"  # system, light, dark
+    language: str = "en"    # en, ko
+    fontScale: int = 80      # 70-120
+
+class UserPreferencesUpdate(BaseModel):
+    """Update user preferences"""
+    theme: Optional[str] = None
+    language: Optional[str] = None
+    fontScale: Optional[int] = None
+
+@router.get("/me/preferences", response_model=UserPreferences)
+async def get_user_preferences(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get user preferences"""
+    # Return preferences from database or defaults
+    prefs = current_user.preferences or {}
+    return UserPreferences(
+        theme=prefs.get("theme", "system"),
+        language=prefs.get("language", "en"),
+        fontScale=prefs.get("fontScale", 80)
+    )
+
+@router.put("/me/preferences", response_model=UserPreferences)
+async def update_user_preferences(
+    preferences: UserPreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update user preferences"""
+    # Get existing preferences or initialize
+    if not current_user.preferences:
+        current_user.preferences = {}
+
+    # Update only provided fields
+    if preferences.theme is not None:
+        current_user.preferences["theme"] = preferences.theme
+    if preferences.language is not None:
+        current_user.preferences["language"] = preferences.language
+    if preferences.fontScale is not None:
+        current_user.preferences["fontScale"] = preferences.fontScale
+
+    # Mark the object as dirty to ensure SQLAlchemy saves the JSON changes
+    from sqlalchemy.orm import attributes
+    attributes.flag_modified(current_user, "preferences")
+
+    current_user.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return UserPreferences(
+        theme=current_user.preferences.get("theme", "system"),
+        language=current_user.preferences.get("language", "en"),
+        fontScale=current_user.preferences.get("fontScale", 80)
+    )
