@@ -361,9 +361,38 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
     }
   }, [logs, autoScroll]);
 
-  const handleClearLogs = () => {
-    setLogs([]);
-    // Trace logs are cleared from backend via ChatPlayground's clear session
+  const handleClearLogs = async () => {
+    if (!traceId || !accessToken) {
+      console.warn('[TraceView] Cannot clear logs: missing traceId or accessToken');
+      return;
+    }
+
+    try {
+      // Delete logs from backend
+      const response = await fetch(
+        `http://localhost:9050/api/tracing/traces/${traceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log('[TraceView] Successfully cleared logs from backend');
+        // Clear local state after successful backend deletion
+        setLogs([]);
+      } else {
+        console.error('[TraceView] Failed to clear logs from backend:', response.status);
+        // Still clear local state even if backend fails
+        setLogs([]);
+      }
+    } catch (error) {
+      console.error('[TraceView] Error clearing logs:', error);
+      // Still clear local state even if backend request fails
+      setLogs([]);
+    }
   };
 
   // Detect manual scroll to disable auto-scroll

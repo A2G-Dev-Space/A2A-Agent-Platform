@@ -128,3 +128,19 @@ async def get_logs_by_trace(
         ],
         total_logs=len(logs)
     )
+
+@router.delete("/traces/{trace_id}")
+async def delete_trace_logs(
+    trace_id: str,
+    db=Depends(get_db)
+):
+    """Delete all logs for a specific trace ID"""
+    from sqlalchemy import delete as sql_delete
+
+    # Delete all logs with this trace_id
+    await db.execute(
+        sql_delete(LogEntry).where(LogEntry.trace_id == trace_id)
+    )
+    await db.commit()
+
+    return {"status": "success", "message": f"All logs for trace {trace_id} deleted"}
