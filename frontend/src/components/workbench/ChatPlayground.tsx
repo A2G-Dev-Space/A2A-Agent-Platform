@@ -7,6 +7,7 @@ import { agentService } from '@/services/agentService';
 import { generateFixedTraceId, getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
+import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
   id: string;
@@ -724,7 +725,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                         : 'rounded-tl-none bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    <MessageContent content={message.content} contentType="markdown" />
                   </div>
                   <span className="text-xs text-gray-400 dark:text-gray-500">
                     {message.timestamp.toLocaleTimeString()}
@@ -742,7 +743,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 <div className="flex max-w-[85%] sm:max-w-[75%] flex-col gap-1">
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{agentName}</p>
                   <div className="rounded-lg rounded-tl-none bg-panel-light dark:bg-panel-dark p-3 text-sm leading-relaxed">
-                    <p className="whitespace-pre-wrap break-words">{streamingMessage}</p>
+                    <MessageContent content={streamingMessage} contentType="markdown" />
                     <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
                   </div>
                 </div>
