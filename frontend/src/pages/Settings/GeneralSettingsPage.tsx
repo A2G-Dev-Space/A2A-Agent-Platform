@@ -4,7 +4,7 @@ import { useThemeStore } from '@/stores/themeStore';
 
 const GeneralSettingsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { theme, setTheme } = useThemeStore();
+  const { theme, setTheme, fontScale, setFontScale } = useThemeStore();
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTheme(e.target.value as 'light' | 'dark' | 'system');
@@ -12,6 +12,10 @@ const GeneralSettingsPage: React.FC = () => {
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     i18n.changeLanguage(e.target.value);
+  };
+
+  const handleFontScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFontScale(Number(e.target.value));
   };
 
   return (
@@ -59,6 +63,39 @@ const GeneralSettingsPage: React.FC = () => {
             </select>
             <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">unfold_more</span>
           </div>
+        </div>
+      </section>
+      <section>
+        <h2 className="text-slate-900 text-xl font-bold leading-tight tracking-tight dark:text-white">Font Size</h2>
+        <p className="mt-1 text-slate-500 text-sm dark:text-slate-400">Adjust the font size for better readability</p>
+        <div className="mt-6 max-w-lg">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <input
+                type="range"
+                min="70"
+                max="120"
+                step="10"
+                value={fontScale}
+                onChange={handleFontScaleChange}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-primary"
+              />
+              <div className="flex justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>70%</span>
+                <span>80%</span>
+                <span>90%</span>
+                <span>100%</span>
+                <span>110%</span>
+                <span>120%</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-center min-w-16 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-slate-100">
+              {fontScale}%
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            Current size: <span className="font-semibold">{fontScale}%</span> (Default: 80%)
+          </p>
         </div>
       </section>
       <div className="mt-4 flex justify-end border-t border-slate-200/80 pt-6 dark:border-white/10">

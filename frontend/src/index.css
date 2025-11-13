@@ -2,7 +2,7 @@
 
 html {
   font-family: 'Noto Sans KR', 'Manrope', sans-serif;
-  font-size: 80%; /* Scale all rem-based values to 80% */
+  /* font-size is dynamically set by themeStore */
 }
 
 @variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
