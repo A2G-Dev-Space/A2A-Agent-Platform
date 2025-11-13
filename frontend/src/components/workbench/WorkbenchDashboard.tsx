@@ -131,7 +131,7 @@ export const WorkbenchDashboard: React.FC = () => {
 
   // Agent selected view: Chat + Trace (2-column)
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ marginLeft: '240px', marginTop: '64px' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ marginLeft: '192px', marginTop: '51px' }}>
       {/* Back button and Endpoint Info */}
       <div className="px-4 sm:px-6">
         <div className="flex flex-col gap-2 py-3 border-b border-border-light dark:border-border-dark">
@@ -139,7 +139,7 @@ export const WorkbenchDashboard: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleBackToGrid}
-              className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-dark dark:hover:text-primary transition-colors"
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Agents</span>
