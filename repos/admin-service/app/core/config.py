@@ -26,7 +26,13 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:9060", "http://localhost:9050"]
-    
+
+    # Microservice URLs
+    USER_SERVICE_URL: str = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
+    AGENT_SERVICE_URL: str = os.getenv("AGENT_SERVICE_URL", "http://agent-service:8002")
+    CHAT_SERVICE_URL: str = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8003")
+    LLM_PROXY_SERVICE_URL: str = os.getenv("LLM_PROXY_SERVICE_URL", "http://llm-proxy-service:8006")
+
     class Config:
         env_file = ".env.local"
         case_sensitive = True

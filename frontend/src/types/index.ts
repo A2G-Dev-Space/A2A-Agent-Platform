@@ -1,7 +1,6 @@
 // User types
 export enum UserRole {
   NEW = 'NEW',
-  REJECTED = 'REJECTED',
   PENDING = 'PENDING',
   USER = 'USER',
   ADMIN = 'ADMIN',
@@ -159,7 +158,6 @@ export interface LLMModel {
   name: string
   provider: string
   endpoint: string
-  is_active: boolean
   health_status: HealthStatus
   last_health_check?: string
 }

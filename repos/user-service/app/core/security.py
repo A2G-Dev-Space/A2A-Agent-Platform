@@ -78,15 +78,14 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
 
-    # For NEW or REJECTED users (not yet in DB), create a temporary User object
-    if role in ["NEW", "REJECTED"]:
+    # For NEW users (not yet in DB), create a temporary User object
+    if role == "NEW":
         # Create a temporary user object with token data
         temp_user = User(
             username=username,
             username_kr=username,
             email=f"{username}@company.com",
-            role=role,
-            is_active=False  # Not yet in DB
+            role=role
         )
         # Set id to 0 to indicate it's a temp user
         temp_user.id = 0

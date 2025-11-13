@@ -54,7 +54,8 @@ async def get_current_user(
 
     return {
         "username": username,
-        "role": role or "USER"
+        "role": role or "USER",
+        "access_token": token  # Include original token for forwarding to other services
     }
 
 async def require_admin(

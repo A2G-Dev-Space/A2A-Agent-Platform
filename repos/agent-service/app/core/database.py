@@ -55,6 +55,7 @@ class Agent(Base):
     framework: Mapped[AgentFramework] = mapped_column(SQLAlchemyEnum(AgentFramework))
     status: Mapped[AgentStatus] = mapped_column(SQLAlchemyEnum(AgentStatus), default=AgentStatus.DEVELOPMENT)
     a2a_endpoint: Mapped[Optional[str]] = mapped_column(String(500))
+    trace_id: Mapped[Optional[str]] = mapped_column(String(100), unique=True, index=True)  # Unique trace ID for LLM tracking
     capabilities: Mapped[Dict[str, Any]] = mapped_column(JSON)
     embedding_vector: Mapped[Optional[List[float]]] = mapped_column(JSON)  # Store embedding as JSON array
 

@@ -46,6 +46,7 @@ class AgentResponse(BaseModel):
     framework: AgentFramework
     status: AgentStatus
     a2a_endpoint: Optional[str]
+    trace_id: Optional[str]
     capabilities: Dict[str, Any]
     owner_id: str
     department: Optional[str]
@@ -135,6 +136,7 @@ async def get_agents(
     framework: Optional[AgentFramework] = Query(None),
     department: Optional[str] = Query(None),
     visibility: Optional[str] = Query(None, description="public, private, team"),
+    trace_id: Optional[str] = Query(None, description="Filter by trace_id"),
     only_mine: bool = Query(False, description="Show only my agents"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -154,6 +156,8 @@ async def get_agents(
         filters.append(Agent.framework == framework)
     if department:
         filters.append(Agent.department == department)
+    if trace_id:
+        filters.append(Agent.trace_id == trace_id)
 
     # Access Control filtering
     if only_mine:
@@ -215,6 +219,7 @@ async def get_agents(
                 framework=agent.framework,
                 status=agent.status,
                 a2a_endpoint=agent.a2a_endpoint,
+                trace_id=agent.trace_id,
                 capabilities=agent.capabilities,
                 owner_id=agent.owner_id,
                 department=agent.department,
@@ -259,11 +264,16 @@ async def create_agent(
     # No endpoint validation during creation - endpoint will be added later via Chat&Debug
     logger.info(f"[Create Agent] Creating agent without endpoint validation (endpoint will be configured later)")
 
+    # Generate unique trace_id for LLM tracking
+    trace_id = str(uuid.uuid4())
+    logger.info(f"[Create Agent] Generated trace_id: {trace_id}")
+
     agent = Agent(
         name=request.name,
         description=request.description,
         framework=request.framework,
         a2a_endpoint=request.a2a_endpoint,
+        trace_id=trace_id,
         capabilities=request.capabilities,
         owner_id=current_user["username"],
         department=current_user.get("department"),
@@ -284,6 +294,7 @@ async def create_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
         department=agent.department,
@@ -318,6 +329,7 @@ async def get_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
         department=agent.department,
@@ -375,6 +387,7 @@ async def update_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
         department=agent.department,

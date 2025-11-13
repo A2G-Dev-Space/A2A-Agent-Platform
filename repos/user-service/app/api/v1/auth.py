@@ -117,24 +117,6 @@ async def handle_callback(
                 }
             )
 
-        # User exists - check if rejected
-        if user.role == "REJECTED":
-            # Rejected user trying to log in again - show signup request page
-            access_token = create_access_token(data={"sub": username, "role": "REJECTED"})
-
-            return CallbackResponse(
-                access_token=access_token,
-                expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                user={
-                    "username": user.username,
-                    "username_kr": user.username_kr,
-                    "email": user.email,
-                    "department_kr": user.department_kr,
-                    "department_en": user.department_en,
-                    "role": "REJECTED"
-                }
-            )
-
         # Existing user - update last login
         user.last_login = datetime.utcnow()
         await db.commit()

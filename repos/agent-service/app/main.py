@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1 import agents, registry
+from app.api.v1 import agents, registry, admin, internal
 from app.core.security import get_current_user
 
 # Configure logging
@@ -49,6 +49,9 @@ app.add_middleware(
 )
 
 # Include routers
+# Internal endpoints (no auth required)
+app.include_router(internal.router, prefix="/api", tags=["internal"])
+
 # Legacy CRUD endpoints (maintained for backward compatibility)
 # NOTE: Must be registered BEFORE registry to avoid route conflicts
 # agents.router has specific DELETE /api/agents/{agent_id} with int type
@@ -58,6 +61,9 @@ app.include_router(agents.router, prefix="/api/agents", tags=["agents-legacy"])
 # registry.router has DELETE /api/agents/{agent_id} with str type
 # This will match only if agents.router doesn't match first
 app.include_router(registry.router, prefix="/api", tags=["registry"])
+
+# Admin endpoints
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 @app.get("/health")
 async def health_check():

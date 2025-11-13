@@ -34,11 +34,10 @@ async def list_users(
     admin_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all active users for management (ADMIN only)"""
-    # Return active users and PENDING users
+    """List all users for management (ADMIN only)"""
+    # Return all users (PENDING, USER, ADMIN)
     result = await db.execute(
         select(User)
-        .where((User.is_active == True) | (User.role == "PENDING"))
     )
     users = result.scalars().all()
 
@@ -68,7 +67,7 @@ async def list_users(
             email=user.email,
             department=user.department_kr or user.department_en or "Unassigned",
             role=user.role,
-            status="Active" if user.is_active else "Inactive"
+            status="Active"  # All users in DB are active (deleted users are removed from DB)
         )
         for user in sorted_users
     ]
@@ -109,8 +108,7 @@ async def invite_user(
         email=invite.email,
         department_kr=invite.department_kr,
         department_en=invite.department_en,
-        role=invite.role,
-        is_active=True
+        role=invite.role
     )
 
     db.add(new_user)
@@ -123,7 +121,7 @@ async def invite_user(
         email=new_user.email,
         department=new_user.department_kr or new_user.department_en or "Unassigned",
         role=new_user.role,
-        status="Active" if new_user.is_active else "Inactive"
+        status="Active"
     )
 
 @router.put("/{user_id}/approve/")
@@ -142,22 +140,22 @@ async def approve_user(
             detail="User not found"
         )
 
-    # Update user role from PENDING to USER
+    # Update user role from PENDING to USER and set created_at
     if user.role == "PENDING":
         user.role = "USER"
-        user.is_active = True
+        user.created_at = datetime.utcnow()  # Set created_at when approved
         user.updated_at = datetime.utcnow()
         await db.commit()
 
     return {"message": f"User {user_id} approved successfully"}
 
-@router.put("/{user_id}/reject/")
+@router.delete("/{user_id}/reject/")
 async def reject_user(
     user_id: int,
     admin_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """Reject a user's registration (ADMIN only)"""
+    """Reject a user's registration by deleting them from database (ADMIN only)"""
     # Prevent admin from rejecting themselves
     if user_id == admin_user.id:
         raise HTTPException(
@@ -174,13 +172,11 @@ async def reject_user(
             detail="User not found"
         )
 
-    # Set role to REJECTED so they can reapply
-    user.role = "REJECTED"
-    user.is_active = True  # Keep active so they can see signup request page
-    user.updated_at = datetime.utcnow()
+    # Completely delete user from database
+    await db.delete(user)
     await db.commit()
 
-    return {"message": f"User {user_id} rejected successfully"}
+    return {"message": f"User {user_id} rejected and deleted successfully"}
 
 @router.delete("/{user_id}/remove/")
 async def remove_user(
@@ -188,7 +184,7 @@ async def remove_user(
     admin_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """Remove/ban a user by deactivating their account (ADMIN only)"""
+    """Remove a user by completely deleting them from database (ADMIN only)"""
     # Prevent admin from removing themselves
     if user_id == admin_user.id:
         raise HTTPException(
@@ -205,12 +201,11 @@ async def remove_user(
             detail="User not found"
         )
 
-    # Deactivate user
-    user.is_active = False
-    user.updated_at = datetime.utcnow()
+    # Completely delete user from database
+    await db.delete(user)
     await db.commit()
 
-    return {"message": f"User {user_id} removed successfully"}
+    return {"message": f"User {user_id} removed and deleted successfully"}
 
 @router.post("/signup-request/")
 async def signup_request(
@@ -218,38 +213,21 @@ async def signup_request(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Submit signup request - creates or updates user to PENDING status
-    Can be called by NEW or REJECTED users
+    Submit signup request - creates user with PENDING status
+    Can be called by NEW users
     """
     # Check if user already exists in database
     result = await db.execute(select(User).where(User.username == current_user.username))
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        # User exists (was REJECTED) - update to PENDING
-        if existing_user.role != "REJECTED":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already has an active signup request"
-            )
+        # User already exists - cannot re-signup
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists. Please contact admin if you need assistance."
+        )
 
-        existing_user.role = "PENDING"
-        existing_user.is_active = True
-        existing_user.updated_at = datetime.utcnow()
-        await db.commit()
-        await db.refresh(existing_user)
-
-        return {
-            "message": "Signup request submitted successfully",
-            "user": {
-                "username": existing_user.username,
-                "username_kr": existing_user.username_kr,
-                "email": existing_user.email,
-                "role": existing_user.role
-            }
-        }
-
-    # New user - create in database with PENDING status
+    # New user - create in database with PENDING status (created_at will be set on approval)
     new_user = User(
         username=current_user.username,
         username_kr=getattr(current_user, 'username_kr', current_user.username),
@@ -258,8 +236,8 @@ async def signup_request(
         department_kr=getattr(current_user, 'department_kr', None),
         department_en=getattr(current_user, 'department_en', None),
         role="PENDING",
-        is_active=True,
-        last_login=datetime.utcnow()
+        last_login=datetime.utcnow(),
+        created_at=None  # Will be set when approved
     )
 
     db.add(new_user)
