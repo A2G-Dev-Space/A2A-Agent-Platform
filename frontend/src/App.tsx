@@ -7,6 +7,7 @@ import { HubDashboard } from '@/components/hub/HubDashboard'
 import { FlowDashboard } from '@/components/flow/FlowDashboard'
 import { LoginPage } from '@/pages/LoginPage'
 import { CallbackPage } from '@/pages/CallbackPage'
+import { SignupRequestPage } from '@/pages/SignupRequestPage'
 import { PendingApprovalPage } from '@/pages/PendingApprovalPage'
 import { PrivateRoute } from '@/components/auth/PrivateRoute'
 import { useAuthStore } from '@/stores/authStore'
@@ -49,6 +50,9 @@ function App() {
 
           {/* Protected Routes */}
           <Route element={<PrivateRoute />}>
+            {/* Signup Request Page - accessible only when logged in with NEW or REJECTED role */}
+            <Route path="/signup-request" element={<SignupRequestPage />} />
+
             {/* Pending Approval Page - accessible only when logged in with PENDING role */}
             <Route path="/pending-approval" element={<PendingApprovalPage />} />
 

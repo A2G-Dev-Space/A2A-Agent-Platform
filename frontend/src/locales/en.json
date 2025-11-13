@@ -256,6 +256,22 @@
       "logout": "Logout",
       "needAccess": "Need immediate access?",
       "contactAdmin": "Contact Administrator"
+    },
+    "signupRequest": {
+      "title": "Signup Request",
+      "titleKo": "가입 신청",
+      "nameLabel": "Name",
+      "usernameLabel": "Username",
+      "emailLabel": "Email",
+      "departmentLabel": "Department",
+      "infoTitle": "How it works",
+      "step1": "Submit your signup request with the button below",
+      "step2": "An administrator will review your request",
+      "step3": "You'll be notified once your account is approved",
+      "submitButton": "Submit Signup Request",
+      "submitting": "Submitting...",
+      "needHelp": "Need help?",
+      "contactAdmin": "Contact Administrator"
     }
   }
 }

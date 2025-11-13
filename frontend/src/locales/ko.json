@@ -256,6 +256,22 @@
       "logout": "로그아웃",
       "needAccess": "즉시 액세스가 필요하신가요?",
       "contactAdmin": "관리자에게 문의"
+    },
+    "signupRequest": {
+      "title": "Signup Request",
+      "titleKo": "가입 신청",
+      "nameLabel": "이름",
+      "usernameLabel": "사용자명",
+      "emailLabel": "이메일",
+      "departmentLabel": "부서",
+      "infoTitle": "진행 방법",
+      "step1": "아래 버튼을 클릭하여 가입 신청을 제출합니다",
+      "step2": "관리자가 귀하의 신청을 검토합니다",
+      "step3": "계정이 승인되면 알림을 받게 됩니다",
+      "submitButton": "가입 신청하기",
+      "submitting": "신청 중...",
+      "needHelp": "도움이 필요하신가요?",
+      "contactAdmin": "관리자에게 문의"
     }
   }
 }
