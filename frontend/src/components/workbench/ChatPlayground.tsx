@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp, Copy, Check, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework } from '@/types';
 import { agentService } from '@/services/agentService';
 import { generateFixedTraceId, getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
+import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
   id: string;
@@ -34,6 +35,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,6 +45,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   // Configuration state
   const [showConfig, setShowConfig] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
@@ -334,6 +337,17 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     }
   };
 
+  // Copy message to clipboard
+  const handleCopyMessage = async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy message:', error);
+    }
+  };
+
   // Save agent endpoint
   const handleSaveEndpoint = async () => {
     if (!agentEndpoint.trim()) {
@@ -413,6 +427,21 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowGuide(!showGuide)}
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
+            style={{
+              color: showGuide ? 'var(--color-workbench-primary, #EA2831)' : '#6b7280',
+              backgroundColor: showGuide
+                ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.1)' : 'rgba(234, 40, 49, 0.08)')
+                : 'transparent',
+              border: '1px solid',
+              borderColor: showGuide ? 'var(--color-workbench-primary, #EA2831)' : 'var(--color-border-light, #e5e7eb)'
+            }}
+            title="Playground Guide"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => setShowConfig(!showConfig)}
             className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
             style={{
@@ -457,6 +486,258 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
         </div>
       </div>
 
+      {/* Guide Panel */}
+      {showGuide && (
+        <div className="border-b border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark/50 px-4 py-3 max-h-[70vh] overflow-y-auto">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+                {t('workbench.guide.title')}
+              </h3>
+              <button
+                onClick={() => setShowGuide(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Introduction */}
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <p>{t('workbench.guide.intro')}</p>
+            </div>
+
+            {/* Section 1: Text Formatting */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">1. {t('workbench.guide.textFormatting.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.textFormatting.basicLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  # Heading 1<br/>
+                  ## Heading 2<br/>
+                  **Bold text** and *italic text*<br/>
+                  ~~Strikethrough~~
+                </div>
+                <p><strong>{t('workbench.guide.textFormatting.taskListsLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  - [x] Completed task<br/>
+                  - [ ] Pending task
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Code Blocks */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">2. {t('workbench.guide.codeBlocks.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.codeBlocks.featuresLabel')}</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>{t('workbench.guide.codeBlocks.feature1')}</li>
+                  <li>{t('workbench.guide.codeBlocks.feature2')}</li>
+                  <li>{t('workbench.guide.codeBlocks.feature3')}</li>
+                  <li>{t('workbench.guide.codeBlocks.feature4')}</li>
+                  <li>{t('workbench.guide.codeBlocks.feature5')}</li>
+                </ul>
+                <p><strong>{t('workbench.guide.codeBlocks.exampleLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  ```python<br/>
+                  def fibonacci(n):<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;if n &lt;= 1:<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return n<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;return fibonacci(n-1) + fibonacci(n-2)<br/>
+                  ```
+                </div>
+                <p><strong>{t('workbench.guide.codeBlocks.diffLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  ```diff<br/>
+                  - const port = 3000;<br/>
+                  + const port = 8080;<br/>
+                  ```
+                </div>
+                <p className="text-xs text-gray-500">{t('workbench.guide.codeBlocks.diffNote')}</p>
+              </div>
+            </div>
+
+            {/* Section 3: Mathematics (LaTeX) */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">3. {t('workbench.guide.math.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.math.inlineLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  The quadratic formula is $x = \frac{'{-b \\pm \\sqrt{b^2 - 4ac}}'}{'{2a}'}$.
+                </div>
+                <p><strong>{t('workbench.guide.math.displayLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  $$<br/>
+                  E = mc^2<br/>
+                  $$
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Diagrams (Mermaid) */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">4. {t('workbench.guide.diagrams.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.diagrams.supportedLabel')}</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">flowchart</code> - {t('workbench.guide.diagrams.flowchart')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">sequenceDiagram</code> - {t('workbench.guide.diagrams.sequence')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">classDiagram</code> - {t('workbench.guide.diagrams.class')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">stateDiagram-v2</code> - {t('workbench.guide.diagrams.state')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">erDiagram</code> - {t('workbench.guide.diagrams.er')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">gantt</code> - {t('workbench.guide.diagrams.gantt')}</li>
+                  <li><code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">pie</code> - {t('workbench.guide.diagrams.pie')}</li>
+                </ul>
+                <p><strong>{t('workbench.guide.diagrams.exampleLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  ```mermaid<br/>
+                  flowchart TD<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;A[Start] --&gt; B{'{Decision}'}<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;B --|Yes| C[Success]<br/>
+                  &nbsp;&nbsp;&nbsp;&nbsp;B --|No| D[Failure]<br/>
+                  ```
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Tables */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">5. {t('workbench.guide.tables.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.tables.exampleLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  | Feature | Status | Priority |<br/>
+                  |---------|--------|----------|<br/>
+                  | Markdown | ✅ Done | High |<br/>
+                  | Code | ✅ Done | High |
+                </div>
+                <p><strong>{t('workbench.guide.tables.featuresLabel')}</strong> {t('workbench.guide.tables.featuresText')}</p>
+              </div>
+            </div>
+
+            {/* Section 6: Images */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">6. {t('workbench.guide.images.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  ![Alt text](https://example.com/image.png)
+                </div>
+                <p><strong>{t('workbench.guide.images.featuresLabel')}</strong> {t('workbench.guide.images.featuresText')}</p>
+              </div>
+            </div>
+
+            {/* Section 7: Links & Lists */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">7. {t('workbench.guide.links.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.links.markdownLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  Visit [OpenAI](https://openai.com) for more info.
+                </div>
+                <p><strong>{t('workbench.guide.links.autoLinkLabel')}</strong> {t('workbench.guide.links.autoLinkText')}</p>
+                <p><strong>{t('workbench.guide.links.unorderedLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  - Item 1<br/>
+                  - Item 2<br/>
+                  &nbsp;&nbsp;- Nested item 2.1
+                </div>
+                <p><strong>{t('workbench.guide.links.orderedLabel')}</strong></p>
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  1. First step<br/>
+                  2. Second step<br/>
+                  3. Third step
+                </div>
+              </div>
+            </div>
+
+            {/* Section 8: Blockquotes */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">8. {t('workbench.guide.blockquotes.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono text-xs">
+                  &gt; This is a blockquote.<br/>
+                  &gt; It can span multiple lines.
+                </div>
+              </div>
+            </div>
+
+            {/* Section 9: Best Practices */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">9. {t('workbench.guide.bestPractices.title')}</h4>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p><strong>{t('workbench.guide.bestPractices.forAgentsLabel')}</strong></p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>{t('workbench.guide.bestPractices.tip1')}</li>
+                  <li>{t('workbench.guide.bestPractices.tip2')}</li>
+                  <li>{t('workbench.guide.bestPractices.tip3')}</li>
+                  <li>{t('workbench.guide.bestPractices.tip4')}</li>
+                  <li>{t('workbench.guide.bestPractices.tip5')}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Quick Reference Table */}
+            <div className="border-l-4 pl-4" style={{ borderColor: 'var(--color-workbench-primary, #EA2831)' }}>
+              <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 mb-2">{t('workbench.guide.quickReference.title')}</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-gray-200 dark:border-gray-700">
+                  <thead className="bg-gray-100 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{t('workbench.guide.quickReference.featureCol')}</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{t('workbench.guide.quickReference.useCaseCol')}</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{t('workbench.guide.quickReference.exampleCol')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 dark:text-gray-300">
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.codeBlock')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.codeBlockUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.codeBlockEx')}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.diff')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.diffUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.diffEx')}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.latex')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.latexUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.latexEx')}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.flowchart')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.flowchartUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.flowchartEx')}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.sequence')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.sequenceUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.sequenceEx')}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.table')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.tableUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.tableEx')}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2"><strong>{t('workbench.guide.quickReference.blockquote')}</strong></td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.blockquoteUse')}</td>
+                      <td className="px-3 py-2">{t('workbench.guide.quickReference.blockquoteEx')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2 border-t border-gray-200 dark:border-gray-700">
+              {t('workbench.guide.footer')}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Configuration Panel */}
       {showConfig && (
         <div className="border-b border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark/50 px-4 py-3 max-h-[60vh] overflow-y-auto">
@@ -488,7 +769,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               </h4>
               {platformLlmEndpoint ? (
                 <>
-                  <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded">
+                  <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded border border-black dark:border-gray-100">
                     <code className="text-xs text-gray-700 dark:text-gray-300 break-all">
                       {platformLlmEndpoint}
                     </code>
@@ -526,7 +807,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                   value={agentEndpoint}
                   onChange={(e) => setAgentEndpoint(e.target.value)}
                   placeholder="http://localhost:8011"
-                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-2 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  className="w-full rounded-lg border border-black dark:border-gray-100 bg-white dark:bg-gray-800 p-2 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                 />
                 <p className="text-xs text-green-700 dark:text-green-400 mt-1">
                   Enter your agent's hosted A2A endpoint (e.g., http://localhost:8011)
@@ -718,17 +999,44 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                     {message.role === 'user' ? t('workbench.you') : displayName}
                   </p>
                   <div
-                    className={`rounded-lg p-3 text-sm leading-relaxed ${
+                    className={`rounded-lg p-3 text-sm leading-relaxed border-2 ${
                       message.role === 'user'
-                        ? 'rounded-tr-none bg-primary/20 dark:bg-primary/20 text-text-light-primary dark:text-text-dark-primary'
-                        : 'rounded-tl-none bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary'
+                        ? 'rounded-tr-none'
+                        : 'rounded-tl-none'
                     }`}
+                    style={{
+                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                        ? '#1f2937'
+                        : '#ffffff',
+                      borderColor: message.role === 'user'
+                        ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#EA2831' : 'rgba(234, 40, 49, 0.4)')
+                        : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
+                    }}
                   >
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    <MessageContent content={message.content} contentType="markdown" />
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {message.timestamp.toLocaleTimeString()}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                    <button
+                      onClick={() => handleCopyMessage(message.id, message.content)}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Copy message"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -741,8 +1049,18 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 </div>
                 <div className="flex max-w-[85%] sm:max-w-[75%] flex-col gap-1">
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{agentName}</p>
-                  <div className="rounded-lg rounded-tl-none bg-panel-light dark:bg-panel-dark p-3 text-sm leading-relaxed">
-                    <p className="whitespace-pre-wrap break-words">{streamingMessage}</p>
+                  <div
+                    className="rounded-lg rounded-tl-none border-2 p-3 text-sm leading-relaxed"
+                    style={{
+                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                        ? '#1f2937'
+                        : '#ffffff',
+                      borderColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                        ? 'rgba(234, 40, 49, 0.6)'
+                        : '#EA2831'
+                    }}
+                  >
+                    <MessageContent content={streamingMessage} contentType="markdown" />
                     <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
                   </div>
                 </div>

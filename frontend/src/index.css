@@ -160,3 +160,175 @@ body {
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     background: var(--color-border-light);
 }
+
+/* Markdown Prose Styles */
+.prose {
+    --tw-prose-body: var(--color-text-light-primary);
+    --tw-prose-headings: var(--color-text-light-primary);
+    --tw-prose-links: #3b82f6;
+    --tw-prose-bold: var(--color-text-light-primary);
+    --tw-prose-code: #ec4899;
+    --tw-prose-pre-code: #e5e7eb;
+    --tw-prose-pre-bg: #1f2937;
+    --tw-prose-quotes: var(--color-text-light-secondary);
+}
+
+[data-theme="dark"] .prose {
+    --tw-prose-body: var(--color-text-dark-primary);
+    --tw-prose-headings: var(--color-text-dark-primary);
+    --tw-prose-links: #60a5fa;
+    --tw-prose-bold: var(--color-text-dark-primary);
+    --tw-prose-code: #f472b6;
+    --tw-prose-pre-code: #e5e7eb;
+    --tw-prose-pre-bg: #000000;
+    --tw-prose-quotes: var(--color-text-dark-secondary);
+}
+
+/* Code Highlighting Customization */
+.prose pre {
+    padding: 0;
+    margin: 0;
+    background-color: transparent;
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.prose pre code {
+    background-color: transparent;
+    padding: 1rem;
+    display: block;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Inline code styling */
+.prose :not(pre) > code {
+    background-color: #f3f4f6;
+    color: #ec4899;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .prose :not(pre) > code {
+    background-color: #374151;
+    color: #f472b6;
+}
+
+/* Override highlight.js theme for better dark mode */
+[data-theme="dark"] .hljs {
+    background: #000000 !important;
+    color: #e5e7eb !important;
+}
+
+/* Link styling */
+.prose a {
+    text-decoration: none;
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+.prose a:hover {
+    text-decoration: underline;
+}
+
+[data-theme="dark"] .prose a {
+    color: #60a5fa;
+}
+
+/* Table styling */
+.prose table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.prose th {
+    background-color: #f9fafb;
+}
+
+[data-theme="dark"] .prose th {
+    background-color: #1f2937;
+}
+
+/* Blockquote styling */
+.prose blockquote {
+    border-left-width: 4px;
+    border-left-color: #3b82f6;
+    padding-left: 1rem;
+    font-style: italic;
+    margin: 1rem 0;
+}
+
+[data-theme="dark"] .prose blockquote {
+    border-left-color: #60a5fa;
+}
+
+/* List styling */
+.prose ul,
+.prose ol {
+    padding-left: 1.5rem;
+}
+
+.prose li {
+    margin: 0.25rem 0;
+}
+
+/* Remove default margins that conflict with our layout */
+.prose > :first-child {
+    margin-top: 0;
+}
+
+.prose > :last-child {
+    margin-bottom: 0;
+}
+
+/* KaTeX Math Styling */
+.katex {
+    font-size: 1.1em;
+}
+
+.katex-display {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+[data-theme="dark"] .katex {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .katex .mord.text {
+    color: #e5e7eb;
+}
+
+/* Mermaid Diagram Styling */
+.mermaid {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+[data-theme="dark"] .mermaid {
+    filter: invert(0.9) hue-rotate(180deg);
+}
+
+[data-theme="dark"] .mermaid svg {
+    background-color: transparent;
+}
+
+/* Image Zoom Overlay */
+[data-rmiz-overlay] {
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme="dark"] [data-rmiz-overlay] {
+    background-color: rgba(0, 0, 0, 0.95);
+}
+
+/* Ensure images don't overflow */
+.prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}

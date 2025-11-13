@@ -39,7 +39,104 @@
         "noLogs": "No logs yet",
         "scrollToBottom": "Scroll to bottom",
         "you": "You",
-        "creatingSession": "Creating session..."
+        "creatingSession": "Creating session...",
+        "guide": {
+            "title": "What Playground Can Show",
+            "intro": "The A2A Chat Playground supports rich markdown rendering with advanced features. This guide shows you what you can display and how to format your agent responses for the best user experience.",
+            "textFormatting": {
+                "title": "Text Formatting",
+                "basicLabel": "Basic Formatting:",
+                "taskListsLabel": "Task Lists:"
+            },
+            "codeBlocks": {
+                "title": "Code Blocks",
+                "featuresLabel": "Features:",
+                "feature1": "Syntax highlighting for 100+ languages",
+                "feature2": "Automatic line numbers (for multi-line code)",
+                "feature3": "Copy button",
+                "feature4": "Collapsible for long code (10+ lines)",
+                "feature5": "Language badge",
+                "exampleLabel": "Example:",
+                "diffLabel": "Diff Syntax:",
+                "diffNote": "🟢 Green: Added lines (+) | 🔴 Red: Deleted lines (-)"
+            },
+            "math": {
+                "title": "Mathematics (LaTeX)",
+                "inlineLabel": "Inline Math:",
+                "displayLabel": "Display Math (Block):"
+            },
+            "diagrams": {
+                "title": "Diagrams (Mermaid)",
+                "supportedLabel": "Supported Types:",
+                "flowchart": "Process flows, decision trees",
+                "sequence": "API calls, interactions",
+                "class": "Architecture, OOP design",
+                "state": "State machines",
+                "er": "Database schema",
+                "gantt": "Project timeline",
+                "pie": "Distributions",
+                "exampleLabel": "Example Flowchart:"
+            },
+            "tables": {
+                "title": "Tables",
+                "exampleLabel": "Example:",
+                "featuresLabel": "Features:",
+                "featuresText": "Automatic borders, responsive design, horizontal scroll for wide tables"
+            },
+            "images": {
+                "title": "Images",
+                "featuresLabel": "Features:",
+                "featuresText": "Click to zoom (lightbox), lazy loading, responsive sizing, dark mode compatible"
+            },
+            "links": {
+                "title": "Links & Lists",
+                "markdownLabel": "Markdown Links:",
+                "autoLinkLabel": "Auto-linking:",
+                "autoLinkText": "URLs automatically become clickable (opens in new tab)",
+                "unorderedLabel": "Unordered Lists:",
+                "orderedLabel": "Ordered Lists:"
+            },
+            "blockquotes": {
+                "title": "Blockquotes"
+            },
+            "bestPractices": {
+                "title": "Best Practices",
+                "forAgentsLabel": "For Agent Developers:",
+                "tip1": "Use code blocks for code, LaTeX for math, Mermaid for diagrams",
+                "tip2": "Structure responses with headings and sections",
+                "tip3": "Break long content into manageable sections",
+                "tip4": "Use bullet points for lists, tables for structured data",
+                "tip5": "Combine features for comprehensive documentation"
+            },
+            "quickReference": {
+                "title": "Quick Reference",
+                "featureCol": "Feature",
+                "useCaseCol": "Use Case",
+                "exampleCol": "Example",
+                "codeBlock": "Code Block",
+                "codeBlockUse": "Showing code, commands",
+                "codeBlockEx": "Function implementation",
+                "diff": "Diff",
+                "diffUse": "Before/after changes",
+                "diffEx": "Code review",
+                "latex": "LaTeX",
+                "latexUse": "Mathematical formulas",
+                "latexEx": "Equations, statistics",
+                "flowchart": "Flowchart",
+                "flowchartUse": "Process flow",
+                "flowchartEx": "Algorithm steps",
+                "sequence": "Sequence",
+                "sequenceUse": "API interactions",
+                "sequenceEx": "Request/response flow",
+                "table": "Table",
+                "tableUse": "Structured data",
+                "tableEx": "Feature comparisons",
+                "blockquote": "Blockquote",
+                "blockquoteUse": "Important notes",
+                "blockquoteEx": "Warnings, citations"
+            },
+            "footer": "Made with ❤️ for A2A Agent Developers"
+        }
     },
     "createAgent": {
         "title": "Create New Agent",
