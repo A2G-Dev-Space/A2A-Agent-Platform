@@ -34,6 +34,7 @@ SERVICE_ROUTES = {
     # Admin - LLM & Statistics (Admin Service)
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
     '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+    '/api/admin': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
 
     # LLM Proxy Service (OpenAI Compatible Endpoint)
     '/api/llm': os.getenv('LLM_PROXY_SERVICE_URL', 'http://llm-proxy-service:8006'),

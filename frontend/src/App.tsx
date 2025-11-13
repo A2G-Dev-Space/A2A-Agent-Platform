@@ -50,7 +50,7 @@ function App() {
 
           {/* Protected Routes */}
           <Route element={<PrivateRoute />}>
-            {/* Signup Request Page - accessible only when logged in with NEW or REJECTED role */}
+            {/* Signup Request Page - accessible only when logged in with NEW role */}
             <Route path="/signup-request" element={<SignupRequestPage />} />
 
             {/* Pending Approval Page - accessible only when logged in with PENDING role */}

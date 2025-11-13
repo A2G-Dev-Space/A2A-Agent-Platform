@@ -24,7 +24,6 @@ class UserProfile(BaseModel):
     department_kr: Optional[str]
     department_en: Optional[str]
     role: str
-    is_active: bool
     last_login: Optional[datetime]
     created_at: Optional[datetime]
 
@@ -67,7 +66,6 @@ async def get_current_user_profile(
         department_kr=current_user.department_kr,
         department_en=current_user.department_en,
         role=current_user.role,
-        is_active=current_user.is_active,
         last_login=current_user.last_login,
         created_at=current_user.created_at
     )
@@ -103,7 +101,6 @@ async def update_current_user_profile(
         department_kr=current_user.department_kr,
         department_en=current_user.department_en,
         role=current_user.role,
-        is_active=current_user.is_active,
         last_login=current_user.last_login,
         created_at=current_user.created_at
     )
@@ -215,8 +212,8 @@ async def get_user_preferences(
     db: AsyncSession = Depends(get_db)
 ):
     """Get user preferences"""
-    # For NEW or REJECTED users (not yet in DB), return defaults
-    if current_user.role in ["NEW", "REJECTED"] or current_user.id == 0:
+    # For NEW users (not yet in DB), return defaults
+    if current_user.role == "NEW" or current_user.id == 0:
         return UserPreferences(
             theme="system",
             language="en",

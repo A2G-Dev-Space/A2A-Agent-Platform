@@ -27,13 +27,14 @@ class LLMCall(Base):
     __tablename__ = "llm_calls"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)  # User who made the call
     agent_id: Mapped[str] = mapped_column(String, index=True)
     session_id: Mapped[Optional[str]] = mapped_column(String, index=True)
     trace_id: Mapped[Optional[str]] = mapped_column(String, index=True)
 
     # LLM Info
     provider: Mapped[str] = mapped_column(String)  # google, openai, anthropic
-    model: Mapped[str] = mapped_column(String)
+    model: Mapped[str] = mapped_column(String, index=True)  # Index for statistics
 
     # Request
     request_messages: Mapped[Dict[str, Any]] = mapped_column(JSON)

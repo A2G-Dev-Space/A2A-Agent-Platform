@@ -22,7 +22,6 @@ class UserListItem(BaseModel):
     role: str
     department_kr: Optional[str]
     department_en: Optional[str]
-    is_active: bool
     last_login: Optional[datetime]
     created_at: Optional[datetime]
 
@@ -97,7 +96,6 @@ async def list_all_users(
                 role=user.role,
                 department_kr=user.department_kr,
                 department_en=user.department_en,
-                is_active=user.is_active,
                 last_login=user.last_login,
                 created_at=user.created_at
             )
@@ -161,8 +159,96 @@ async def update_user_role(
             role=user.role,
             department_kr=user.department_kr,
             department_en=user.department_en,
-            is_active=user.is_active,
             last_login=user.last_login,
             created_at=user.created_at
         )
+    }
+
+
+@router.get("/users/count")
+async def get_users_count(
+    admin_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get total number of users (ADMIN only)
+    """
+    result = await db.execute(
+        select(func.count(User.id))
+    )
+    count = result.scalar()
+
+    return {"count": count}
+
+
+@router.get("/users/monthly-growth")
+async def get_users_monthly_growth(
+    months: int = Query(12, ge=1, le=24, description="Number of months to retrieve"),
+    group_by: str = Query("month", regex="^(week|month)$", description="Group by week or month"),
+    admin_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get user growth statistics (ADMIN only)
+
+    Returns cumulative user count at the end of each period (week or month) for the last N periods
+    """
+    from sqlalchemy import extract, text
+    from datetime import datetime, timedelta
+    from dateutil.relativedelta import relativedelta
+
+    # Generate list of periods to show
+    now = datetime.utcnow()
+    periods = []
+
+    if group_by == "week":
+        # Generate last N weeks
+        for i in range(months):
+            week_start = now - timedelta(weeks=i)
+            periods.append(week_start.strftime("%Y-W%U"))
+    else:
+        # Generate last N months
+        for i in range(months):
+            month_date = now - relativedelta(months=i)
+            periods.append(month_date.strftime("%Y-%m"))
+
+    periods.reverse()  # Oldest first
+
+    # Query cumulative count for each period
+    monthly_data = []
+
+    for period in periods:
+        if group_by == "week":
+            # Parse week string (e.g., "2025-W45")
+            year, week = period.split("-W")
+            # Calculate end of week
+            # This is approximate - using 7 days from start of week
+            import datetime as dt
+            period_end = dt.datetime.strptime(f"{year}-W{week}-0", "%Y-W%U-%w") + timedelta(days=7)
+        else:
+            # Parse month string (e.g., "2025-11")
+            year, month = map(int, period.split("-"))
+            # End of month
+            if month == 12:
+                period_end = datetime(year + 1, 1, 1)
+            else:
+                period_end = datetime(year, month + 1, 1)
+
+        # Count users created up to this period
+        count_query = select(func.count(User.id)).where(
+            User.created_at < period_end
+        )
+
+        result = await db.execute(count_query)
+        count = result.scalar() or 0
+
+        monthly_data.append({
+            "month": period if group_by == "month" else period,
+            "count": count
+        })
+
+    return {
+        "months": months,
+        "group_by": group_by,
+        "data": monthly_data
     }

@@ -17,6 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from ..core.redis_client import get_redis_client
+from ..core.database import LLMCall, async_session_maker
 
 logger = logging.getLogger(__name__)
 
@@ -758,13 +759,73 @@ async def create_chat_completion_with_session(
 
 # ===== Provider Implementations =====
 
+async def save_llm_call_to_db(
+    agent_id: str,
+    user_id: Optional[int],
+    trace_id: Optional[str],
+    provider: str,
+    model: str,
+    request: ChatCompletionRequest,
+    response_data: Dict[str, Any],
+    latency_ms: int,
+    success: bool = True,
+    error_message: Optional[str] = None
+):
+    """Save LLM call information to database"""
+    try:
+        async with async_session_maker() as session:
+            # Extract usage information
+            usage = response_data.get("usage", {}) if success else {}
+            request_tokens = usage.get("prompt_tokens", 0)
+            response_tokens = usage.get("completion_tokens", 0)
+            total_tokens = usage.get("total_tokens", 0)
+
+            # Extract response content
+            response_content = ""
+            if success and "choices" in response_data and len(response_data["choices"]) > 0:
+                response_content = response_data["choices"][0].get("message", {}).get("content", "")
+
+            # Create LLM call record
+            llm_call = LLMCall(
+                user_id=user_id,
+                agent_id=agent_id,
+                trace_id=trace_id,
+                provider=provider,
+                model=model,
+                request_messages={"messages": [msg.model_dump() for msg in request.messages]},
+                request_params={
+                    "temperature": request.temperature,
+                    "max_tokens": request.max_tokens,
+                    "stream": request.stream,
+                    "top_p": request.top_p
+                },
+                response_content=response_content,
+                response_metadata=response_data if success else {"error": error_message},
+                request_tokens=request_tokens,
+                response_tokens=response_tokens,
+                total_tokens=total_tokens,
+                latency_ms=latency_ms,
+                success=success,
+                error_message=error_message,
+                completed_at=datetime.utcnow()
+            )
+
+            session.add(llm_call)
+            await session.commit()
+            logger.info(f"[DB] Saved LLM call - agent_id={agent_id}, trace_id={trace_id}, tokens={total_tokens}, success={success}")
+
+    except Exception as e:
+        logger.error(f"[DB] Failed to save LLM call: {e}", exc_info=True)
+
+
 async def proxy_openai_compatible(
     agent_id: str,
     api_key: str,
     base_url: str,
     request: ChatCompletionRequest,
     provider: str,
-    trace_id: Optional[str] = None
+    trace_id: Optional[str] = None,
+    user_id: Optional[int] = None
 ):
     """
     Proxy request to OpenAI or OpenAI-compatible endpoint
@@ -774,6 +835,9 @@ async def proxy_openai_compatible(
     base_url = base_url.rstrip('/')
 
     logger.info(f"[OpenAI Proxy] Calling {base_url}/chat/completions for agent {agent_id}, trace_id={trace_id}")
+
+    # Track request start time for latency
+    start_time = time.time()
 
     # Prepare request payload (OpenAI format)
     # Process messages and convert array content from ADK to string
@@ -928,6 +992,22 @@ async def proxy_openai_compatible(
                 # Process tool calls if present
                 if tool_calls:
                     await process_tool_calls(agent_id, tool_calls, trace_id)
+
+            # Calculate latency
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            # Save to database
+            await save_llm_call_to_db(
+                agent_id=agent_id,
+                user_id=user_id,
+                trace_id=trace_id,
+                provider=provider,
+                model=request.model,
+                request=request,
+                response_data=data,
+                latency_ms=latency_ms,
+                success=True
+            )
 
             return data
 

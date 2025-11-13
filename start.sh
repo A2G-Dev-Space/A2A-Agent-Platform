@@ -43,6 +43,158 @@ check_docker_compose
 MODE=${1:-start}
 
 case $MODE in
+    setup)
+        echo "🔧 Setting up A2G Platform for the first time..."
+        echo ""
+
+        # Start infrastructure services first (PostgreSQL, Redis)
+        echo "📦 Starting infrastructure services (PostgreSQL, Redis)..."
+        cd repos/infra
+        $DOCKER_COMPOSE -f docker-compose.yml up -d postgres redis
+        cd ../..
+
+        echo "⏳ Waiting for PostgreSQL to be ready..."
+        sleep 10
+
+        # Wait for PostgreSQL to be ready
+        MAX_RETRIES=30
+        RETRY_COUNT=0
+        while ! docker exec a2g-postgres pg_isready -U dev_user > /dev/null 2>&1; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                echo "❌ PostgreSQL failed to start after $MAX_RETRIES attempts"
+                exit 1
+            fi
+            echo "   Waiting for PostgreSQL... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+        done
+
+        echo "✅ PostgreSQL is ready"
+        echo ""
+
+        # Verify databases were created by init-db.sql
+        echo "🔍 Verifying databases..."
+        EXPECTED_DBS=("user_service_db" "agent_service_db" "chat_service_db" "tracing_service_db" "admin_service_db" "llm_proxy_db")
+
+        for db in "${EXPECTED_DBS[@]}"; do
+            if docker exec a2g-postgres psql -U dev_user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
+                echo "   ✅ $db exists"
+            else
+                echo "   ❌ $db does not exist - init-db.sql may have failed"
+                exit 1
+            fi
+        done
+
+        echo ""
+        echo "📦 Starting all services..."
+        cd repos/infra
+        $DOCKER_COMPOSE -f docker-compose.yml up -d
+        cd ../..
+
+        echo ""
+        echo "⏳ Waiting for all services to start..."
+        sleep 15
+
+        echo ""
+        echo "🔄 Running database migrations for all services..."
+        echo ""
+
+        # Map service names to container names
+        declare -A SERVICE_CONTAINERS=(
+            ["user-service"]="a2g-user-service"
+            ["agent-service"]="a2g-agent-service"
+            ["chat-service"]="a2g-chat-service"
+            ["tracing-service"]="a2g-tracing-service"
+            ["admin-service"]="a2g-admin-service"
+            ["llm-proxy-service"]="a2g-llm-proxy"
+        )
+
+        SUCCESS_COUNT=0
+        SKIP_COUNT=0
+        FAIL_COUNT=0
+
+        for service in "${!SERVICE_CONTAINERS[@]}"; do
+            CONTAINER_NAME="${SERVICE_CONTAINERS[$service]}"
+            SERVICE_PATH="repos/$service"
+
+            if [ ! -d "$SERVICE_PATH" ]; then
+                echo "⚠️  $service: Directory not found, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            # Check if alembic is configured
+            if [ ! -f "$SERVICE_PATH/alembic.ini" ]; then
+                echo "⏭️  $service: No alembic configuration, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            # Check if there are any migrations
+            if [ ! -d "$SERVICE_PATH/alembic/versions" ] || [ -z "$(ls -A $SERVICE_PATH/alembic/versions/*.py 2>/dev/null)" ]; then
+                echo "⏭️  $service: No migration files found, skipping..."
+                SKIP_COUNT=$((SKIP_COUNT + 1))
+                continue
+            fi
+
+            # Wait for container to be ready
+            MAX_WAIT=60
+            WAIT_COUNT=0
+            while ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; do
+                WAIT_COUNT=$((WAIT_COUNT + 1))
+                if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+                    echo "❌ $service: Container not started after ${MAX_WAIT}s"
+                    FAIL_COUNT=$((FAIL_COUNT + 1))
+                    continue 2
+                fi
+                sleep 1
+            done
+
+            echo "📦 $service: Running initial migrations..."
+
+            # Run migration
+            MIGRATION_OUTPUT=$(docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log)
+            MIGRATION_EXIT_CODE=$?
+
+            if [ $MIGRATION_EXIT_CODE -eq 0 ] || echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
+                if echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
+                    echo "   ⚠️  Some objects already exist, stamping migration..."
+                    docker exec "$CONTAINER_NAME" uv run alembic stamp head 2>/dev/null
+                fi
+                CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "applied")
+                echo "   ✅ Migration complete ($CURRENT)"
+                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            else
+                echo "   ❌ Migration failed! Check /tmp/alembic_output_$service.log"
+                FAIL_COUNT=$((FAIL_COUNT + 1))
+            fi
+            echo ""
+        done
+
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📊 Setup Summary:"
+        echo "   ✅ Success: $SUCCESS_COUNT"
+        echo "   ⏭️  Skipped: $SKIP_COUNT"
+        echo "   ❌ Failed:  $FAIL_COUNT"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+
+        if [ $FAIL_COUNT -gt 0 ]; then
+            echo "⚠️  Setup completed with some failures. Check error messages above."
+            echo "   You can try running './start.sh update' to retry migrations."
+        else
+            echo "🎉 Setup completed successfully!"
+        fi
+
+        echo ""
+        echo "📌 Next steps:"
+        echo "   1. Start frontend: cd frontend && npm install && npm run dev"
+        echo "   2. Access platform: http://localhost:9060"
+        echo "   3. Mock SSO: http://localhost:9050/mock-sso"
+        echo ""
+
+        exit 0
+        ;;
     update)
         echo "🔄 Updating all service databases with latest migrations..."
         echo ""
@@ -169,7 +321,8 @@ case $MODE in
         exit 0
         ;;
     *)
-        echo "Usage: ./start.sh [start|update|stop]"
+        echo "Usage: ./start.sh [setup|start|update|stop]"
+        echo "  setup   - First-time setup: start services and run all database migrations"
         echo "  start   - Start all services (default)"
         echo "  update  - Update all service databases with latest migrations (after git pull)"
         echo "  stop    - Stop all services"

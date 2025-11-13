@@ -22,8 +22,8 @@ export const PrivateRoute: React.FC = () => {
     return <Navigate to="/login" replace />
   }
 
-  // If user is NEW or REJECTED and not already on signup-request page, redirect there
-  if ((user?.role === UserRole.NEW || user?.role === UserRole.REJECTED) && location.pathname !== '/signup-request') {
+  // If user is NEW and not already on signup-request page, redirect there
+  if (user?.role === UserRole.NEW && location.pathname !== '/signup-request') {
     return <Navigate to="/signup-request" replace />
   }
 

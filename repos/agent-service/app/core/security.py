@@ -33,15 +33,45 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     token = credentials.credentials
     payload = verify_token(token)
-    
+
     if payload is None:
         raise credentials_exception
-    
+
     username: str = payload.get("sub")
     if username is None:
         raise credentials_exception
-    
-    return {"username": username}
+
+    return {"username": username, "role": payload.get("role", "USER")}
+
+async def require_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> dict:
+    """Require admin role for access"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    token = credentials.credentials
+    payload = verify_token(token)
+
+    if payload is None:
+        raise credentials_exception
+
+    role = payload.get("role")
+    if role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Include access_token for forwarding to other services
+    return {
+        "username": payload.get("sub"),
+        "role": role,
+        "access_token": token
+    }

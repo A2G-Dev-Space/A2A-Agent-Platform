@@ -132,4 +132,46 @@ export const apiClient = {
   },
 }
 
+// Admin API client (points to admin service via API Gateway)
+export const adminAPI = axios.create({
+  baseURL: 'http://localhost:9050/api/admin',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+// Add same interceptors to adminAPI
+adminAPI.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const authStorage = localStorage.getItem('auth-storage')
+    if (authStorage) {
+      try {
+        const authData = JSON.parse(authStorage)
+        const token = authData?.state?.accessToken
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (e) {
+        console.error('Failed to parse auth storage:', e)
+      }
+    }
+    const traceId = generateTraceId()
+    config.headers['X-Trace-ID'] = traceId
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+adminAPI.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.error("Authentication error (401). Logging out.");
+      import('@/stores/authStore').then(m => m.useAuthStore.getState().clearAuth());
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default api
