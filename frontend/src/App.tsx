@@ -33,10 +33,12 @@ function App() {
   const { user } = useAuthStore()
   const { initTheme } = useThemeStore()
 
-  // Initialize theme
+  // Initialize theme when user is authenticated
   useEffect(() => {
-    initTheme()
-  }, [initTheme])
+    if (user) {
+      initTheme()
+    }
+  }, [user, initTheme])
 
   return (
     <QueryClientProvider client={queryClient}>

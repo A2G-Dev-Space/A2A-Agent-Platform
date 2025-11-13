@@ -249,7 +249,10 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
 export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   const { t } = useTranslation();
   const { accessToken } = useAuthStore();
+
+  // Logs will come from tracing service via WebSocket
   const [logs, setLogs] = useState<LogEntry[]>([]);
+
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
@@ -278,6 +281,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   const handleClearLogs = () => {
     setLogs([]);
+    // Trace logs are cleared from backend via ChatPlayground's clear session
   };
 
   // Detect manual scroll to disable auto-scroll

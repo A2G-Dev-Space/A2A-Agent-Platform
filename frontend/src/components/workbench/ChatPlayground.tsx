@@ -27,7 +27,10 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   const displayName = agentName || agent.name;
   const { t } = useTranslation();
   const { accessToken, user } = useAuthStore();
+
+  // Messages state - will be loaded from backend
   const [messages, setMessages] = useState<Message[]>([]);
+
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
@@ -55,6 +58,63 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   // API base URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
+
+  // Load messages from backend when component mounts
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!accessToken) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.messages && Array.isArray(data.messages)) {
+            // Convert timestamp strings back to Date objects
+            const loadedMessages = data.messages.map((msg: any) => ({
+              id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+              role: msg.role,
+              content: msg.content,
+              timestamp: new Date(msg.timestamp),
+            }));
+            setMessages(loadedMessages);
+          }
+        }
+      } catch (error) {
+        console.error('[ChatPlayground] Failed to load messages from backend:', error);
+      }
+    };
+
+    loadMessages();
+  }, [agent.id, accessToken, API_BASE_URL]);
+
+  // Save messages to backend whenever they change
+  useEffect(() => {
+    const saveMessages = async () => {
+      if (!accessToken || messages.length === 0) return;
+
+      try {
+        await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(messages),
+        });
+      } catch (error) {
+        console.error('[ChatPlayground] Failed to save messages to backend:', error);
+      }
+    };
+
+    // Debounce save to avoid too many requests
+    const timer = setTimeout(saveMessages, 500);
+    return () => clearTimeout(timer);
+  }, [messages, agent.id, accessToken, API_BASE_URL]);
 
   // Initialize chat adapter when component mounts or agent/framework changes
   useEffect(() => {
@@ -206,15 +266,33 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     }
   };
 
-  const handleClearSession = () => {
+  const handleClearSession = async () => {
     // Cancel any ongoing message
     if (chatAdapterRef.current) {
       chatAdapterRef.current.cancel();
     }
 
+    // Clear messages in state
     setMessages([]);
     setStreamingMessage('');
     setIsStreaming(false);
+
+    // Clear messages in backend
+    if (accessToken) {
+      try {
+        await fetch(`${API_BASE_URL}/api/workbench/clear`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ agent_id: agent.id }),
+        });
+        console.log('[ChatPlayground] Session cleared from backend');
+      } catch (error) {
+        console.error('[ChatPlayground] Failed to clear session from backend:', error);
+      }
+    }
   };
 
   // Auto-resize textarea
