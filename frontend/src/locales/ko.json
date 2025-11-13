@@ -27,7 +27,19 @@
         "newAgent": "새 에이전트",
         "filterPlaceholder": "에이전트 필터링...",
         "noAgentSelectedTitle": "에이전트를 선택하세요",
-        "noAgentSelectedSubtitle": "세션을 시작하려면 목록에서 에이전트를 선택하세요."
+        "noAgentSelectedSubtitle": "세션을 시작하려면 목록에서 에이전트를 선택하세요.",
+        "chatPlayground": "채팅 플레이그라운드",
+        "trace": "추적",
+        "connected": "연결됨",
+        "disconnected": "연결 끊김",
+        "clearSession": "세션 지우기",
+        "clearLogs": "로그 지우기",
+        "startConversation": "대화를 시작하세요",
+        "typeMessage": "메시지를 입력하세요...",
+        "noLogs": "아직 로그가 없습니다",
+        "scrollToBottom": "아래로 스크롤",
+        "you": "나",
+        "creatingSession": "세션 생성 중..."
     },
     "createAgent": {
         "title": "새 에이전트 생성",
@@ -39,6 +51,9 @@
         "frameworkLabel": "프레임워크",
         "frameworkPlaceholder": "프레임워크 선택",
         "colorLabel": "카드 색상",
+        "versionLabel": "버전",
+        "documentationUrlLabel": "문서 URL",
+        "capabilitiesLabel": "기능",
         "createButton": "에이전트 생성"
     },
     "common": {
@@ -60,6 +75,7 @@
         "subtitle": "계정 및 플랫폼 설정을 관리하세요.",
         "tabs": {
             "general": "일반",
+            "platformKeys": "플랫폼 키",
             "userManagement": "사용자 관리",
             "llmManagement": "LLM 모델 관리",
             "statistics": "통계"
