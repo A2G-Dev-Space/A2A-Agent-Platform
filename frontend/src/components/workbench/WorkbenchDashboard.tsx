@@ -131,7 +131,7 @@ export const WorkbenchDashboard: React.FC = () => {
 
   // Agent selected view: Chat + Trace (2-column)
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ marginLeft: '240px', marginTop: '64px' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ marginLeft: '192px', marginTop: '51px' }}>
       {/* Back button and Endpoint Info */}
       <div className="px-4 sm:px-6">
         <div className="flex flex-col gap-2 py-3 border-b border-border-light dark:border-border-dark">
