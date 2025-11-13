@@ -169,8 +169,41 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
   const agentColor = getAgentColor(log.agent_id);
 
+  // Replace "Tool Response: None" message text but keep the log entry
+  const displayMessage = log.message && /Tool Response:\s*(None|null|undefined)/i.test(log.message)
+    ? "" // Empty message when it's just "Tool Response: None"
+    : log.message;
+
+  // Check if this is an agent transfer event
+  const isAgentTransfer = log.is_transfer || log.log_type === 'AGENT_TRANSFER';
+
+  // Extract target agent from metadata for agent transfers
+  const targetAgent = isAgentTransfer && log.metadata
+    ? (log.metadata.target_agent || log.metadata.agent_name || log.metadata.member_id || 'unknown')
+    : null;
+
   return (
-    <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+    <>
+      {/* Agent Transfer Divider */}
+      {isAgentTransfer && targetAgent && (
+        <div className="flex items-center gap-3 py-3 mt-2">
+          <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-workbench-primary, #EA2831)' }} />
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: 'rgba(234, 40, 49, 0.1)',
+              color: 'var(--color-workbench-primary, #EA2831)',
+              border: '2px solid var(--color-workbench-primary, #EA2831)'
+            }}
+          >
+            <ArrowRightLeft className="h-3 w-3" />
+            <span>Transfer to: {targetAgent}</span>
+          </div>
+          <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-workbench-primary, #EA2831)' }} />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
       <div className="flex items-start gap-2 sm:gap-3">
         {/* Icon */}
         <div
@@ -189,7 +222,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
             <p className="font-bold text-xs sm:text-sm text-text-light dark:text-text-dark">
               {label}
             </p>
-            {log.agent_id && (
+            {log.agent_id && log.agent_id !== 'unknown' && (
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 style={{
@@ -206,7 +239,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
 
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
             <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-            {log.service_name && (
+            {log.service_name && log.service_name !== 'llm-proxy-service' && (
               <>
                 <span>•</span>
                 <span className="truncate">{log.service_name}</span>
@@ -215,9 +248,9 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
           </div>
 
           {/* Message */}
-          {log.message && (
+          {displayMessage && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-              {log.message}
+              {displayMessage}
             </p>
           )}
 
@@ -243,6 +276,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
         </div>
       )}
     </div>
+    </>
   );
 };
 
@@ -252,9 +286,52 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   // Logs will come from tracing service via WebSocket
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  // Load existing trace logs on mount
+  useEffect(() => {
+    const loadTraceHistory = async () => {
+      if (!traceId || !accessToken) {
+        setIsLoadingHistory(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `http://localhost:9050/api/tracing/logs/${traceId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[TraceView] Loaded trace history:', data.total_logs, 'logs');
+
+          // Convert timestamp strings to Date objects and format properly
+          const formattedLogs = data.logs.map((log: any) => ({
+            ...log,
+            timestamp: typeof log.timestamp === 'string' ? log.timestamp : new Date(log.timestamp).toISOString(),
+          }));
+
+          setLogs(formattedLogs);
+        } else {
+          console.warn('[TraceView] Failed to load trace history:', response.status);
+        }
+      } catch (error) {
+        console.error('[TraceView] Error loading trace history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadTraceHistory();
+  }, [traceId, accessToken]);
 
   // WebSocket connection for real-time logs
   const wsUrl = accessToken
@@ -264,7 +341,12 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   const { isConnected } = useWebSocket(wsUrl, {
     onMessage: (data) => {
       if (data.type === 'log_entry' && data.log) {
-        setLogs((prev) => [...prev, data.log]);
+        // Check if log already exists (avoid duplicates)
+        setLogs((prev) => {
+          const exists = prev.some(log => log.log_id === data.log.log_id);
+          if (exists) return prev;
+          return [...prev, data.log];
+        });
       }
     },
     onError: (error) => {
@@ -279,9 +361,38 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
     }
   }, [logs, autoScroll]);
 
-  const handleClearLogs = () => {
-    setLogs([]);
-    // Trace logs are cleared from backend via ChatPlayground's clear session
+  const handleClearLogs = async () => {
+    if (!traceId || !accessToken) {
+      console.warn('[TraceView] Cannot clear logs: missing traceId or accessToken');
+      return;
+    }
+
+    try {
+      // Delete logs from backend
+      const response = await fetch(
+        `http://localhost:9050/api/tracing/traces/${traceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log('[TraceView] Successfully cleared logs from backend');
+        // Clear local state after successful backend deletion
+        setLogs([]);
+      } else {
+        console.error('[TraceView] Failed to clear logs from backend:', response.status);
+        // Still clear local state even if backend fails
+        setLogs([]);
+      }
+    } catch (error) {
+      console.error('[TraceView] Error clearing logs:', error);
+      // Still clear local state even if backend request fails
+      setLogs([]);
+    }
   };
 
   // Detect manual scroll to disable auto-scroll

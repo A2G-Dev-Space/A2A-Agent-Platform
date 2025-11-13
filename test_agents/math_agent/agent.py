@@ -302,9 +302,15 @@ async def expose_main_orchestrator():
     print("\n" + "=" * 70)
     print("Exposing Main Orchestrator Agent via A2A...")
     print("=" * 70)
-    
-    a2a_app = to_a2a(main_orchestrator, port=8010)
-    
+
+    # Expose agent directly (stateless mode)
+    # Platform manages session & history, agent just processes messages
+    a2a_app = to_a2a(
+        main_orchestrator,
+        port=8010
+    )
+    print("✓ Agent exposed in stateless mode (Platform manages history)")
+
     # Add CORS middleware
     a2a_app.add_middleware(
         CORSMiddleware,
@@ -317,9 +323,10 @@ async def expose_main_orchestrator():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     print("\n✓ Main Orchestrator Agent initialized")
     print(f"✓ Platform LLM Proxy: {PLATFORM_LLM_ENDPOINT}")
+    print("✓ Session Management: Platform-side (Stateless Agent)")
     print("✓ Port: 8010")
     print("✓ Agent Card: http://localhost:8010/.well-known/agent.json")
     print("\n🚀 Main Orchestrator Agent ready for connections!")

@@ -51,6 +51,9 @@
         "frameworkLabel": "Framework",
         "frameworkPlaceholder": "Select a framework",
         "colorLabel": "Card Color",
+        "versionLabel": "Version",
+        "documentationUrlLabel": "Documentation URL",
+        "capabilitiesLabel": "Capabilities",
         "createButton": "Create Agent"
     },
     "common": {
