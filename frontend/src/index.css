@@ -282,3 +282,53 @@ body {
 .prose > :last-child {
     margin-bottom: 0;
 }
+
+/* KaTeX Math Styling */
+.katex {
+    font-size: 1.1em;
+}
+
+.katex-display {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+[data-theme="dark"] .katex {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .katex .mord.text {
+    color: #e5e7eb;
+}
+
+/* Mermaid Diagram Styling */
+.mermaid {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+[data-theme="dark"] .mermaid {
+    filter: invert(0.9) hue-rotate(180deg);
+}
+
+[data-theme="dark"] .mermaid svg {
+    background-color: transparent;
+}
+
+/* Image Zoom Overlay */
+[data-rmiz-overlay] {
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme="dark"] [data-rmiz-overlay] {
+    background-color: rgba(0, 0, 0, 0.95);
+}
+
+/* Ensure images don't overflow */
+.prose img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}

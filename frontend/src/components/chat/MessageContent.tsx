@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check } from 'lucide-react';
+import rehypeKatex from 'rehype-katex';
+import { Copy, Check, ZoomIn } from 'lucide-react';
+import Zoom from 'react-medium-image-zoom';
+import mermaid from 'mermaid';
 import 'highlight.js/styles/github-dark.css';
+import 'katex/dist/katex.min.css';
+import 'react-medium-image-zoom/dist/styles.css';
+
+// Initialize mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  themeVariables: {
+    primaryColor: '#607AFB',
+    primaryTextColor: '#fff',
+    primaryBorderColor: '#7C0000',
+    lineColor: '#F8B229',
+    secondaryColor: '#006100',
+    tertiaryColor: '#fff'
+  }
+});
 
 interface MessageContentProps {
   content: string;
@@ -19,6 +40,51 @@ interface CodeBlockProps {
   children?: React.ReactNode;
 }
 
+const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [svg, setSvg] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (!ref.current) return;
+
+      try {
+        const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+        const { svg } = await mermaid.render(id, chart);
+        setSvg(svg);
+        setError('');
+      } catch (err) {
+        console.error('Mermaid rendering error:', err);
+        setError('Failed to render diagram');
+      }
+    };
+
+    renderDiagram();
+  }, [chart]);
+
+  if (error) {
+    return (
+      <div className="my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <p className="text-red-600 dark:text-red-400 text-sm">
+          <strong>Diagram Error:</strong> {error}
+        </p>
+        <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">
+          {chart}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="my-4 flex justify-center items-center p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+};
+
 const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...props }) => {
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
@@ -30,6 +96,11 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Handle Mermaid diagrams
+  if (language === 'mermaid') {
+    return <MermaidDiagram chart={code} />;
+  }
 
   if (inline) {
     return (
@@ -92,15 +163,28 @@ export const MessageContent: React.FC<MessageContentProps> = ({
     );
   }
 
-  // Markdown rendering
+  // Markdown rendering with LaTeX and Mermaid support
   return (
     <div className={`prose prose-sm dark:prose-invert max-w-none ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+        rehypePlugins={[rehypeHighlight, rehypeRaw, rehypeKatex]}
         components={{
-          // Code blocks with syntax highlighting and copy button
+          // Code blocks with syntax highlighting, copy button, and Mermaid support
           code: CodeBlock,
+
+          // Images with zoom functionality
+          img: ({ src, alt, ...props }) => (
+            <Zoom>
+              <img
+                src={src}
+                alt={alt || 'Image'}
+                className="max-w-full h-auto rounded-lg my-4 cursor-zoom-in"
+                loading="lazy"
+                {...props}
+              />
+            </Zoom>
+          ),
 
           // Links - open in new tab
           a: ({ href, children, ...props }) => (

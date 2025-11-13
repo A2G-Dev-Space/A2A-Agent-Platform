@@ -17,25 +17,51 @@ The chat interface now supports **full Markdown rendering** with syntax-highligh
    - Horizontal rules
    - Inline HTML (via rehype-raw)
 
-2. **Code Highlighting**
+2. **LaTeX Math Rendering** ✨ NEW
+   - Inline math: `$equation$`
+   - Display math (block): `$$equation$$`
+   - Full KaTeX support
+   - Matrices, integrals, summations
+   - Greek letters, operators
+   - Dark mode optimized
+
+3. **Mermaid Diagrams** ✨ NEW
+   - Flowcharts
+   - Sequence diagrams
+   - Class diagrams
+   - State diagrams
+   - Entity-relationship diagrams
+   - Gantt charts
+   - Pie charts
+   - Git graphs
+   - Dark mode support
+
+4. **Image Rendering** ✨ NEW
+   - Click-to-zoom functionality
+   - Responsive sizing
+   - Lazy loading
+   - Lightbox overlay
+   - Mobile-friendly
+
+5. **Code Highlighting**
    - Syntax highlighting for 100+ programming languages
    - Language badge display
    - Copy-to-clipboard button for code blocks
    - Responsive overflow handling
    - Dark mode optimized
 
-3. **Enhanced Links**
+6. **Enhanced Links**
    - Auto-linking of URLs
    - Opens in new tab with `rel="noopener noreferrer"`
    - Custom styling for better visibility
 
-4. **Tables**
+7. **Tables**
    - Responsive table rendering
    - Sticky headers (optional)
    - Dark mode support
    - Overflow scrolling for wide tables
 
-5. **Special Formatting**
+8. **Special Formatting**
    - Task lists (checkboxes)
    - Inline code with custom styling
    - Emoji support
@@ -50,8 +76,13 @@ The chat interface now supports **full Markdown rendering** with syntax-highligh
   "react-markdown": "^10.1.0",
   "remark-gfm": "^4.0.0",
   "remark-breaks": "^4.0.0",
+  "remark-math": "^6.0.0",
   "rehype-highlight": "^7.0.0",
-  "rehype-raw": "^7.0.0"
+  "rehype-raw": "^7.0.0",
+  "rehype-katex": "^7.0.0",
+  "mermaid": "^11.4.1",
+  "react-medium-image-zoom": "^5.2.14",
+  "katex": "^0.16.0"
 }
 ```
 
@@ -211,32 +242,63 @@ See `MARKDOWN_TEST_EXAMPLES.md` for comprehensive test cases covering:
 
 ## Future Enhancements
 
+### Completed ✅
+- [x] LaTeX/KaTeX math rendering
+- [x] Mermaid diagram support
+- [x] Image rendering with lightbox
+
 ### Planned Features
 
-- [ ] LaTeX/KaTeX math rendering
-- [ ] Mermaid diagram support
-- [ ] Image rendering with lightbox
 - [ ] Collapsible code blocks
 - [ ] Line numbers for code blocks
-- [ ] Diff highlighting
+- [ ] Diff highlighting for code
 - [ ] File attachment preview
+- [ ] Video embedding
+- [ ] Audio playback
+- [ ] 3D model rendering
+- [ ] Custom React component injection
 
 ### Configuration Options
 
-Future versions may include:
+Current features are enabled by default. Future versions may include:
 
 ```tsx
 <MessageContent
   content={content}
   options={{
-    enableMath: true,
-    enableDiagrams: true,
-    enableImages: true,
-    maxCodeHeight: 500,
-    showLineNumbers: true
+    enableMath: true,          // ✅ Currently enabled
+    enableDiagrams: true,       // ✅ Currently enabled
+    enableImages: true,         // ✅ Currently enabled
+    maxCodeHeight: 500,         // Future
+    showLineNumbers: true,      // Future
+    enableDiffHighlight: true,  // Future
+    collapsibleCode: true       // Future
   }}
 />
 ```
+
+## Advanced Examples
+
+See `ADVANCED_MARKDOWN_EXAMPLES.md` for comprehensive examples including:
+
+### LaTeX Math
+- Inline and display equations
+- Complex formulas (Schrödinger, Maxwell)
+- Matrices and statistical formulas
+
+### Mermaid Diagrams
+- Flowcharts for processes
+- Sequence diagrams for API calls
+- Class diagrams for architecture
+- State diagrams for workflows
+- ER diagrams for databases
+- Gantt charts for project planning
+
+### Combined Examples
+- Machine learning workflows
+- API documentation with diagrams
+- Data structures with visualizations
+- Physics simulations
 
 ## Browser Compatibility
 
