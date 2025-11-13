@@ -42,9 +42,9 @@ export const adminService = {
 
   /**
    * Rejects a pending user registration.
-   * Corresponds to: PUT /api/v1/users/{user_id}/reject/
+   * Corresponds to: DELETE /api/v1/users/{user_id}/reject/
    */
-  rejectUser: (userId: number) => api.put<{ message: string }>(`/v1/users/${userId}/reject/`),
+  rejectUser: (userId: number) => api.delete<{ message: string }>(`/v1/users/${userId}/reject/`),
 
   /**
    * Removes/bans a user by deactivating their account.
