@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, AsyncGenerator
+from datetime import datetime
 import httpx
 import json
 import time
@@ -24,13 +25,16 @@ router = APIRouter()
 
 class Message(BaseModel):
     """Individual message in conversation"""
+    id: Optional[str] = None  # Message ID from frontend
     role: str  # 'user' or 'assistant'
     content: str
+    timestamp: Optional[str] = None  # Timestamp from frontend
 
 class WorkbenchMessage(BaseModel):
     """Message request for Workbench with conversation history"""
     agent_id: int
     messages: list[Message]  # Array of messages for conversation context
+    session_id: Optional[str] = None  # Optional sessionId for agent-managed sessions
 
 async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
     """Generate a fixed trace_id from user_id and agent_id"""
@@ -57,7 +61,9 @@ async def workbench_chat_stream(
     user_id = current_user["username"]
     trace_id = await generate_fixed_trace_id(user_id, request.agent_id)
 
-    logger.info(f"[Workbench] Chat request from {user_id} to agent {request.agent_id}, messages={len(request.messages)}, trace_id={trace_id}")
+    # Log session info
+    session_info = f", session_id={request.session_id}" if request.session_id else " (no session)"
+    logger.info(f"[Workbench] Chat request from {user_id} to agent {request.agent_id}, messages={len(request.messages)}, trace_id={trace_id}{session_info}")
 
     # Get agent URL
     agent_url = await _get_agent_url(request.agent_id, authorization.replace("Bearer ", ""))
@@ -70,7 +76,7 @@ async def workbench_chat_stream(
         yield f"data: {json.dumps({'type': 'stream_start', 'trace_id': trace_id})}\n\n"
 
         try:
-            async for event in _stream_from_agent_a2a(agent_url, request.messages, trace_id):
+            async for event in _stream_from_agent_a2a(agent_url, request.messages, trace_id, request.session_id):
                 if event["type"] == "text_token":
                     yield f"data: {json.dumps(event)}\n\n"
 
@@ -144,11 +150,12 @@ async def save_workbench_messages(
     # Convert messages to dict format for storage
     message_dicts = [
         {
+            "id": msg.id or f"msg-{int(time.time() * 1000)}-{i}",
             "role": msg.role,
             "content": msg.content,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": msg.timestamp or datetime.utcnow().isoformat()
         }
-        for msg in messages
+        for i, msg in enumerate(messages)
     ]
 
     if session:
@@ -170,9 +177,13 @@ async def save_workbench_messages(
     logger.info(f"[Workbench] Saved {len(messages)} messages for {user_id}, agent {agent_id}")
     return {"status": "success", "message_count": len(messages)}
 
+class ClearRequest(BaseModel):
+    """Request to clear workbench data"""
+    agent_id: int
+
 @router.post("/workbench/clear")
 async def clear_workbench_data(
-    agent_id: int,
+    request: ClearRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -180,7 +191,7 @@ async def clear_workbench_data(
     Clear both chat history and trace data for the user+agent combination
     """
     user_id = current_user["username"]
-    trace_id = await generate_fixed_trace_id(user_id, agent_id)
+    trace_id = await generate_fixed_trace_id(user_id, request.agent_id)
 
     # 1. Clear chat messages from database
     try:
@@ -188,12 +199,12 @@ async def clear_workbench_data(
             delete(WorkbenchSession).where(
                 and_(
                     WorkbenchSession.user_id == user_id,
-                    WorkbenchSession.agent_id == agent_id
+                    WorkbenchSession.agent_id == request.agent_id
                 )
             )
         )
         await db.commit()
-        logger.info(f"[Workbench] Cleared chat messages for {user_id}, agent {agent_id}")
+        logger.info(f"[Workbench] Cleared chat messages for {user_id}, agent {request.agent_id}")
     except Exception as e:
         logger.error(f"[Workbench] Error clearing chat messages: {e}")
         await db.rollback()
@@ -205,7 +216,7 @@ async def clear_workbench_data(
                 f"http://tracing-service:8004/api/tracing/traces/{trace_id}"
             )
             if response.status_code == 200:
-                logger.info(f"[Workbench] Cleared trace data for {user_id}, agent {agent_id}")
+                logger.info(f"[Workbench] Cleared trace data for {user_id}, agent {request.agent_id}")
                 return {"status": "success", "message": "Chat and trace data cleared"}
             else:
                 logger.warning(f"[Workbench] Failed to clear trace: {response.status_code}")
@@ -231,10 +242,10 @@ async def _get_agent_url(agent_id: int, token: str) -> Optional[str]:
         logger.error(f"[Workbench] Error getting agent URL: {e}")
         return None
 
-async def _stream_from_agent_a2a(agent_url: str, messages: list[Message], trace_id: str):
+async def _stream_from_agent_a2a(agent_url: str, messages: list[Message], trace_id: str, session_id: str = None):
     """
     Stream response from agent via A2A protocol (ADK agents)
-    Uses metadata field to pass conversation history
+    Passes sessionId to agent for agent-side session management
     """
     agent_url = agent_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
 
@@ -244,7 +255,7 @@ async def _stream_from_agent_a2a(agent_url: str, messages: list[Message], trace_
     # Get current message (last in the list)
     current_message = messages[-1]
 
-    # Build conversation history for metadata (exclude current message)
+    # Build conversation history for backward compatibility
     conversation_history = []
     if len(messages) > 1:
         for msg in messages[:-1]:
@@ -256,23 +267,49 @@ async def _stream_from_agent_a2a(agent_url: str, messages: list[Message], trace_
     # Generate unique message ID
     message_id = f"msg-{int(time.time() * 1000)}"
 
-    # Build A2A request with metadata containing conversation history
+    # Build message parts: include history context + current message
+    message_parts = []
+
+    # Add conversation history as context (if exists)
+    if conversation_history:
+        history_text = "Previous conversation:\n"
+        for i, msg in enumerate(conversation_history, 1):
+            role_label = "User" if msg["role"] == "user" else "Assistant"
+            history_text += f"{role_label}: {msg['content']}\n"
+        history_text += "\nCurrent question:\n"
+
+        message_parts.append({
+            "kind": "text",
+            "text": history_text + current_message.content
+        })
+    else:
+        message_parts.append({
+            "kind": "text",
+            "text": current_message.content
+        })
+
+    # Build A2A request with sessionId for agent-managed sessions
     a2a_request = {
         "jsonrpc": "2.0",
-        "method": "message/send",  # A2A doesn't support streaming yet, use send
+        "method": "message/send",
         "params": {
             "message": {
                 "messageId": message_id,
                 "role": "user",
-                "parts": [{"kind": "text", "text": current_message.content}],
+                "parts": message_parts,
                 "metadata": {
-                    "conversation_history": conversation_history,
-                    "trace_id": trace_id
-                } if conversation_history else {"trace_id": trace_id}
+                    "trace_id": trace_id,
+                    "has_history": len(conversation_history) > 0
+                }
             }
         },
         "id": f"workbench-{trace_id}"
     }
+
+    # Add sessionId to params if provided (for agent-managed sessions)
+    if session_id:
+        a2a_request["params"]["sessionId"] = session_id
+        logger.info(f"[Workbench] Using agent-managed sessionId: {session_id}")
 
     logger.info(f"[Workbench] Sending message with {len(conversation_history)} history items")
 

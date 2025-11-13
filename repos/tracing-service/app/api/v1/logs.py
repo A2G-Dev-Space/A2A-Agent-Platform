@@ -25,10 +25,14 @@ class LogResponse(BaseModel):
     timestamp: datetime
 
 class LogEntryResponse(BaseModel):
+    log_id: int
     timestamp: datetime
-    service: str
+    service_name: str
+    agent_id: Optional[str] = None
     level: str
     message: str
+    log_type: Optional[str] = None
+    metadata: Dict[str, Any] = {}
     is_transfer: bool = False
 
 class LogTraceResponse(BaseModel):
@@ -110,10 +114,14 @@ async def get_logs_by_trace(
         trace_id=trace_id,
         logs=[
             LogEntryResponse(
+                log_id=log.id,
                 timestamp=log.timestamp,
-                service=log.service_name,
+                service_name=log.service_name,
+                agent_id=log.context.get("agent_id") if log.context else None,
                 level=log.level,
                 message=log.message,
+                log_type=log.context.get("log_type") if log.context else None,
+                metadata=log.context if log.context else {},
                 is_transfer=log.is_transfer
             )
             for log in logs

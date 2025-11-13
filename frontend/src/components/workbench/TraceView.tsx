@@ -286,9 +286,52 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   // Logs will come from tracing service via WebSocket
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  // Load existing trace logs on mount
+  useEffect(() => {
+    const loadTraceHistory = async () => {
+      if (!traceId || !accessToken) {
+        setIsLoadingHistory(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `http://localhost:9050/api/tracing/logs/${traceId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[TraceView] Loaded trace history:', data.total_logs, 'logs');
+
+          // Convert timestamp strings to Date objects and format properly
+          const formattedLogs = data.logs.map((log: any) => ({
+            ...log,
+            timestamp: typeof log.timestamp === 'string' ? log.timestamp : new Date(log.timestamp).toISOString(),
+          }));
+
+          setLogs(formattedLogs);
+        } else {
+          console.warn('[TraceView] Failed to load trace history:', response.status);
+        }
+      } catch (error) {
+        console.error('[TraceView] Error loading trace history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadTraceHistory();
+  }, [traceId, accessToken]);
 
   // WebSocket connection for real-time logs
   const wsUrl = accessToken
@@ -298,7 +341,12 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   const { isConnected } = useWebSocket(wsUrl, {
     onMessage: (data) => {
       if (data.type === 'log_entry' && data.log) {
-        setLogs((prev) => [...prev, data.log]);
+        // Check if log already exists (avoid duplicates)
+        setLogs((prev) => {
+          const exists = prev.some(log => log.log_id === data.log.log_id);
+          if (exists) return prev;
+          return [...prev, data.log];
+        });
       }
     },
     onError: (error) => {

@@ -87,38 +87,34 @@ export class ADKChatAdapter implements ChatAdapter {
 
     const { apiBaseUrl, accessToken, agentId, sessionId } = this.config;
 
-    // Use workbench API if no sessionId, otherwise use chat API
-    const endpoint = sessionId
-      ? `${apiBaseUrl}/api/chat/sessions/${sessionId}/messages/stream`
-      : `${apiBaseUrl}/api/workbench/chat/stream`;
+    // Workbench always uses workbench API with agent-managed sessions
+    const endpoint = `${apiBaseUrl}/api/workbench/chat/stream`;
 
     // Build messages array for workbench mode (includes conversation history)
-    let body: any;
-    if (sessionId) {
-      // Session mode: just send content (session manages history)
-      body = { content: message.content };
-    } else {
-      // Workbench mode: send full messages array
-      const messages = [];
+    const messages = [];
 
-      // Add conversation history if provided
-      if (conversationHistory && conversationHistory.length > 0) {
-        messages.push(...conversationHistory);
-      }
-
-      // Add current user message
-      messages.push({
-        role: 'user' as const,
-        content: message.content,
-      });
-
-      body = { agent_id: agentId, messages };
+    // Add conversation history if provided
+    if (conversationHistory && conversationHistory.length > 0) {
+      messages.push(...conversationHistory);
     }
+
+    // Add current user message
+    messages.push({
+      role: 'user' as const,
+      content: message.content,
+    });
+
+    const body = {
+      agent_id: agentId,
+      messages,
+      session_id: sessionId, // Pass agent-managed sessionId
+    };
 
     console.log('[ADKChatAdapter] Sending message:', {
       endpoint,
-      messageCount: sessionId ? 1 : body.messages.length,
-      hasHistory: !sessionId && conversationHistory && conversationHistory.length > 0,
+      messageCount: body.messages.length,
+      hasHistory: conversationHistory && conversationHistory.length > 0,
+      sessionId: sessionId || 'none',
     });
 
     const response = await fetch(endpoint, {

@@ -59,7 +59,27 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   // API base URL
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
 
-  // Load messages from backend when component mounts
+  // Generate or retrieve agent-specific sessionId (for agent-managed sessions)
+  const [agentSessionId, setAgentSessionId] = useState<string>('');
+
+  useEffect(() => {
+    // Generate/retrieve sessionId per user+agent
+    const storageKey = `agent-session-${agent.id}`;
+    let storedSessionId = localStorage.getItem(storageKey);
+
+    if (!storedSessionId) {
+      // Generate new UUID for session
+      storedSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      localStorage.setItem(storageKey, storedSessionId);
+      console.log('[ChatPlayground] Created new agent sessionId:', storedSessionId);
+    } else {
+      console.log('[ChatPlayground] Using existing agent sessionId:', storedSessionId);
+    }
+
+    setAgentSessionId(storedSessionId);
+  }, [agent.id]);
+
+  // Load messages from backend when component mounts (for backward compatibility)
   useEffect(() => {
     const loadMessages = async () => {
       if (!accessToken) return;
@@ -118,8 +138,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
   // Initialize chat adapter when component mounts or agent/framework changes
   useEffect(() => {
-    if (!accessToken) {
-      console.log('[ChatPlayground] No access token, skipping adapter initialization');
+    if (!accessToken || !agentSessionId) {
+      console.log('[ChatPlayground] No access token or sessionId, skipping adapter initialization');
       return;
     }
 
@@ -129,17 +149,17 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
       // Create adapter for the agent's framework
       const adapter = ChatAdapterFactory.createAdapter(agent.framework);
 
-      // Initialize adapter with configuration
+      // Initialize adapter with configuration (including agent-managed sessionId)
       adapter.initialize({
         agentId: agent.id,
         agentEndpoint: agent.a2a_endpoint || '',
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
-        sessionId: sessionId,
+        sessionId: agentSessionId,  // Pass agent-managed sessionId
       });
 
       chatAdapterRef.current = adapter;
-      console.log('[ChatPlayground] Chat adapter initialized successfully');
+      console.log('[ChatPlayground] Chat adapter initialized with sessionId:', agentSessionId);
     } catch (error) {
       console.error('[ChatPlayground] Failed to create chat adapter:', error);
     }
@@ -152,7 +172,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, sessionId, API_BASE_URL]);
+  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL]);
 
   // Fetch Agno teams when agent is Agno framework
   useEffect(() => {
@@ -277,7 +297,15 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
     setStreamingMessage('');
     setIsStreaming(false);
 
-    // Clear messages in backend
+    // Clear agent session ID (agent will create a new session on next request)
+    const storageKey = `agent-session-${agent.id}`;
+    localStorage.removeItem(storageKey);
+    const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem(storageKey, newSessionId);
+    setAgentSessionId(newSessionId);
+    console.log('[ChatPlayground] Created new agent sessionId after clear:', newSessionId);
+
+    // Clear messages in backend (for backward compatibility)
     if (accessToken) {
       try {
         await fetch(`${API_BASE_URL}/api/workbench/clear`, {
