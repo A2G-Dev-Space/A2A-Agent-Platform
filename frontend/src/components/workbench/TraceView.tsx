@@ -169,8 +169,41 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
   const agentColor = getAgentColor(log.agent_id);
 
+  // Replace "Tool Response: None" message text but keep the log entry
+  const displayMessage = log.message && /Tool Response:\s*(None|null|undefined)/i.test(log.message)
+    ? "" // Empty message when it's just "Tool Response: None"
+    : log.message;
+
+  // Check if this is an agent transfer event
+  const isAgentTransfer = log.is_transfer || log.log_type === 'AGENT_TRANSFER';
+
+  // Extract target agent from metadata for agent transfers
+  const targetAgent = isAgentTransfer && log.metadata
+    ? (log.metadata.target_agent || log.metadata.agent_name || log.metadata.member_id || 'unknown')
+    : null;
+
   return (
-    <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+    <>
+      {/* Agent Transfer Divider */}
+      {isAgentTransfer && targetAgent && (
+        <div className="flex items-center gap-3 py-3 mt-2">
+          <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-workbench-primary, #EA2831)' }} />
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: 'rgba(234, 40, 49, 0.1)',
+              color: 'var(--color-workbench-primary, #EA2831)',
+              border: '2px solid var(--color-workbench-primary, #EA2831)'
+            }}
+          >
+            <ArrowRightLeft className="h-3 w-3" />
+            <span>Transfer to: {targetAgent}</span>
+          </div>
+          <div className="h-px flex-1" style={{ backgroundColor: 'var(--color-workbench-primary, #EA2831)' }} />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
       <div className="flex items-start gap-2 sm:gap-3">
         {/* Icon */}
         <div
@@ -206,7 +239,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
 
           <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
             <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-            {log.service_name && (
+            {log.service_name && log.service_name !== 'llm-proxy-service' && (
               <>
                 <span>•</span>
                 <span className="truncate">{log.service_name}</span>
@@ -215,9 +248,9 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
           </div>
 
           {/* Message */}
-          {log.message && (
+          {displayMessage && (
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-              {log.message}
+              {displayMessage}
             </p>
           )}
 
@@ -243,6 +276,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
         </div>
       )}
     </div>
+    </>
   );
 };
 
