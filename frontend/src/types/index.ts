@@ -1,5 +1,7 @@
 // User types
 export enum UserRole {
+  NEW = 'NEW',
+  REJECTED = 'REJECTED',
   PENDING = 'PENDING',
   USER = 'USER',
   ADMIN = 'ADMIN',

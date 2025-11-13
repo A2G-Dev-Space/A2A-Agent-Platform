@@ -1,9 +1,11 @@
 import React from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import { UserRole } from '@/types'
 
 export const PrivateRoute: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { isAuthenticated, isLoading, user } = useAuthStore()
+  const location = useLocation()
 
   if (isLoading) {
     return (
@@ -16,5 +18,19 @@ export const PrivateRoute: React.FC = () => {
     )
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  // If user is NEW or REJECTED and not already on signup-request page, redirect there
+  if ((user?.role === UserRole.NEW || user?.role === UserRole.REJECTED) && location.pathname !== '/signup-request') {
+    return <Navigate to="/signup-request" replace />
+  }
+
+  // If user is PENDING and not already on pending-approval page, redirect there
+  if (user?.role === UserRole.PENDING && location.pathname !== '/pending-approval') {
+    return <Navigate to="/pending-approval" replace />
+  }
+
+  return <Outlet />
 }

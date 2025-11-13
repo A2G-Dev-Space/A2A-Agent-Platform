@@ -73,8 +73,24 @@ async def get_current_user(
         raise credentials_exception
 
     username: str = payload.get("sub")
+    role: str = payload.get("role")
+
     if username is None:
         raise credentials_exception
+
+    # For NEW or REJECTED users (not yet in DB), create a temporary User object
+    if role in ["NEW", "REJECTED"]:
+        # Create a temporary user object with token data
+        temp_user = User(
+            username=username,
+            username_kr=username,
+            email=f"{username}@company.com",
+            role=role,
+            is_active=False  # Not yet in DB
+        )
+        # Set id to 0 to indicate it's a temp user
+        temp_user.id = 0
+        return temp_user
 
     # Get user from database
     result = await db.execute(select(User).where(User.username == username))

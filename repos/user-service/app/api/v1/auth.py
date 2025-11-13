@@ -95,28 +95,49 @@ async def handle_callback(
                 detail="Invalid ID token: missing username"
             )
         
-        # Check if user exists, create if not
+        # Check if user exists
         result = await db.execute(select(User).where(User.username == username))
         user = result.scalar_one_or_none()
-        
+
         if not user:
-            # Create new user
-            user = User(
-                username=username,
-                username_kr=username_kr,
-                email=email,
-                department_kr=department_kr,
-                department_en=department_en,
-                role="USER",
-                last_login=datetime.utcnow()
+            # New user - issue token with role="NEW" without creating DB entry
+            # User will see signup request page
+            access_token = create_access_token(data={"sub": username, "role": "NEW"})
+
+            return CallbackResponse(
+                access_token=access_token,
+                expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                user={
+                    "username": username,
+                    "username_kr": username_kr,
+                    "email": email,
+                    "department_kr": department_kr,
+                    "department_en": department_en,
+                    "role": "NEW"
+                }
             )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-        else:
-            # Update last login
-            user.last_login = datetime.utcnow()
-            await db.commit()
+
+        # User exists - check if rejected
+        if user.role == "REJECTED":
+            # Rejected user trying to log in again - show signup request page
+            access_token = create_access_token(data={"sub": username, "role": "REJECTED"})
+
+            return CallbackResponse(
+                access_token=access_token,
+                expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                user={
+                    "username": user.username,
+                    "username_kr": user.username_kr,
+                    "email": user.email,
+                    "department_kr": user.department_kr,
+                    "department_en": user.department_en,
+                    "role": "REJECTED"
+                }
+            )
+
+        # Existing user - update last login
+        user.last_login = datetime.utcnow()
+        await db.commit()
 
         # Create access token with role included
         access_token = create_access_token(data={"sub": username, "role": user.role})

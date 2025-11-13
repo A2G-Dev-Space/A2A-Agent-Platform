@@ -46,6 +46,12 @@ export const adminService = {
    */
   rejectUser: (userId: number) => api.put<{ message: string }>(`/v1/users/${userId}/reject/`),
 
+  /**
+   * Removes/bans a user by deactivating their account.
+   * Corresponds to: DELETE /api/v1/users/{user_id}/remove/
+   */
+  removeUser: (userId: number) => api.delete<{ message: string }>(`/v1/users/${userId}/remove/`),
+
 
   // --- Legacy Admin APIs ---
 

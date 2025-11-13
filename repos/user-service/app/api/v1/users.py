@@ -215,6 +215,14 @@ async def get_user_preferences(
     db: AsyncSession = Depends(get_db)
 ):
     """Get user preferences"""
+    # For NEW or REJECTED users (not yet in DB), return defaults
+    if current_user.role in ["NEW", "REJECTED"] or current_user.id == 0:
+        return UserPreferences(
+            theme="system",
+            language="en",
+            fontScale=80
+        )
+
     # Return preferences from database or defaults
     prefs = current_user.preferences or {}
     return UserPreferences(
