@@ -15,7 +15,7 @@ export const Layout: React.FC = () => {
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMobileMenuClick={() => setIsMobileSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>
