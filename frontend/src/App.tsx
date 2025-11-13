@@ -11,7 +11,6 @@ import { PendingApprovalPage } from '@/pages/PendingApprovalPage'
 import { PrivateRoute } from '@/components/auth/PrivateRoute'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
-import { UserRole } from '@/types'
 import SettingsPage from '@/pages/Settings/SettingsPage'
 import GeneralSettingsPage from '@/pages/Settings/GeneralSettingsPage'
 import UserManagementPage from '@/pages/Settings/UserManagementPage'
@@ -47,41 +46,39 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/callback" element={<CallbackPage />} />
-          <Route path="/pending-approval" element={<PendingApprovalPage />} />
 
           {/* Protected Routes */}
           <Route element={<PrivateRoute />}>
-            {/* Check for pending users */}
-            {user?.role === UserRole.PENDING ? (
-              <Route path="*" element={<Navigate to="/pending-approval" replace />} />
-            ) : (
-              <Route element={<Layout />}>
-                {/* Default redirect */}
-                <Route path="/" element={<Navigate to="/hub" replace />} />
+            {/* Pending Approval Page - accessible only when logged in with PENDING role */}
+            <Route path="/pending-approval" element={<PendingApprovalPage />} />
 
-                {/* Hub Mode */}
-                <Route path="/hub" element={<HubDashboard />} />
+            {/* Main App Routes - accessible only with USER or ADMIN role */}
+            <Route element={<Layout />}>
+              {/* Default redirect */}
+              <Route path="/" element={<Navigate to="/hub" replace />} />
 
-                {/* Workbench Mode */}
-                <Route path="/workbench" element={<WorkbenchDashboard />} />
+              {/* Hub Mode */}
+              <Route path="/hub" element={<HubDashboard />} />
 
-                {/* Flow Mode */}
-                <Route path="/flow" element={<FlowDashboard />} />
+              {/* Workbench Mode */}
+              <Route path="/workbench" element={<WorkbenchDashboard />} />
 
-                {/* Settings */}
-                <Route path="/settings" element={<SettingsPage />}>
-                  <Route index element={<Navigate to="general" replace />} />
-                  <Route path="general" element={<GeneralSettingsPage />} />
-                  <Route path="platform-keys" element={<PlatformKeysPage />} />
-                  <Route path="user-management" element={<UserManagementPage />} />
-                  <Route path="llm-management" element={<LlmManagementPage />} />
-                  <Route path="statistics" element={<StatisticsPage />} />
-                </Route>
+              {/* Flow Mode */}
+              <Route path="/flow" element={<FlowDashboard />} />
 
-                {/* 404 */}
-                <Route path="*" element={<NotFoundPage />} />
+              {/* Settings */}
+              <Route path="/settings" element={<SettingsPage />}>
+                <Route index element={<Navigate to="general" replace />} />
+                <Route path="general" element={<GeneralSettingsPage />} />
+                <Route path="platform-keys" element={<PlatformKeysPage />} />
+                <Route path="user-management" element={<UserManagementPage />} />
+                <Route path="llm-management" element={<LlmManagementPage />} />
+                <Route path="statistics" element={<StatisticsPage />} />
               </Route>
-            )}
+
+              {/* 404 */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>

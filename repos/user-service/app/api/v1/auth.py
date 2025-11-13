@@ -100,14 +100,14 @@ async def handle_callback(
         user = result.scalar_one_or_none()
         
         if not user:
-            # Create new user
+            # Create new user with PENDING status (requires admin approval)
             user = User(
                 username=username,
                 username_kr=username_kr,
                 email=email,
                 department_kr=department_kr,
                 department_en=department_en,
-                role="USER",
+                role="PENDING",  # New users start as PENDING
                 last_login=datetime.utcnow()
             )
             db.add(user)

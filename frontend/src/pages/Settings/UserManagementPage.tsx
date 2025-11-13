@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminService } from '../../services/adminService';
 import type { UserManagementInfo } from '../../services/adminService';
-import { ShieldCheck, ShieldX, UserPlus } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { ShieldCheck, ShieldX, UserMinus } from 'lucide-react';
 
 const UserManagementPage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuthStore();
 
   const { data: users, isLoading, isError, error } = useQuery({
     queryKey: ['users'],
@@ -37,6 +39,13 @@ const UserManagementPage: React.FC = () => {
     },
   });
 
+  const removeMutation = useMutation({
+    mutationFn: adminService.removeUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
   const updateRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: number; role: 'PENDING' | 'USER' | 'ADMIN' }) =>
       adminService.updateUserRole(userId, role),
@@ -53,8 +62,19 @@ const UserManagementPage: React.FC = () => {
     rejectMutation.mutate(userId);
   };
 
+  const handleRemove = (userId: number) => {
+    if (confirm(t('settings.userManagement.confirmRemove'))) {
+      removeMutation.mutate(userId);
+    }
+  };
+
   const handleRoleChange = (userId: number, newRole: 'USER' | 'ADMIN') => {
     updateRoleMutation.mutate({ userId, role: newRole });
+  };
+
+  const isCurrentUser = (user: UserManagementInfo) => {
+    // Compare by email since currentUser may not have id
+    return currentUser?.email === user.email;
   };
 
   const getStatusChip = (user: UserManagementInfo) => {
@@ -85,12 +105,6 @@ const UserManagementPage: React.FC = () => {
 
   return (
     <div>
-        <div className="flex justify-end items-center mb-4">
-            <button className="flex items-center justify-center h-10 px-4 rounded-lg bg-primary/80 dark:bg-primary/90 text-white text-sm font-bold hover:bg-primary dark:hover:bg-primary">
-                <UserPlus className="w-4 h-4 mr-2" />
-                {t('settings.userManagement.inviteUser')}
-            </button>
-        </div>
         <div className="mt-4 @container">
             <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#483956] bg-white dark:bg-[#211b28]/50">
                 <table className="min-w-full">
@@ -132,7 +146,7 @@ const UserManagementPage: React.FC = () => {
                                             </button>
                                             <button
                                                 onClick={() => handleReject(user.id)}
-                                                disabled={rejectMutation.isPending}
+                                                disabled={rejectMutation.isPending || isCurrentUser(user)}
                                                 className="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <ShieldX className="w-3.5 h-3.5 mr-1" />
@@ -140,15 +154,26 @@ const UserManagementPage: React.FC = () => {
                                             </button>
                                         </div>
                                     ) : (
-                                        <select
-                                            value={user.role}
-                                            onChange={(e) => handleRoleChange(user.id, e.target.value as 'USER' | 'ADMIN')}
-                                            disabled={updateRoleMutation.isPending}
-                                            className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-[#483956] bg-white dark:bg-[#211b28] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a1f35] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <option value="USER">{t('roles.user')}</option>
-                                            <option value="ADMIN">{t('roles.admin')}</option>
-                                        </select>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={user.role}
+                                                onChange={(e) => handleRoleChange(user.id, e.target.value as 'USER' | 'ADMIN')}
+                                                disabled={updateRoleMutation.isPending || isCurrentUser(user)}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-[#483956] bg-white dark:bg-[#211b28] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a1f35] focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <option value="USER">{t('roles.user')}</option>
+                                                <option value="ADMIN">{t('roles.admin')}</option>
+                                            </select>
+                                            <button
+                                                onClick={() => handleRemove(user.id)}
+                                                disabled={removeMutation.isPending || isCurrentUser(user)}
+                                                className="flex items-center justify-center h-8 px-3 rounded-md text-xs font-semibold bg-red-500/10 text-red-700 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title={isCurrentUser(user) ? t('settings.userManagement.cannotRemoveSelf') : t('settings.userManagement.removeUser')}
+                                            >
+                                                <UserMinus className="w-3.5 h-3.5 mr-1" />
+                                                {t('settings.userManagement.remove')}
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>

@@ -24,7 +24,7 @@ class UserListItem(BaseModel):
     department_en: Optional[str]
     is_active: bool
     last_login: Optional[datetime]
-    created_at: datetime
+    created_at: Optional[datetime]
 
 class UserListResponse(BaseModel):
     users: List[UserListItem]
@@ -118,6 +118,13 @@ async def update_user_role(
     """
     Update user role (ADMIN only)
     """
+    # Prevent admin from changing their own role
+    if user_id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot change your own role"
+        )
+
     # Validate role
     valid_roles = ["PENDING", "USER", "ADMIN"]
     if role_update.role not in valid_roles:

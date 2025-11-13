@@ -197,7 +197,11 @@
             "actions": "작업",
             "statusPending": "승인 대기",
             "statusActive": "활성",
-            "statusInactive": "비활성"
+            "statusInactive": "비활성",
+            "remove": "제거",
+            "removeUser": "이 사용자 제거",
+            "cannotRemoveSelf": "본인 계정은 제거할 수 없습니다",
+            "confirmRemove": "이 사용자를 제거하시겠습니까? 계정이 비활성화됩니다."
         },
         "llmManagement": {
             "title": "사용 가능한 LLM 모델",
@@ -236,6 +240,22 @@
     "actions": {
       "approve": "승인",
       "reject": "거절"
+    },
+    "pendingApproval": {
+      "title": "Account Pending Approval",
+      "titleKo": "계정 승인 대기 중",
+      "nameLabel": "이름",
+      "usernameLabel": "사용자명",
+      "emailLabel": "이메일",
+      "departmentLabel": "부서",
+      "whatNextTitle": "다음 단계는?",
+      "step1": "관리자가 귀하의 계정을 검토합니다",
+      "step2": "승인되면 이메일로 알림을 받습니다",
+      "step3": "일반적으로 1-2 영업일이 소요됩니다",
+      "checkStatus": "상태 확인",
+      "logout": "로그아웃",
+      "needAccess": "즉시 액세스가 필요하신가요?",
+      "contactAdmin": "관리자에게 문의"
     }
   }
 }

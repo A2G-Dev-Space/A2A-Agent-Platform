@@ -34,8 +34,13 @@ async def list_users(
     admin_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all users for management (ADMIN only)"""
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    """List all active users for management (ADMIN only)"""
+    # Only return active users (is_active = True)
+    result = await db.execute(
+        select(User)
+        .where(User.is_active == True)
+        .order_by(User.created_at.desc())
+    )
     users = result.scalars().all()
 
     return [
@@ -135,6 +140,13 @@ async def reject_user(
     db: AsyncSession = Depends(get_db)
 ):
     """Reject a user's registration (ADMIN only)"""
+    # Prevent admin from rejecting themselves
+    if user_id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot reject your own account"
+        )
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -150,3 +162,33 @@ async def reject_user(
     await db.commit()
 
     return {"message": f"User {user_id} rejected successfully"}
+
+@router.delete("/{user_id}/remove/")
+async def remove_user(
+    user_id: int,
+    admin_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove/ban a user by deactivating their account (ADMIN only)"""
+    # Prevent admin from removing themselves
+    if user_id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot remove your own account"
+        )
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Deactivate user
+    user.is_active = False
+    user.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {"message": f"User {user_id} removed successfully"}
