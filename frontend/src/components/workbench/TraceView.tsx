@@ -222,7 +222,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
             <p className="font-bold text-xs sm:text-sm text-text-light dark:text-text-dark">
               {label}
             </p>
-            {log.agent_id && (
+            {log.agent_id && log.agent_id !== 'unknown' && (
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 style={{
