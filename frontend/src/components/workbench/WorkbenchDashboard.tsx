@@ -88,16 +88,16 @@ export const WorkbenchDashboard: React.FC = () => {
   // Default view: Grid layout
   if (!selectedAgent) {
     return (
-      <div className="flex flex-col flex-1 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col flex-1 p-2">
         {/* Header */}
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h1 className="text-gray-900 dark:text-white text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-[-0.033em]">
             My Development Agents
           </h1>
         </div>
 
         {/* Grid of Agent Cards */}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 sm:gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
           {/* Add New Agent Card */}
           <div
             onClick={() => setIsModalOpen(true)}
@@ -133,8 +133,8 @@ export const WorkbenchDashboard: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Back button and Endpoint Info */}
-      <div className="px-4 sm:px-6">
-        <div className="flex flex-col gap-2 py-3 border-b border-border-light dark:border-border-dark">
+      <div className="px-2">
+        <div className="flex flex-col gap-2 py-2 border-b border-border-light dark:border-border-dark">
           {/* Top row: Back button and agent name */}
           <div className="flex items-center gap-3">
             <button
@@ -152,8 +152,8 @@ export const WorkbenchDashboard: React.FC = () => {
       </div>
 
       {/* Chat + Trace Grid */}
-      <main className="flex-1 px-4 sm:px-6 py-4 overflow-hidden">
-        <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-3">
+      <main className="flex-1 px-2 py-2 overflow-hidden">
+        <div className="grid h-full grid-cols-1 gap-2 md:grid-cols-3">
           <ChatPlayground agent={selectedAgent} onTraceIdReceived={handleTraceIdReceived} />
           <TraceView traceId={traceId} />
         </div>
