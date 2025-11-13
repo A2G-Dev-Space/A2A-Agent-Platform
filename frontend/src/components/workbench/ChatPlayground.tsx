@@ -287,24 +287,63 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   };
 
   return (
-    <div className="flex flex-col bg-surface-light dark:bg-surface-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
-      {/* Header */}
-      <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
+    <div className="flex flex-col bg-panel-light dark:bg-panel-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
+      {/* Header with red accent */}
+      <div
+        className="flex h-16 items-center justify-between px-4"
+        style={{
+          borderBottom: '2px solid',
+          borderColor: 'var(--color-workbench-primary, #EA2831)',
+          backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+            ? 'rgba(234, 40, 49, 0.05)'
+            : 'rgba(234, 40, 49, 0.02)'
+        }}
+      >
         <div className="flex flex-col">
-          <h2 className="text-base font-bold">{t('workbench.chatPlayground')}</h2>
+          <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+            {t('workbench.chatPlayground')}
+          </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowConfig(!showConfig)}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
+            style={{
+              color: showConfig ? 'var(--color-workbench-primary, #EA2831)' : '#6b7280',
+              backgroundColor: showConfig
+                ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.1)' : 'rgba(234, 40, 49, 0.08)')
+                : 'transparent',
+              border: '1px solid',
+              borderColor: showConfig ? 'var(--color-workbench-primary, #EA2831)' : 'var(--color-border-light, #e5e7eb)'
+            }}
             title="Configuration"
           >
             <Settings className="h-4 w-4" />
           </button>
           <button
             onClick={handleClearSession}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 text-gray-600 dark:text-gray-300 gap-2 text-sm font-medium hover:bg-gray-200 dark:hover:bg-white/10 border border-border-light dark:border-border-dark transition-colors"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 gap-2 text-sm font-medium transition-all hover:border-red-400"
+            style={{
+              color: '#6b7280',
+              border: '1px solid var(--color-border-light, #e5e7eb)',
+              ':hover': {
+                borderColor: 'var(--color-workbench-primary, #EA2831)',
+                color: 'var(--color-workbench-primary, #EA2831)'
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-workbench-primary, #EA2831)';
+              e.currentTarget.style.color = 'var(--color-workbench-primary, #EA2831)';
+              e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                ? 'rgba(234, 40, 49, 0.1)'
+                : 'rgba(234, 40, 49, 0.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-light, #e5e7eb)';
+              e.currentTarget.style.color = '#6b7280';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
           >
             <RefreshCw className="h-4 w-4" />
             <span className="hidden sm:inline truncate">{t('workbench.clearSession')}</span>
@@ -314,10 +353,10 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
 
       {/* Configuration Panel */}
       {showConfig && (
-        <div className="border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark/50 px-4 py-3 max-h-[60vh] overflow-y-auto">
+        <div className="border-b border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark/50 px-4 py-3 max-h-[60vh] overflow-y-auto">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-light dark:text-text-dark">
+              <h3 className="text-sm font-bold text-text-light-primary dark:text-text-dark-primary">
                 Configuration
               </h3>
               <button
@@ -482,7 +521,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
             {/* Agno Team/Agent Selector (Only for Agno Framework) */}
             {agent.framework === AgentFramework.AGNO && (
               <div className="flex flex-col gap-3 border-t border-border-light dark:border-border-dark pt-3">
-                <h4 className="text-sm font-semibold text-text-light dark:text-text-dark">
+                <h4 className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">
                   Agno Configuration
                 </h4>
 
@@ -497,7 +536,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                       setSelectedTeam(e.target.value);
                       setSelectedAgnoAgent(''); // Reset agent selection
                     }}
-                    className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary-dark focus:outline-none focus:ring-1 focus:ring-primary-dark dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
+                    className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
                   >
                     <option value="">-- Select a team --</option>
                     {agnoTeams.map((team) => (
@@ -517,7 +556,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                     <select
                       value={selectedAgnoAgent}
                       onChange={(e) => setSelectedAgnoAgent(e.target.value)}
-                      className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary-dark focus:outline-none focus:ring-1 focus:ring-primary-dark dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
+                      className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
                     >
                       <option value="">-- Select an agent --</option>
                       {agnoAgents.map((agnoAgent) => (
@@ -556,7 +595,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 <div
                   className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
                     message.role === 'user'
-                      ? 'bg-primary/20 text-primary-dark dark:text-primary'
+                      ? 'bg-primary/20 text-primary'
                       : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300'
                   }`}
                 >
@@ -575,8 +614,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                   <div
                     className={`rounded-lg p-3 text-sm leading-relaxed ${
                       message.role === 'user'
-                        ? 'rounded-tr-none bg-primary/20 dark:bg-primary/20 text-text-light dark:text-text-dark'
-                        : 'rounded-tl-none bg-surface-light dark:bg-surface-dark text-text-light dark:text-text-dark'
+                        ? 'rounded-tr-none bg-primary/20 dark:bg-primary/20 text-text-light-primary dark:text-text-dark-primary'
+                        : 'rounded-tl-none bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary'
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -596,7 +635,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 </div>
                 <div className="flex max-w-[85%] sm:max-w-[75%] flex-col gap-1">
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{agentName}</p>
-                  <div className="rounded-lg rounded-tl-none bg-surface-light dark:bg-surface-dark p-3 text-sm leading-relaxed">
+                  <div className="rounded-lg rounded-tl-none bg-panel-light dark:bg-panel-dark p-3 text-sm leading-relaxed">
                     <p className="whitespace-pre-wrap break-words">{streamingMessage}</p>
                     <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
                   </div>
@@ -618,7 +657,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={isStreaming}
-            className="form-input w-full resize-none rounded-lg border-border-light bg-surface-light p-3 pr-16 sm:pr-24 text-sm placeholder:text-gray-400 focus:border-primary-dark focus:outline-none focus:ring-1 focus:ring-primary-dark dark:border-border-dark dark:bg-surface-dark dark:text-white dark:focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="form-input w-full resize-none rounded-lg border-border-light bg-panel-light p-3 pr-16 sm:pr-24 text-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-panel-dark dark:text-white dark:focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder={t('workbench.typeMessage')}
             rows={1}
             style={{ maxHeight: '200px' }}
@@ -626,7 +665,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isStreaming}
-            className="absolute bottom-2 right-2 flex min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-12 sm:w-16 bg-primary/80 text-primary-dark hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="absolute bottom-2 right-2 flex min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-12 sm:w-16 bg-primary/80 text-white hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>
