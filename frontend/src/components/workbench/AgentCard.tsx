@@ -1,6 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Edit, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { type Agent, AgentStatus } from '@/types';
 
 interface AgentCardProps {
@@ -40,7 +39,6 @@ const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boo
 };
 
 export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, onDeploy, onClick }) => {
-  const { t } = useTranslation();
   const isDeployed = agent.status === AgentStatus.DEPLOYED_ALL || agent.status === AgentStatus.DEPLOYED_DEPT;
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 

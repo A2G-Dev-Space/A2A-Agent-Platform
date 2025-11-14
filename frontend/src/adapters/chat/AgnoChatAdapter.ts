@@ -9,7 +9,6 @@ import type {
   ChatAdapterConfig,
   ChatAdapterCallbacks,
   ChatMessage,
-  ChatResponseChunk,
 } from './types';
 
 export class AgnoChatAdapter implements ChatAdapter {
@@ -31,14 +30,13 @@ export class AgnoChatAdapter implements ChatAdapter {
   async sendMessage(
     message: ChatMessage,
     callbacks: ChatAdapterCallbacks,
-    conversationHistory?: import('./types').ConversationMessage[]
+    _conversationHistory?: import('./types').ConversationMessage[]
   ): Promise<void> {
     if (!this.config) {
       throw new Error('AgnoChatAdapter not initialized');
     }
 
     // TODO: Implement conversation history support for Agno (streaming supported)
-    // For now, ignoring conversationHistory parameter
 
     // Reset streaming buffer
     this.streamingMessageBuffer = '';

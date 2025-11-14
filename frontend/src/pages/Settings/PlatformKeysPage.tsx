@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Copy, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -13,7 +12,6 @@ interface PlatformKey {
 }
 
 const PlatformKeysPage: React.FC = () => {
-  const { t } = useTranslation();
   const { accessToken } = useAuthStore();
   const [keys, setKeys] = useState<PlatformKey[]>([]);
   const [loading, setLoading] = useState(true);

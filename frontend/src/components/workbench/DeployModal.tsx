@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Globe, Users, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from 'react';
+import { X, Globe, Users, AlertCircle, Loader2 } from 'lucide-react';
 import type { Agent } from '@/types';
 import { AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
@@ -18,15 +17,9 @@ export const DeployModal: React.FC<DeployModalProps> = ({
   agent,
   onDeploySuccess
 }) => {
-  const { t } = useTranslation();
   const [deployScope, setDeployScope] = useState<'team' | 'public'>('team');
   const [isDeploying, setIsDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    setIsDarkMode(document.documentElement.getAttribute('data-theme') === 'dark');
-  }, []);
 
   const isDeployed = [
     AgentStatus.DEPLOYED_TEAM,

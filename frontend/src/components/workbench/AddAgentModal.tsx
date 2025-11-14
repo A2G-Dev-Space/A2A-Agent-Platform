@@ -17,7 +17,7 @@ interface AddAgentModalProps {
 const agentSchema = z.object({
   name: z.string().min(3, 'Agent name must be at least 3 characters').max(50, 'Agent name must be less than 50 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description must be less than 500 characters'),
-  framework: z.nativeEnum(AgentFramework, { required_error: 'Framework selection is required' }),
+  framework: z.nativeEnum(AgentFramework, { message: 'Framework selection is required' }),
   version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)').optional().or(z.literal('')),
   documentationUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   logoUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),

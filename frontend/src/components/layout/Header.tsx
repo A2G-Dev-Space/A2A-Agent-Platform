@@ -43,8 +43,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
             <DropdownMenu.Trigger asChild>
               <button className="focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-full">
                 <Avatar
-                  src={user.avatar}
-                  alt={user.name || user.username_kr}
+                  alt={user.username_kr}
                   fallback={user.username_kr?.charAt(0)?.toUpperCase()}
                   size="md"
                   status="online"

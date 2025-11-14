@@ -100,17 +100,17 @@ const StatisticsPage: React.FC = () => {
   // State for statistics data
   const [stats, setStats] = useState<ComprehensiveStatistics | null>(null);
   const [historicalTrends, setHistoricalTrends] = useState<HistoricalTrends | null>(null);
-  const [userUsage, setUserUsage] = useState<UserTokenUsage | null>(null);
+  const [, setUserUsage] = useState<UserTokenUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // State for filters
   const [periodValue, setPeriodValue] = useState<string>('1w');
-  const [topKUsers, setTopKUsers] = useState(5);
+  const [topKUsers] = useState(5);
   const [topKAgents, setTopKAgents] = useState(10);
   const [selectedModel, setSelectedModel] = useState<string>('all');
   const [agentGrowthFilter, setAgentGrowthFilter] = useState<'all' | 'deployed'>('all');
-  const [searchUserId, setSearchUserId] = useState<string>('');
+  const [searchUserId] = useState<string>('');
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
   const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
 
@@ -695,7 +695,7 @@ const StatisticsPage: React.FC = () => {
                 if (agents.length === 0) return <LineChart data={[]} />;
 
                 // Should only have one entry (either specific agent or "all")
-                const [agent_id, agentData] = agents[0];
+                const [, agentData] = agents[0];
                 const data = agentData.data || [];
 
                 return (

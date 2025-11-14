@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { UserCheck, Info } from 'lucide-react'
 import api from '@/services/api'
 
 export const SignupRequestPage: React.FC = () => {
-  const navigate = useNavigate()
   const { t } = useTranslation()
-  const { user, loginCallback } = useAuthStore()
+  const { user } = useAuthStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSignupRequest = async () => {

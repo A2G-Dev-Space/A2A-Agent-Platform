@@ -31,7 +31,7 @@ interface LogEntry {
 }
 
 interface TraceViewProps {
-  traceId: string;
+  traceId: string | null;
 }
 
 // Log type icons and colors (returns actual color values for inline styles)
@@ -286,7 +286,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   // Logs will come from tracing service via WebSocket
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [, setIsLoadingHistory] = useState(true);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);

@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
-import { Copy, Check, ZoomIn } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import Zoom from 'react-medium-image-zoom';
 import mermaid from 'mermaid';
 import 'highlight.js/styles/github-dark.css';

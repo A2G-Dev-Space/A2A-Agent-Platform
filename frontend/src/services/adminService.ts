@@ -1,4 +1,4 @@
-import api from './api';
+import { apiClient as api } from './api';
 import type { User } from '@/types';
 
 // V1 API returns simplified user info for management

@@ -1,5 +1,5 @@
 import React from 'react';
-import { type Agent } from '@/types';
+import { type Agent, AgentStatus } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 
 interface AgentCardProps {
@@ -46,9 +46,9 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
             <p className="text-text-light-primary dark:text-text-dark-primary font-bold truncate">
               {agent.name}
             </p>
-            {agent.version && (
+            {agent.capabilities?.version && (
               <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                v{agent.version}
+                v{agent.capabilities.version}
               </p>
             )}
           </div>
@@ -81,7 +81,7 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
             <div className="flex items-center gap-1">
               <span
                 className={`w-2 h-2 rounded-full ${
-                  agent.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                  agent.status === AgentStatus.PRODUCTION || agent.status === AgentStatus.DEPLOYED_ALL ? 'bg-green-500' : 'bg-gray-400'
                 }`}
               />
               <span className="capitalize">{agent.status}</span>

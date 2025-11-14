@@ -78,7 +78,7 @@ const getAgentColor = (agentId: string | undefined): string => {
   return colors[hash % colors.length];
 };
 
-export const TracePanel: React.FC<TracePanelProps> = ({ traceId, sessionId }) => {
+export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);

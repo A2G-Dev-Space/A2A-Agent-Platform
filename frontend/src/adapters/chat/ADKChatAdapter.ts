@@ -9,7 +9,6 @@ import type {
   ChatAdapterConfig,
   ChatAdapterCallbacks,
   ChatMessage,
-  ChatResponseChunk,
 } from './types';
 
 export class ADKChatAdapter implements ChatAdapter {

@@ -1,9 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
-import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentStatus } from '@/types';
 import AddAgentModal from './AddAgentModal';
 import { DeployModal } from './DeployModal';
@@ -12,9 +10,7 @@ import { ChatPlayground } from './ChatPlayground';
 import { TraceView } from './TraceView';
 
 export const WorkbenchDashboard: React.FC = () => {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
