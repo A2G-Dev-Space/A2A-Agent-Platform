@@ -124,7 +124,7 @@ class LLMProxy:
 
         try:
             logger.info(f"[Gemini] Starting stream request to {url}")
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(timeout=600.0) as client:  # 10 minutes for long-running requests
                 async with client.stream(
                     "POST",
                     url,
@@ -195,7 +195,7 @@ class LLMProxy:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
+            async with httpx.AsyncClient(timeout=600.0) as client:  # 10 minutes for long-running requests
                 async with client.stream(
                     "POST",
                     url,

@@ -266,7 +266,7 @@ async def _stream_from_agent_a2a(
     try:
         streaming_supported = False
 
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 minutes for long-running A2A requests
             # Try streaming endpoint
             async with client.stream(
                 "POST",
@@ -347,7 +347,7 @@ async def _stream_from_agent_a2a(
         logger.info(f"[A2A] Sending message/send request to {agent_url}")
         logger.debug(f"[A2A] Request payload: {json.dumps(a2a_send_request)[:500]}")
 
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 minutes for long-running A2A requests
             response = await client.post(
                 agent_url,
                 json=a2a_send_request,
