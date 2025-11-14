@@ -417,7 +417,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
       >
         <div className="flex flex-col">
           <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
-            {t('workbench.trace')}
+            {t('workbench.trace.title')}
           </h2>
           <div className="flex items-center gap-2 text-xs">
             {isConnected ? (
