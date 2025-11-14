@@ -307,7 +307,7 @@ async def expose_main_orchestrator():
     # Platform manages session & history, agent just processes messages
     a2a_app = to_a2a(
         main_orchestrator,
-        port=8010
+        port=6010
     )
     print("✓ Agent exposed in stateless mode (Platform manages history)")
 
@@ -327,15 +327,15 @@ async def expose_main_orchestrator():
     print("\n✓ Main Orchestrator Agent initialized")
     print(f"✓ Platform LLM Proxy: {PLATFORM_LLM_ENDPOINT}")
     print("✓ Session Management: Platform-side (Stateless Agent)")
-    print("✓ Port: 8010")
-    print("✓ Agent Card: http://localhost:8010/.well-known/agent.json")
+    print("✓ Port: 6010")
+    print("✓ Agent Card: http://localhost:6010/.well-known/agent.json")
     print("\n🚀 Main Orchestrator Agent ready for connections!")
     print("=" * 70)
     
     config = uvicorn.Config(
         app=a2a_app,
         host="0.0.0.0",
-        port=8010,
+        port=6010,
         log_level="info"
     )
     server = uvicorn.Server(config)

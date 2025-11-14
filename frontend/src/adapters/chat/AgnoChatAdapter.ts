@@ -155,8 +155,10 @@ export class AgnoChatAdapter implements ChatAdapter {
 
     switch (data.type) {
       case 'stream_start':
-        console.log('[AgnoChatAdapter] Stream started');
-        // Note: trace_id is not used in the adapter, it's handled at a higher level
+        console.log('[AgnoChatAdapter] Stream started, trace_id:', data.trace_id);
+        if (data.trace_id && callbacks.onTraceId) {
+          callbacks.onTraceId(data.trace_id);
+        }
         break;
 
       case 'text_token':

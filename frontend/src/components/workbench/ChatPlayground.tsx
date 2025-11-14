@@ -48,7 +48,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // trace_id will be received from the stream_start event via onTraceIdReceived callback
-  const [traceId] = useState<string | null>(null);
+  const [traceId, setTraceId] = useState<string | null>(null);
   const platformLlmEndpoint = traceId ? getPlatformLlmEndpointUrl(traceId) : null;
 
   // Configuration state
@@ -279,6 +279,13 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
             setIsStreaming(false);
             // Optionally show error to user
             alert(`Chat error: ${error.message}`);
+          },
+          onTraceId: (newTraceId) => {
+            console.log('[ChatPlayground] Received trace_id:', newTraceId);
+            setTraceId(newTraceId);
+            if (onTraceIdReceived) {
+              onTraceIdReceived(newTraceId);
+            }
           },
         },
         conversationHistory // Pass conversation history for context

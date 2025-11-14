@@ -170,8 +170,10 @@ export class ADKChatAdapter implements ChatAdapter {
 
     switch (data.type) {
       case 'stream_start':
-        console.log('[ADKChatAdapter] Stream started');
-        // Note: trace_id is not used in the adapter, it's handled at a higher level
+        console.log('[ADKChatAdapter] Stream started, trace_id:', data.trace_id);
+        if (data.trace_id && callbacks.onTraceId) {
+          callbacks.onTraceId(data.trace_id);
+        }
         break;
 
       case 'text_token':
