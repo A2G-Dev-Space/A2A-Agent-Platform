@@ -111,20 +111,21 @@ const StatisticsPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>('all');
   const [agentGrowthFilter, setAgentGrowthFilter] = useState<'all' | 'deployed'>('all');
   const [searchUserId, setSearchUserId] = useState<string>('');
-  const [globalGroupBy, setGlobalGroupBy] = useState<'week' | 'month'>('month');
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
   const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
 
-  // Parse period value to days/weeks/months
+  // Parse period value to days/weeks/months and auto-determine group_by
   const getPeriodParams = () => {
     if (periodValue.endsWith('w')) {
       const weeks = parseInt(periodValue);
-      return { weeks };
+      return { weeks, group_by: 'week' };
     } else if (periodValue.endsWith('m')) {
       const months = parseInt(periodValue);
-      return { months };
+      // Use week grouping for 1-2 months, month grouping for longer periods
+      const group_by = months <= 2 ? 'week' : 'month';
+      return { months, group_by };
     }
-    return { months: 12 }; // default
+    return { months: 12, group_by: 'month' }; // default
   };
 
   // Fetch comprehensive statistics with user growth
@@ -136,7 +137,6 @@ const StatisticsPage: React.FC = () => {
         const periodParams = getPeriodParams();
         const queryParams = new URLSearchParams({
           ...periodParams,
-          group_by: globalGroupBy,
           top_k_users: topKUsers.toString(),
           top_k_agents: topKAgents.toString()
         } as any);
@@ -154,7 +154,7 @@ const StatisticsPage: React.FC = () => {
     };
 
     fetchStatistics();
-  }, [periodValue, globalGroupBy, topKUsers, topKAgents]);
+  }, [periodValue, topKUsers, topKAgents]);
 
   // Fetch historical trends from worker service
   useEffect(() => {
@@ -190,7 +190,6 @@ const StatisticsPage: React.FC = () => {
         const periodParams = getPeriodParams();
         const queryParams = new URLSearchParams({
           ...periodParams,
-          group_by: globalGroupBy,
           trace_id: selectedAgentForToken
         } as any);
 
@@ -217,7 +216,7 @@ const StatisticsPage: React.FC = () => {
     if (stats) {
       fetchTokenUsage();
     }
-  }, [selectedAgentForToken, periodValue, globalGroupBy, stats?.total_users]);
+  }, [selectedAgentForToken, periodValue, stats?.total_users]);
 
   // Fetch user-specific token usage when searching
   useEffect(() => {
@@ -277,44 +276,19 @@ const StatisticsPage: React.FC = () => {
 
   return (
     <div className="py-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-          {t('settings.statistics.title')}
-        </h3>
+      {/* Header */}
+      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6">
+        {t('settings.statistics.title')}
+      </h3>
 
-        {/* Global Controls */}
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <span>Period:</span>
-            <select
-              value={periodValue}
-              onChange={(e) => setPeriodValue(e.target.value)}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
-            >
-              <option value="1w">1 week</option>
-              <option value="2w">2 weeks</option>
-              <option value="3m">3 months</option>
-              <option value="6m">6 months</option>
-              <option value="12m">1 year</option>
-              <option value="24m">2 years</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <span>Group by:</span>
-            <select
-              value={globalGroupBy}
-              onChange={(e) => setGlobalGroupBy(e.target.value as 'week' | 'month')}
-              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
-            >
-              <option value="month">Monthly</option>
-              <option value="week">Weekly</option>
-            </select>
-          </label>
-        </div>
-      </div>
+      {/* Real-time Statistics Section */}
+      <div className="mb-8">
+        <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">
+          Real-time Statistics
+        </h4>
 
-      {/* Overview Cards */}
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-[#1f2937]">
           <p className="text-base font-medium leading-normal text-slate-600 dark:text-slate-400">
             {t('settings.statistics.totalUsers')}
@@ -339,10 +313,146 @@ const StatisticsPage: React.FC = () => {
             {stats.agents_in_dev.toLocaleString()}
           </p>
         </div>
+        </div>
+
+        {/* Agent Token Usage - Bar Chart */}
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Agent Token Usage
+            </h3>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <span>Top K:</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={topKAgents}
+                  onChange={(e) => setTopKAgents(Number(e.target.value))}
+                  className="w-24"
+                />
+                <span className="w-8 text-center">{topKAgents}</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <span>Model:</span>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
+                >
+                  <option value="all">All Models</option>
+                  {stats.model_usage_stats.map((model) => (
+                    <option key={`${model.model}-${model.provider}`} value={model.model}>
+                      {model.model} ({model.provider})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          {filteredAgentUsage.length > 0 ? (
+            <div className="mt-4 h-96 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={filteredAgentUsage.slice(0, topKAgents)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                  <XAxis
+                    dataKey="agent_display_name"
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#f1f5f9' }}
+                  />
+                  <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                  <Bar dataKey="total_tokens" fill="#359EFF" name="Total Tokens" />
+                  <Bar dataKey="prompt_tokens" fill="#16a34a" name="Prompt Tokens" />
+                  <Bar dataKey="completion_tokens" fill="#9333ea" name="Completion Tokens" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="mt-4 text-center text-slate-600 dark:text-slate-400">
+              No agent token usage data available
+            </div>
+          )}
+        </div>
+
+        {/* Model Usage Stats Table */}
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            Model Usage Statistics
+          </h3>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
+                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.model_usage_stats.map((model, idx) => (
+                  <tr
+                    key={`${model.model}-${model.provider}`}
+                    className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
+                  >
+                    <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
+                    <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
+                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
+                      {model.total_tokens.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
+                      {model.call_count.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Monthly Growth Charts */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Trends Section */}
+      <div className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            Trends
+          </h4>
+          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+            <span>Period:</span>
+            <select
+              value={periodValue}
+              onChange={(e) => setPeriodValue(e.target.value)}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
+            >
+              <option value="1w">1 week</option>
+              <option value="2w">2 weeks</option>
+              <option value="3m">3 months</option>
+              <option value="6m">6 months</option>
+              <option value="12m">1 year</option>
+              <option value="24m">2 years</option>
+            </select>
+          </label>
+        </div>
+
+      {/* Trend Charts */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* User Monthly Growth */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
@@ -594,127 +704,6 @@ const StatisticsPage: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Agent Token Usage Section (Unified) */}
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            Agent Token Usage
-          </h3>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              <span>Top K:</span>
-              <input
-                type="range"
-                min="1"
-                max="50"
-                value={topKAgents}
-                onChange={(e) => setTopKAgents(Number(e.target.value))}
-                className="w-24"
-              />
-              <span className="w-8 text-center">{topKAgents}</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              <span>Model:</span>
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
-              >
-                <option value="all">All Models</option>
-                {stats.model_usage_stats.map((model) => (
-                  <option key={`${model.model}-${model.provider}`} value={model.model}>
-                    {model.model} ({model.provider})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
-
-        {filteredAgentUsage.length > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Agent</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Prompt Tokens</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Completion Tokens</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAgentUsage.map((agent, idx) => (
-                  <tr
-                    key={`${agent.trace_id}-${agent.model}`}
-                    className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                  >
-                    <td className="px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-100">
-                      {agent.agent_display_name}
-                    </td>
-                    <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">
-                      {agent.model}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                      {agent.prompt_tokens.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                      {agent.completion_tokens.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {agent.total_tokens.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm text-slate-600 dark:text-slate-400">
-                      {agent.call_count}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="mt-4 text-center text-slate-600 dark:text-slate-400">
-            No agent token usage data available
-          </div>
-        )}
-      </div>
-
-      {/* Model Usage Stats Table */}
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-          Model Usage Statistics
-        </h3>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.model_usage_stats.map((model, idx) => (
-                <tr
-                  key={`${model.model}-${model.provider}`}
-                  className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                >
-                  <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
-                  <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
-                  <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                    {model.total_tokens.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                    {model.call_count.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );
