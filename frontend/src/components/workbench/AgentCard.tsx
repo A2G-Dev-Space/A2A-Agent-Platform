@@ -105,6 +105,33 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
     return isLightColor(agent.card_color) ? 'text-gray-800' : 'text-gray-200';
   };
 
+  // Button styles following COLOR_MANAGEMENT_GUIDE.md
+  const getButtonStyle = () => {
+    if (isDarkMode) {
+      return {
+        backgroundColor: 'rgba(31, 41, 55, 0.9)', // gray-800 with opacity
+        color: '#ffffff',
+        borderColor: 'rgba(255, 255, 255, 0.3)'
+      };
+    }
+    return {
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      color: '#111827',
+      borderColor: 'rgba(17, 24, 39, 0.2)'
+    };
+  };
+
+  const getButtonHoverStyle = () => {
+    if (isDarkMode) {
+      return {
+        backgroundColor: 'rgba(55, 65, 81, 0.95)' // gray-700
+      };
+    }
+    return {
+      backgroundColor: '#ffffff'
+    };
+  };
+
   return (
     <div
       onClick={handleCardClick}
@@ -142,7 +169,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             e.stopPropagation();
             onEdit(agent);
           }}
-          className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border bg-white/90 text-gray-900 hover:bg-white border-gray-900/20"
+          className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border"
+          style={getButtonStyle()}
+          onMouseEnter={(e) => {
+            const hoverStyle = getButtonHoverStyle();
+            e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor;
+          }}
+          onMouseLeave={(e) => {
+            const style = getButtonStyle();
+            e.currentTarget.style.backgroundColor = style.backgroundColor;
+          }}
         >
           Edit
         </button>
@@ -151,7 +187,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             e.stopPropagation();
             onDeploy(agent);
           }}
-          className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border bg-white/90 text-gray-900 hover:bg-white border-gray-900/20"
+          className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border"
+          style={getButtonStyle()}
+          onMouseEnter={(e) => {
+            const hoverStyle = getButtonHoverStyle();
+            e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor;
+          }}
+          onMouseLeave={(e) => {
+            const style = getButtonStyle();
+            e.currentTarget.style.backgroundColor = style.backgroundColor;
+          }}
         >
           {isDeployed ? 'UnDeploy' : 'Deploy'}
         </button>
@@ -160,7 +205,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             e.stopPropagation();
             onDelete(agent);
           }}
-          className="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-colors border bg-white/90 text-gray-900 hover:bg-white border-gray-900/20"
+          className="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-colors border"
+          style={getButtonStyle()}
+          onMouseEnter={(e) => {
+            const hoverStyle = getButtonHoverStyle();
+            e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor;
+          }}
+          onMouseLeave={(e) => {
+            const style = getButtonStyle();
+            e.currentTarget.style.backgroundColor = style.backgroundColor;
+          }}
         >
           <Trash2 className="h-5 w-5" />
         </button>
