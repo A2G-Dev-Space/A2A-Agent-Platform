@@ -1,19 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, User, Bot, Settings, ChevronUp, Copy, Check, HelpCircle, Globe } from 'lucide-react';
+import { RefreshCw, Send, User, Bot, Settings, ChevronUp, ChevronDown, Copy, Check, HelpCircle, Globe } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 import { getPlatformLlmEndpointUrl } from '@/utils/trace';
-import type { ChatAdapter } from '@/adapters/chat';
+import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  systemEvents?: SystemEvent[];  // For accumulated system events
 }
 
 interface ChatPlaygroundProps {
@@ -27,7 +28,10 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
   // Use agent.name if agentName is not provided
   const displayName = agentName || agent.name;
   const { t } = useTranslation();
-  const { accessToken } = useAuthStore();
+  const { accessToken: storeAccessToken } = useAuthStore();
+
+  // Fallback to localStorage if Zustand hasn't hydrated yet
+  const accessToken = storeAccessToken || localStorage.getItem('accessToken');
 
   // Check if agent is deployed
   const isDeployed = [
@@ -39,11 +43,13 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
 
   // Messages state - will be loaded from backend
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isMessagesLoaded, setIsMessagesLoaded] = useState(false); // Track if initial load is complete
 
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [expandedSystemMessages, setExpandedSystemMessages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,10 +63,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
   const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState('');
-  const [selectedAgnoAgent, setSelectedAgnoAgent] = useState('');
-  const [agnoTeams, setAgnoTeams] = useState<Array<{ id: string; name: string }>>([]);
-  const [agnoAgents, setAgnoAgents] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedResource, setSelectedResource] = useState('');
+  const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>([]);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   // Chat adapter for framework-specific communication
@@ -92,7 +96,13 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
   // Load messages from backend when component mounts (for backward compatibility)
   useEffect(() => {
     const loadMessages = async () => {
-      if (!accessToken) return;
+      if (!accessToken) {
+        console.log('[ChatPlayground] No access token available, skipping message load');
+        setIsMessagesLoaded(true); // Mark as loaded even if no token
+        return;
+      }
+
+      console.log('[ChatPlayground] Loading messages from backend for agent:', agent.id);
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
@@ -110,32 +120,62 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
               role: msg.role,
               content: msg.content,
               timestamp: new Date(msg.timestamp),
+              systemEvents: msg.systemEvents,  // Preserve system events
             }));
+            console.log(`[ChatPlayground] Loaded ${loadedMessages.length} messages from backend`);
             setMessages(loadedMessages);
+            // Mark as loaded AFTER setMessages to prevent race condition
+            setIsMessagesLoaded(true);
+          } else {
+            console.log('[ChatPlayground] No messages found in backend response');
+            // No messages, but still mark as loaded
+            setIsMessagesLoaded(true);
           }
+        } else {
+          console.error('[ChatPlayground] Failed to load messages:', response.status, response.statusText);
+          setIsMessagesLoaded(true);
         }
       } catch (error) {
         console.error('[ChatPlayground] Failed to load messages from backend:', error);
+        setIsMessagesLoaded(true);
       }
     };
 
     loadMessages();
   }, [agent.id, accessToken, API_BASE_URL]);
 
-  // Save messages to backend whenever they change
+  // Save messages to backend whenever they change (but only after initial load)
   useEffect(() => {
+    // Skip save if initial load hasn't completed yet (prevents overwriting on mount)
+    if (!isMessagesLoaded) {
+      console.log('[ChatPlayground] Skipping save - initial load not complete');
+      return;
+    }
+
     const saveMessages = async () => {
-      if (!accessToken || messages.length === 0) return;
+      if (!accessToken) {
+        console.log('[ChatPlayground] No access token available, skipping message save');
+        return;
+      }
+
+      console.log(`[ChatPlayground] Saving ${messages.length} messages to backend for agent:`, agent.id);
 
       try {
-        await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify(messages),
+          body: JSON.stringify(messages),  // Save even if empty (for clear session)
         });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[ChatPlayground] Messages saved successfully:', data);
+        } else {
+          console.error('[ChatPlayground] Failed to save messages:', response.status, response.statusText);
+        }
       } catch (error) {
         console.error('[ChatPlayground] Failed to save messages to backend:', error);
       }
@@ -144,7 +184,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     // Debounce save to avoid too many requests
     const timer = setTimeout(saveMessages, 500);
     return () => clearTimeout(timer);
-  }, [messages, agent.id, accessToken, API_BASE_URL]);
+  }, [messages, agent.id, accessToken, API_BASE_URL, isMessagesLoaded]);
 
   // Initialize chat adapter when component mounts or agent/framework changes
   useEffect(() => {
@@ -159,17 +199,29 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
       // Create adapter for the agent's framework
       const adapter = ChatAdapterFactory.createAdapter(agent.framework);
 
-      // Initialize adapter with configuration (including agent-managed sessionId)
+      // Determine selected resource based on framework
+      let resourceId: string | undefined;
+      if (agent.framework === AgentFramework.AGNO) {
+        resourceId = selectedResource || undefined;
+      }
+
+      // Initialize adapter with configuration
+      // NOTE: For Workbench mode, we don't pass sessionId to use workbench API endpoint
       adapter.initialize({
         agentId: agent.id,
         agentEndpoint: agent.a2a_endpoint || '',
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
-        sessionId: agentSessionId,  // Pass agent-managed sessionId
+        sessionId: undefined,  // Workbench mode uses workbench API, not chat sessions API
+        selectedResource: resourceId,  // Pass selected team/agent for frameworks like Agno
       });
 
       chatAdapterRef.current = adapter;
-      console.log('[ChatPlayground] Chat adapter initialized with sessionId:', agentSessionId);
+      console.log('[ChatPlayground] Chat adapter initialized:', {
+        sessionId: agentSessionId,
+        selectedResource: resourceId,
+        framework: agent.framework,
+      });
     } catch (error) {
       console.error('[ChatPlayground] Failed to create chat adapter:', error);
     }
@@ -182,31 +234,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL]);
-
-  // Fetch Agno teams when agent is Agno framework
-  useEffect(() => {
-    if (agent.framework === AgentFramework.AGNO) {
-      // TODO: Fetch teams from Agno API
-      // For now, using placeholder data
-      setAgnoTeams([
-        { id: 'team1', name: 'Team Alpha' },
-        { id: 'team2', name: 'Team Beta' },
-      ]);
-    }
-  }, [agent.framework]);
-
-  // Fetch Agno agents when team is selected
-  useEffect(() => {
-    if (agent.framework === AgentFramework.AGNO && selectedTeam) {
-      // TODO: Fetch agents from Agno API based on team
-      // For now, using placeholder data
-      setAgnoAgents([
-        { id: 'agent1', name: 'Agent A' },
-        { id: 'agent2', name: 'Agent B' },
-      ]);
-    }
-  }, [agent.framework, selectedTeam]);
+  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL, selectedResource]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -246,13 +274,32 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     setIsStreaming(true);
     setStreamingMessage('');
 
+    // Create system events container message ONLY for Agno framework
+    // ADK does NOT support system events
+    let systemEventsMessageId: string | null = null;
+    if (agent.framework === AgentFramework.Agno && chatAdapterRef.current?.supportsStreaming()) {
+      systemEventsMessageId = `system-${Date.now()}`;
+      const systemEventsMessage: Message = {
+        id: systemEventsMessageId,
+        role: 'system',
+        content: 'System Events',
+        timestamp: new Date(),
+        systemEvents: [],
+      };
+
+      setMessages((prev) => [...prev, systemEventsMessage]);
+      setExpandedSystemMessages((prev) => new Set(prev).add(systemEventsMessageId));
+    }
+
     // Send message via adapter
     try {
-      // Build conversation history from existing messages (for Workbench mode)
-      const conversationHistory = messages.map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      }));
+      // Build conversation history from existing messages (exclude system events)
+      const conversationHistory = messages
+        .filter((msg) => msg.role !== 'system')
+        .map((msg) => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        }));
 
       await chatAdapterRef.current.sendMessage(
         { content: userMessageContent },
@@ -263,6 +310,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
           },
           onComplete: (response) => {
             console.log('[ChatPlayground] Message complete, length:', response.content.length);
+
             // Add complete assistant message
             setMessages((prev) => [
               ...prev,
@@ -273,6 +321,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
                 timestamp: response.timestamp,
               },
             ]);
+
+            // Clear streaming state
             setStreamingMessage('');
             setIsStreaming(false);
           },
@@ -281,6 +331,20 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
             setIsStreaming(false);
             // Optionally show error to user
             alert(`Chat error: ${error.message}`);
+          },
+          onSystemEvent: (event) => {
+            // Only process system events for frameworks that support them
+            if (systemEventsMessageId) {
+              // Add event to the system events message in real-time
+              console.log('[ChatPlayground] System event:', event.event, event.type);
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === systemEventsMessageId
+                    ? { ...msg, systemEvents: [...(msg.systemEvents || []), event] }
+                    : msg
+                )
+              );
+            }
           },
         },
         conversationHistory // Pass conversation history for context
@@ -317,16 +381,16 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     setAgentSessionId(newSessionId);
     console.log('[ChatPlayground] Created new agent sessionId after clear:', newSessionId);
 
-    // Clear messages in backend (for backward compatibility)
+    // Clear messages in backend by saving empty array
     if (accessToken) {
       try {
-        await fetch(`${API_BASE_URL}/api/workbench/clear`, {
+        await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ agent_id: agent.id }),
+          body: JSON.stringify([]),  // Save empty array to clear messages
         });
         console.log('[ChatPlayground] Session cleared from backend');
       } catch (error) {
@@ -382,7 +446,7 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     }
   };
 
-  // Test agent endpoint connection
+  // Test agent endpoint connection (Framework-aware)
   const handleTestAgentEndpoint = async () => {
     if (!agentEndpoint.trim()) {
       setAgentEndpointStatus('error');
@@ -392,24 +456,77 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     setAgentEndpointStatus('testing');
 
     try {
-      // Test A2A agent.json endpoint
-      const url = agentEndpoint.endsWith('/')
-        ? `${agentEndpoint}.well-known/agent.json`
-        : `${agentEndpoint}/.well-known/agent.json`;
-
-      const response = await fetch(url);
+      // Call backend validation API (framework-aware)
+      const response = await fetch(`${API_BASE_URL}/api/agents/${agent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          a2a_endpoint: agentEndpoint,
+        }),
+      });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Agent card:', data);
+        console.log('[ChatPlayground] Endpoint validation successful:', data);
+
+        // For Agno framework, populate teams/agents dropdown
+        if (agent.framework === AgentFramework.AGNO) {
+          // Fetch both teams and agents and combine them into one resource list
+          const resources: Array<{ id: string; name: string; type: 'team' | 'agent' }> = [];
+
+          // Try to fetch teams
+          try {
+            const teamsRes = await fetch(`${agentEndpoint}/teams`);
+            if (teamsRes.ok) {
+              const teamsData = await teamsRes.json();
+              const teams = teamsData.map((team: any) => ({
+                id: team.id,
+                name: team.name || team.id,
+                type: 'team' as const,
+              }));
+              resources.push(...teams);
+              console.log('[ChatPlayground] Loaded teams:', teams);
+            }
+          } catch (error) {
+            console.warn('[ChatPlayground] Failed to load teams:', error);
+          }
+
+          // Try to fetch agents
+          try {
+            const agentsRes = await fetch(`${agentEndpoint}/agents`);
+            if (agentsRes.ok) {
+              const agentsData = await agentsRes.json();
+              const agents = agentsData.map((agentItem: any) => ({
+                id: agentItem.id,
+                name: agentItem.name || agentItem.id,
+                type: 'agent' as const,
+              }));
+              resources.push(...agents);
+              console.log('[ChatPlayground] Loaded agents:', agents);
+            }
+          } catch (error) {
+            console.warn('[ChatPlayground] Failed to load agents:', error);
+          }
+
+          setAgnoResources(resources);
+          console.log('[ChatPlayground] Combined resources:', resources);
+        }
+
         setAgentEndpointStatus('success');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       } else {
+        const errorData = await response.json();
+        console.error('[ChatPlayground] Endpoint validation failed:', errorData);
+        alert(`Connection failed: ${errorData.detail || 'Please check the endpoint and ensure the agent is running.'}`);
         setAgentEndpointStatus('error');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       }
     } catch (error) {
-      console.error('Error testing agent endpoint:', error);
+      console.error('[ChatPlayground] Error testing agent endpoint:', error);
+      alert(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAgentEndpointStatus('error');
       setTimeout(() => setAgentEndpointStatus('idle'), 3000);
     }
@@ -1007,55 +1124,31 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
               </button>
             </div>
 
-            {/* Agno Team/Agent Selector (Only for Agno Framework) */}
-            {agent.framework === AgentFramework.AGNO && (
+            {/* Agno Team/Agent Selector (Only for Agno Framework after successful connection) */}
+            {agent.framework === AgentFramework.AGNO && agent.a2a_endpoint && agnoResources.length > 0 && (
               <div className="flex flex-col gap-3 border-t border-border-light dark:border-border-dark pt-3">
                 <h4 className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">
                   Agno Configuration
                 </h4>
 
-                {/* Team Selector */}
+                {/* Unified Resource Selector (Team or Agent) */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Select Team
+                    Select Team or Agent
                   </label>
                   <select
-                    value={selectedTeam}
-                    onChange={(e) => {
-                      setSelectedTeam(e.target.value);
-                      setSelectedAgnoAgent(''); // Reset agent selection
-                    }}
+                    value={selectedResource}
+                    onChange={(e) => setSelectedResource(e.target.value)}
                     className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
                   >
-                    <option value="">-- Select a team --</option>
-                    {agnoTeams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
+                    <option value="">-- Select a team or agent --</option>
+                    {agnoResources.map((resource) => (
+                      <option key={`${resource.type}-${resource.id}`} value={resource.id}>
+                        {resource.name} ({resource.type})
                       </option>
                     ))}
                   </select>
                 </div>
-
-                {/* Agent Selector */}
-                {selectedTeam && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                      Select Agent
-                    </label>
-                    <select
-                      value={selectedAgnoAgent}
-                      onChange={(e) => setSelectedAgnoAgent(e.target.value)}
-                      className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
-                    >
-                      <option value="">-- Select an agent --</option>
-                      {agnoAgents.map((agnoAgent) => (
-                        <option key={agnoAgent.id} value={agnoAgent.id}>
-                          {agnoAgent.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1073,75 +1166,184 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
           </div>
         ) : (
           <div className="flex flex-col gap-4 sm:gap-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 sm:gap-4 ${
-                  message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'
-                }`}
-              >
-                {/* Avatar */}
-                <div
-                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                    message.role === 'user'
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300'
-                  }`}
-                >
-                  {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </div>
+            {messages.map((message) => {
+              // System events section - collapsible
+              if (message.role === 'system' && message.systemEvents !== undefined) {
+                const isExpanded = expandedSystemMessages.has(message.id);
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
-                {/* Message bubble */}
+                const toggleExpanded = () => {
+                  setExpandedSystemMessages((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(message.id)) {
+                      next.delete(message.id);
+                    } else {
+                      next.add(message.id);
+                    }
+                    return next;
+                  });
+                };
+
+                return (
+                  <div key={message.id} className="my-2">
+                    {/* Collapsible header */}
+                    <button
+                      onClick={toggleExpanded}
+                      className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors w-full"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                      <span>
+                        {t('workbench.systemEvents')} ({message.systemEvents.length})
+                      </span>
+                    </button>
+
+                    {/* Expanded content */}
+                    {isExpanded && message.systemEvents.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                        {message.systemEvents.map((event, idx) => {
+                          // Get color based on event type following COLOR_MANAGEMENT_GUIDE.md
+                          let badgeColor = '';
+                          if (event.type === 'tool') {
+                            badgeColor = isDark
+                              ? 'rgba(22, 163, 74, 0.2)'
+                              : '#dcfce7';
+                          } else if (event.type === 'control') {
+                            badgeColor = isDark
+                              ? 'rgba(53, 158, 255, 0.2)'
+                              : '#dbeafe';
+                          } else if (event.type === 'model') {
+                            badgeColor = isDark
+                              ? 'rgba(147, 51, 234, 0.2)'
+                              : '#ede9fe';
+                          } else if (event.type === 'reasoning') {
+                            badgeColor = isDark
+                              ? 'rgba(251, 146, 60, 0.2)'
+                              : '#fed7aa';
+                          } else if (event.type === 'memory') {
+                            badgeColor = isDark
+                              ? 'rgba(20, 184, 166, 0.2)'
+                              : '#ccfbf1';
+                          } else if (event.type === 'hook') {
+                            badgeColor = isDark
+                              ? 'rgba(236, 72, 153, 0.2)'
+                              : '#fce7f3';
+                          } else {
+                            badgeColor = isDark
+                              ? 'rgba(75, 85, 99, 0.3)'
+                              : '#f3f4f6';
+                          }
+
+                          let textColor = '';
+                          if (event.type === 'tool') {
+                            textColor = isDark ? '#86efac' : '#16a34a';
+                          } else if (event.type === 'control') {
+                            textColor = isDark ? '#93c5fd' : '#2563eb';
+                          } else if (event.type === 'model') {
+                            textColor = isDark ? '#c4b5fd' : '#9333ea';
+                          } else if (event.type === 'reasoning') {
+                            textColor = isDark ? '#fdba74' : '#ea580c';
+                          } else if (event.type === 'memory') {
+                            textColor = isDark ? '#5eead4' : '#0d9488';
+                          } else if (event.type === 'hook') {
+                            textColor = isDark ? '#f9a8d4' : '#ec4899';
+                          } else {
+                            textColor = isDark ? '#d1d5db' : '#4b5563';
+                          }
+
+                          return (
+                            <span
+                              key={`${message.id}-event-${idx}`}
+                              className="px-3 py-1 rounded-full text-[11px] font-semibold"
+                              style={{
+                                backgroundColor: badgeColor,
+                                color: textColor,
+                              }}
+                            >
+                              {event.event}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // User and Assistant messages - regular chat bubbles
+              return (
                 <div
-                  className={`flex max-w-[85%] sm:max-w-[75%] flex-col gap-1 ${
-                    message.role === 'assistant' ? 'items-start' : 'items-end'
+                  key={message.id}
+                  className={`flex items-start gap-3 sm:gap-4 ${
+                    message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'
                   }`}
                 >
-                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                    {message.role === 'user' ? t('workbench.you') : displayName}
-                  </p>
+                  {/* Avatar */}
                   <div
-                    className={`rounded-lg p-3 text-sm leading-relaxed border-2 ${
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
                       message.role === 'user'
-                        ? 'rounded-tr-none'
-                        : 'rounded-tl-none'
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300'
                     }`}
-                    style={{
-                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
-                        ? '#1f2937'
-                        : '#ffffff',
-                      borderColor: message.role === 'user'
-                        ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#EA2831' : 'rgba(234, 40, 49, 0.4)')
-                        : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
-                    }}
                   >
-                    <MessageContent content={message.content} contentType="markdown" />
+                    {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
-                    <button
-                      onClick={() => handleCopyMessage(message.id, message.content)}
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                      title="Copy message"
+
+                  {/* Message bubble */}
+                  <div
+                    className={`flex max-w-[85%] sm:max-w-[75%] flex-col gap-1 ${
+                      message.role === 'assistant' ? 'items-start' : 'items-end'
+                    }`}
+                  >
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                      {message.role === 'user' ? t('workbench.you') : displayName}
+                    </p>
+                    <div
+                      className={`rounded-lg p-3 text-sm leading-relaxed border-2 ${
+                        message.role === 'user'
+                          ? 'rounded-tr-none'
+                          : 'rounded-tl-none'
+                      }`}
+                      style={{
+                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                          ? '#1f2937'
+                          : '#ffffff',
+                        borderColor: message.role === 'user'
+                          ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#EA2831' : 'rgba(234, 40, 49, 0.4)')
+                          : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
+                      }}
                     >
-                      {copiedMessageId === message.id ? (
-                        <>
-                          <Check className="w-3 h-3" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+                      <MessageContent content={message.content} contentType="markdown" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {message.timestamp.toLocaleTimeString()}
+                      </span>
+                      <button
+                        onClick={() => handleCopyMessage(message.id, message.content)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        title="Copy message"
+                      >
+                        {copiedMessageId === message.id ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Streaming message */}
             {isStreaming && streamingMessage && (
@@ -1150,7 +1352,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
                   <Bot className="h-4 w-4" />
                 </div>
                 <div className="flex max-w-[85%] sm:max-w-[75%] flex-col gap-1">
-                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{agentName}</p>
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{displayName}</p>
+
                   <div
                     className="rounded-lg rounded-tl-none border-2 p-3 text-sm leading-relaxed"
                     style={{
