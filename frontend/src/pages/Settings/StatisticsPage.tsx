@@ -105,7 +105,7 @@ const StatisticsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // State for filters
-  const [periodValue, setPeriodValue] = useState<string>('12m');
+  const [periodValue, setPeriodValue] = useState<string>('1w');
   const [topKUsers, setTopKUsers] = useState(5);
   const [topKAgents, setTopKAgents] = useState(10);
   const [selectedModel, setSelectedModel] = useState<string>('all');
@@ -178,10 +178,17 @@ const StatisticsPage: React.FC = () => {
           const modelUsageData = await response.json();
 
           // Update only the model_usage_stats in the stats state
+          // Create minimal stats object if it doesn't exist yet
           setStats(prevStats => prevStats ? {
             ...prevStats,
             model_usage_stats: modelUsageData
-          } : null);
+          } : {
+            total_users: 0,
+            active_agents: 0,
+            development_agents: 0,
+            agent_token_usage: [],
+            model_usage_stats: modelUsageData
+          });
         }
       } catch (error) {
         console.error('Failed to fetch model usage stats:', error);
@@ -226,40 +233,8 @@ const StatisticsPage: React.FC = () => {
     fetchHistoricalTrends();
   }, [periodValue, selectedTopK, selectedAgentForToken]);
 
-  // Fetch token usage separately when selected agent changes
-  useEffect(() => {
-    const fetchTokenUsage = async () => {
-      try {
-        const periodParams = getPeriodParams();
-        const queryParams = new URLSearchParams({
-          ...periodParams,
-          trace_id: selectedAgentForToken
-        } as any);
-
-        const response = await adminAPI.get<{ data: Array<{
-          month: string;
-          total_tokens: number;
-          request_tokens: number;
-          response_tokens: number;
-          call_count: number;
-        }> }>(
-          `/llm-proxy-service/api/v1/statistics/monthly-token-usage?${queryParams.toString()}`
-        );
-
-        setStats(prevStats => prevStats ? {
-          ...prevStats,
-          token_monthly_usage: response.data.data
-        } : null);
-      } catch (err: any) {
-        console.error('Failed to fetch token usage:', err);
-      }
-    };
-
-    // Fetch when agent filter changes
-    if (stats) {
-      fetchTokenUsage();
-    }
-  }, [selectedAgentForToken, periodValue, stats?.total_users]);
+  // Token usage is already included in historical trends
+  // No separate fetch needed
 
   // Fetch user-specific token usage when searching
   useEffect(() => {
