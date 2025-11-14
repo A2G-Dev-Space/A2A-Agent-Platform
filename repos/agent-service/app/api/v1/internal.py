@@ -80,3 +80,39 @@ async def get_agents_by_ids(
         }
 
     return {"agents": agent_map}
+
+
+@router.get("/internal/agents/by-trace-id/{trace_id}")
+async def get_agent_by_trace_id(
+    trace_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get agent information by trace_id (Internal API - No Auth Required)
+
+    Used by LLM proxy to resolve agent_id from trace_id for token usage tracking.
+
+    Workbench workflow:
+    1. User selects agent in Workbench
+    2. Workbench generates deterministic trace_id = MD5(user_id + agent_id)
+    3. Workbench updates agent.trace_id with this value
+    4. Agent uses URL: /api/llm/trace/{trace_id}/v1/chat/completions
+    5. LLM proxy calls this endpoint to get agent_id
+    6. Token usage tracked accurately by agent_id
+    """
+    # Query agent by trace_id
+    query = select(Agent).where(Agent.trace_id == trace_id)
+    result = await db.execute(query)
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        return {"agent": None}
+
+    return {
+        "agent": {
+            "id": agent.id,
+            "name": agent.name,
+            "owner_id": agent.owner_id,
+            "trace_id": agent.trace_id
+        }
+    }

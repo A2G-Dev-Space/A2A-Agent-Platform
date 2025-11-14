@@ -494,3 +494,44 @@ async def search_agents(request: AgentSearchRequest) -> dict[str, Any]:
         "count": len(filtered_agents),
         "query": request.query,
     }
+
+
+@router.patch("/{agent_id}/trace-id")
+async def update_agent_trace_id(
+    agent_id: int,
+    request: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update agent's trace_id (Internal API - No Auth Required)
+
+    Used by Workbench to set deterministic trace_id for agent.
+    This allows LLM proxy to resolve agent_id from trace_id for token tracking.
+    """
+    trace_id = request.get("trace_id")
+    if not trace_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="trace_id is required"
+        )
+
+    # Find agent
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Update trace_id
+    agent.trace_id = trace_id
+    await db.commit()
+
+    return {
+        "id": agent.id,
+        "name": agent.name,
+        "trace_id": agent.trace_id,
+        "updated": True
+    }

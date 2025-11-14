@@ -39,7 +39,7 @@ class WorkbenchMessage(BaseModel):
 async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
     """
     Generate a fixed trace_id from user_id and agent_id
-    Also stores agent_id in Redis for LLM proxy to lookup
+    Updates Agent Service with this trace_id for LLM proxy lookup
     """
     # Create deterministic trace_id that's always the same for user+agent combination
     combined = f"{user_id}_{agent_id}"
@@ -49,16 +49,20 @@ async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
     # Format as UUID-like string
     trace_id = f"{hex_dig[:8]}-{hex_dig[8:12]}-{hex_dig[12:16]}-{hex_dig[16:20]}-{hex_dig[20:32]}"
 
-    # Store trace_id -> agent_id mapping in Redis for LLM proxy
-    # This allows LLM proxy to correctly attribute token usage to agents
+    # Update Agent Service with this trace_id
+    # LLM proxy will use trace_id to lookup agent_id for token usage tracking
     try:
-        from app.core.redis_client import get_redis_client
-        redis_client = await get_redis_client()
-        # Store for 24 hours (workbench sessions are typically shorter)
-        await redis_client.set(f"trace:agent:{trace_id}", str(agent_id), ex=86400)
-        logger.info(f"[Workbench] Stored trace_id -> agent_id mapping: {trace_id} -> {agent_id}")
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.patch(
+                f"http://agent-service:8002/api/agents/{agent_id}/trace-id",
+                json={"trace_id": trace_id}
+            )
+            if response.status_code == 200:
+                logger.info(f"[Workbench] Updated agent {agent_id} with trace_id: {trace_id}")
+            else:
+                logger.warning(f"[Workbench] Failed to update agent trace_id: {response.status_code}")
     except Exception as e:
-        logger.error(f"[Workbench] Failed to store trace_id mapping in Redis: {e}")
+        logger.error(f"[Workbench] Error updating agent trace_id: {e}")
 
     return trace_id
 

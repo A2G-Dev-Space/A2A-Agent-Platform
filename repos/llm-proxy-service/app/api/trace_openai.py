@@ -22,15 +22,14 @@ trace_openai_router = APIRouter()
 async def create_traced_chat_completion(
     trace_id: str = Path(..., description="Trace ID for this agent (auto-generated from user_id + agent_id)"),
     request: ChatCompletionRequest = None,
-    authorization: Optional[str] = Header(None),
-    x_agent_id: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None)
 ):
     """
     Trace-based OpenAI Compatible Chat Completion Endpoint
 
     URL Pattern: /trace/{trace_id}/v1/chat/completions
 
-    The trace_id is embedded in the URL, so agents don't need to manually set X-Trace-ID header.
+    The trace_id is embedded in the URL - agents don't need any headers except API key!
     This simplifies agent development - just point your OpenAI client to:
 
     base_url="http://localhost:9050/api/llm/trace/{your_trace_id}/v1"
@@ -48,15 +47,18 @@ async def create_traced_chat_completion(
             messages=[{"role": "user", "content": "Hello!"}]
         )
 
-    Security:
-    - API key must belong to the user who owns this agent
-    - trace_id is validated against user's agents
+    How it works:
+    1. Workbench generates deterministic trace_id = MD5(user_id + agent_id)
+    2. Workbench updates agent.trace_id in Agent Service
+    3. User uses this URL in their agent code
+    4. LLM proxy automatically looks up agent_id from trace_id
+    5. Token usage tracked by agent_id
+    6. Trace events appear in Workbench trace panel
     """
     logger.info("="*80)
     logger.info(f"[Traced LLM] NEW REQUEST via /trace/{trace_id}/v1/chat/completions")
     logger.info(f"[Traced LLM] Trace ID from URL: {trace_id}")
     logger.info(f"[Traced LLM] Model: {request.model}")
-    logger.info(f"[Traced LLM] Agent ID header: {x_agent_id}")
     logger.info(f"[Traced LLM] Messages: {len(request.messages)}")
     logger.info("="*80)
 
@@ -72,20 +74,37 @@ async def create_traced_chat_completion(
     user_id = user_info.get("user_id")
     logger.info(f"[Traced LLM] Authorized user_id={user_id}")
 
-    # TODO: Validate trace_id belongs to this user
-    # For now, we trust the trace_id
-    # In production, query agent-service to verify user owns an agent with this trace_id
+    # Lookup agent_id from trace_id via Agent Service
+    # Agent doesn't need to provide this - we resolve it automatically!
+    resolved_agent_id = "unknown"
 
-    # Inject trace_id into the request by calling the base function with X-Trace-ID header
-    # We reuse the existing create_chat_completion logic
-    logger.info(f"[Traced LLM] FORWARDING to main handler with trace_id={trace_id}")
+    import httpx
+    import os
+    agent_service_url = os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002')
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{agent_service_url}/api/internal/agents/by-trace-id/{trace_id}")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("agent") and data["agent"].get("id"):
+                    resolved_agent_id = str(data["agent"]["id"])
+                    logger.info(f"[Traced LLM] ✅ Resolved agent_id={resolved_agent_id} from trace_id={trace_id}")
+                else:
+                    logger.warning(f"[Traced LLM] ⚠️  No agent found for trace_id={trace_id}")
+            else:
+                logger.warning(f"[Traced LLM] ⚠️  Agent Service returned {response.status_code} for trace_id={trace_id}")
+    except Exception as e:
+        logger.error(f"[Traced LLM] ❌ Failed to lookup agent_id from trace_id={trace_id}: {e}")
 
-    # Call the original function with trace_id automatically set
+    # Inject trace_id and agent_id into the request
+    logger.info(f"[Traced LLM] FORWARDING to main handler - trace_id={trace_id}, agent_id={resolved_agent_id}")
+
+    # Call the original function with trace_id and agent_id automatically set
     return await create_chat_completion(
         request=request,
         authorization=authorization,
-        x_agent_id=x_agent_id,
-        x_trace_id=trace_id  # Automatically inject trace_id from URL
+        x_agent_id=resolved_agent_id,  # Auto-resolved from trace_id
+        x_trace_id=trace_id  # From URL path
     )
 
 

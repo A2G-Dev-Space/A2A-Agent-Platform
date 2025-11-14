@@ -613,6 +613,166 @@ async def create_chat_completion(
 
 # ===== Session-Specific OpenAI Compatible Endpoint =====
 
+@openai_router.post("/trace/{trace_id}/v1/chat/completions")
+async def create_chat_completion_with_trace(
+    trace_id: str = Path(..., description="Trace ID for trace event logging and agent identification"),
+    request: ChatCompletionRequest = ...,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Trace-Specific OpenAI Compatible Chat Completion Endpoint
+
+    This is the PRIMARY endpoint for Workbench-developed agents.
+    URL contains trace_id, which is used to lookup agent_id from Agent Service.
+
+    URL Structure (from agent code):
+    http://gateway:9050/api/llm/trace/{trace_id}/v1/chat/completions
+
+    Workbench Workflow:
+    1. User creates agent in Workbench
+    2. Workbench generates deterministic trace_id = MD5(user_id + agent_id)
+    3. Workbench updates agent.trace_id in Agent Service
+    4. Configuration panel shows: http://gateway:9050/api/llm/trace/{trace_id}/v1/chat/completions
+    5. User uses this URL in their agent code with Platform API key
+    6. LLM proxy receives trace_id from URL
+    7. LLM proxy calls Agent Service to get agent_id from trace_id
+    8. Token usage tracked by agent_id
+    9. Trace events sent with trace_id appear in Workbench
+
+    Example:
+        curl -X POST http://localhost:9050/api/llm/trace/abc-123/v1/chat/completions \\
+          -H "Content-Type: application/json" \\
+          -H "Authorization: Bearer a2g_..." \\
+          -d '{
+            "model": "gpt-3.5-turbo",
+            "messages": [{"role": "user", "content": "Hello!"}],
+            "stream": false
+          }'
+    """
+    logger.info("="*80)
+    logger.info(f"[LLM Proxy] Trace endpoint - trace_id={trace_id}, model={request.model}")
+    logger.info("="*80)
+
+    # Validate Platform API key
+    user_info = await validate_platform_key(authorization)
+    if not user_info:
+        logger.error(f"[LLM Proxy] Unauthorized request - invalid or missing API key")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing Platform API key. Please provide a valid key in the Authorization header."
+        )
+
+    logger.info(f"[LLM Proxy] Authorized request from user_id={user_info.get('user_id')}")
+
+    # Lookup agent_id from trace_id via Agent Service
+    agent_id = "unknown"
+    agent_service_url = os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002')
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{agent_service_url}/api/internal/agents/by-trace-id/{trace_id}")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("agent") and data["agent"].get("id"):
+                    agent_id = str(data["agent"]["id"])
+                    logger.info(f"[LLM Proxy] Resolved agent_id={agent_id} from trace_id={trace_id}")
+                else:
+                    logger.warning(f"[LLM Proxy] No agent found for trace_id={trace_id}, using agent_id=unknown")
+            else:
+                logger.warning(f"[LLM Proxy] Agent Service returned {response.status_code} for trace_id={trace_id}")
+    except Exception as e:
+        logger.error(f"[LLM Proxy] Failed to lookup agent_id from trace_id={trace_id}: {e}")
+
+    # Get provider configuration
+    config = await get_provider_config(request.model)
+    provider = config["provider"]
+    api_key = config["api_key"]
+    base_url = config["base_url"]
+
+    logger.info(f"[LLM Proxy] Using provider={provider}, base_url={base_url}")
+
+    if not api_key:
+        logger.error(f"[LLM Proxy] No API key configured for provider={provider}")
+        raise HTTPException(status_code=500, detail=f"No API key configured for provider: {provider}")
+
+    # Detect and emit tool response events from request messages
+    for msg in request.messages:
+        if msg.role in ["tool", "function"]:
+            # This is a tool response message
+            tool_call_id = getattr(msg, 'tool_call_id', None) or getattr(msg, 'name', 'unknown')
+            await emit_trace_event(
+                agent_id,
+                "tool_response",
+                {
+                    "tool_call_id": tool_call_id,
+                    "tool_name": getattr(msg, 'name', 'unknown'),
+                    "content": msg.content
+                },
+                trace_id=trace_id
+            )
+
+    # Emit trace event: LLM request
+    await emit_trace_event(
+        agent_id,
+        "llm_request",
+        {
+            "provider": provider,
+            "model": request.model,
+            "messages": [msg.model_dump() for msg in request.messages],
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": request.stream
+        },
+        trace_id=trace_id
+    )
+
+    try:
+        # Route to appropriate provider
+        if provider == "openai" or provider == "openai-compatible" or provider == "openai_compatible":
+            return await proxy_openai_compatible(
+                agent_id=agent_id,
+                api_key=api_key,
+                base_url=base_url,
+                request=request,
+                provider=provider,
+                trace_id=trace_id,
+                user_id=user_info.get('user_id')
+            )
+
+        elif provider == "gemini":
+            return await proxy_gemini(
+                agent_id=agent_id,
+                api_key=api_key,
+                request=request,
+                trace_id=trace_id,
+                user_id=user_info.get('user_id')
+            )
+
+        elif provider == "anthropic":
+            return await proxy_anthropic(
+                agent_id=agent_id,
+                api_key=api_key,
+                request=request,
+                trace_id=trace_id,
+                user_id=user_info.get('user_id')
+            )
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+
+    except Exception as e:
+        logger.error(f"[LLM Proxy] Error in chat completion: {e}", exc_info=True)
+
+        # Emit trace event: error
+        await emit_trace_event(
+            agent_id,
+            "llm_error",
+            {"error": str(e), "provider": provider, "model": request.model},
+            trace_id=trace_id
+        )
+
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @openai_router.post("/session/{session_id}/chat/completions")
 async def create_chat_completion_with_session(
     session_id: str = Path(..., description="Chat session ID for trace context"),
@@ -774,19 +934,8 @@ async def save_llm_call_to_db(
     """Save LLM call information to database"""
     try:
         async with async_session_maker() as session:
-            # If agent_id is unknown, lookup from Redis (stored by Workbench)
-            # Workbench stores trace_id -> agent_id mapping when generating trace_id
-            if agent_id == "unknown" and trace_id:
-                try:
-                    from ..core.redis_client import get_redis_client
-                    redis_client = await get_redis_client()
-                    stored_agent_id = await redis_client.get(f"trace:agent:{trace_id}")
-                    if stored_agent_id:
-                        # Found it! Use the stored agent_id
-                        agent_id = stored_agent_id.decode() if isinstance(stored_agent_id, bytes) else str(stored_agent_id)
-                        logger.info(f"[DB] Resolved agent_id from Redis: trace_id={trace_id} -> agent_id={agent_id}")
-                except Exception as e:
-                    logger.warning(f"[DB] Failed to lookup agent_id from Redis for trace_id={trace_id}: {e}")
+            # agent_id is already resolved from trace_id in the endpoint handler
+            # No additional lookup needed here
 
             # Extract usage information
             usage = response_data.get("usage", {}) if success else {}
