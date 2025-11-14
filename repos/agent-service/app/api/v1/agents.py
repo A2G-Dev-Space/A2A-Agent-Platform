@@ -14,7 +14,7 @@ import os
 
 from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
 from app.core.security import get_current_user
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 
 logger = logging.getLogger(__name__)
 
@@ -788,4 +788,35 @@ async def undeploy_agent(
         "agent_id": agent.id,
         "status": agent.status,
         "message": "Agent undeployed successfully"
+    }
+
+
+@router.get("/statistics")
+async def get_agent_statistics(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get agent statistics (Internal API - No Auth Required)
+    Used by worker service for daily snapshots
+    """
+    # Count total agents
+    total_result = await db.execute(
+        select(func.count(Agent.id))
+    )
+    total_agents = total_result.scalar() or 0
+
+    # Count deployed agents (is_deployed = true)
+    deployed_result = await db.execute(
+        select(func.count(Agent.id)).where(Agent.is_deployed == True)
+    )
+    deployed_agents = deployed_result.scalar() or 0
+
+    # Count development agents (is_deployed = false)
+    development_agents = total_agents - deployed_agents
+
+    return {
+        "total": total_agents,
+        "deployed": deployed_agents,
+        "development": development_agents,
+        "timestamp": datetime.utcnow().isoformat()
     }

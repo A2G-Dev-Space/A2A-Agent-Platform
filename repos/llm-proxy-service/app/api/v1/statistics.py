@@ -204,10 +204,8 @@ async def get_model_usage_statistics(
         for row in rows
     ]
 
-    return {
-        "model_usage": model_usage,
-        "limit": limit
-    }
+    # Return just the array for easier consumption by worker service
+    return model_usage
 
 
 @router.get("/statistics/top-consumers-by-model")
@@ -382,3 +380,46 @@ async def get_monthly_token_usage(
         "trace_id": trace_id or "all",
         "data": monthly_data
     }
+
+
+@router.get("/statistics/agent-usage/{trace_id}")
+async def get_agent_usage_by_trace_id(
+    trace_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get token usage statistics for a specific agent by trace_id
+    Used by worker service for daily snapshots
+    """
+    # Query token usage for the specific trace_id
+    query = select(
+        func.sum(LLMCall.request_tokens).label('prompt_tokens'),
+        func.sum(LLMCall.response_tokens).label('completion_tokens'),
+        func.sum(LLMCall.total_tokens).label('total_tokens'),
+        func.count(LLMCall.id).label('call_count')
+    ).where(
+        and_(
+            LLMCall.trace_id == trace_id,
+            LLMCall.success == True
+        )
+    )
+
+    result = await db.execute(query)
+    row = result.first()
+
+    if row:
+        return {
+            "trace_id": trace_id,
+            "prompt_tokens": row.prompt_tokens or 0,
+            "completion_tokens": row.completion_tokens or 0,
+            "total_tokens": row.total_tokens or 0,
+            "call_count": row.call_count or 0
+        }
+    else:
+        return {
+            "trace_id": trace_id,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "call_count": 0
+        }

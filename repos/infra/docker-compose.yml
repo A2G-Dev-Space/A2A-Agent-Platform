@@ -220,15 +220,21 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-worker-service
     environment:
-      DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
+      DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/worker_db
       REDIS_URL: redis://redis:6379/5
       CELERY_BROKER_URL: redis://redis:6379/6
       CELERY_RESULT_BACKEND: redis://redis:6379/7
+      ADMIN_SERVICE_URL: http://admin-service:8005
+      AGENT_SERVICE_URL: http://agent-service:8002
+      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
+      USER_SERVICE_URL: http://user-service:8001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      admin-service:
+        condition: service_started
     networks:
       - a2g-network
     volumes:
@@ -242,10 +248,42 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-celery-beat
     environment:
-      DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
+      DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/worker_db
       REDIS_URL: redis://redis:6379/5
       CELERY_BROKER_URL: redis://redis:6379/6
       CELERY_RESULT_BACKEND: redis://redis:6379/7
+      ADMIN_SERVICE_URL: http://admin-service:8005
+      AGENT_SERVICE_URL: http://agent-service:8002
+      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
+      USER_SERVICE_URL: http://user-service:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      admin-service:
+        condition: service_started
+    networks:
+      - a2g-network
+    volumes:
+      - ../worker-service:/app
+    command: uv run celery -A app.celery_app beat --loglevel=info
+
+  # Worker Service API
+  worker-api:
+    build:
+      context: ../worker-service
+      dockerfile: Dockerfile.dev
+    container_name: a2g-worker-api
+    ports:
+      - "8010:8010"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/worker_db
+      REDIS_URL: redis://redis:6379/5
+      ADMIN_SERVICE_URL: http://admin-service:8005
+      AGENT_SERVICE_URL: http://agent-service:8002
+      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
+      USER_SERVICE_URL: http://user-service:8001
     depends_on:
       postgres:
         condition: service_healthy
@@ -255,7 +293,7 @@ services:
       - a2g-network
     volumes:
       - ../worker-service:/app
-    command: uv run celery -A app.celery_app beat --loglevel=info
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload
 
   # LLM Proxy Service (DEV1)
   llm-proxy-service:
