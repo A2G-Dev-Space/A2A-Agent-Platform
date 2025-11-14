@@ -16,6 +16,7 @@ export const WorkbenchDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
 
   // Dynamic trace_id from SSE stream_start event
   const [traceId, setTraceId] = useState<string | null>(null);
@@ -62,7 +63,13 @@ export const WorkbenchDashboard: React.FC = () => {
   };
 
   const handleEdit = (agent: Agent) => {
-    console.log('Edit agent:', agent);
+    setEditingAgent(agent);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingAgent(null);
   };
 
   const handleDelete = (agent: Agent) => {
@@ -124,7 +131,7 @@ export const WorkbenchDashboard: React.FC = () => {
           )}
         </div>
 
-        <AddAgentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
       </div>
     );
   }
@@ -159,7 +166,7 @@ export const WorkbenchDashboard: React.FC = () => {
         </div>
       </main>
 
-      <AddAgentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
     </div>
   );
 };

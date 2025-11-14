@@ -27,6 +27,8 @@ class AgentCreate(BaseModel):
     is_public: bool = True
     visibility: str = "public"  # public, private, team
     allowed_users: Optional[List[str]] = None
+    card_color: Optional[str] = None  # Hex color for agent card
+    logo_url: Optional[str] = None  # URL for agent logo
 
 class AgentUpdate(BaseModel):
     name: Optional[str] = None
@@ -38,6 +40,8 @@ class AgentUpdate(BaseModel):
     status: Optional[AgentStatus] = None  # Status update integrated here
     visibility: Optional[str] = None  # public, private, team
     allowed_users: Optional[List[str]] = None
+    card_color: Optional[str] = None  # Hex color for agent card
+    logo_url: Optional[str] = None  # URL for agent logo
 
 class AgentResponse(BaseModel):
     id: int
@@ -57,6 +61,8 @@ class AgentResponse(BaseModel):
     last_health_check: Optional[datetime]
     created_at: datetime
     updated_at: datetime
+    card_color: Optional[str]  # Hex color for agent card
+    logo_url: Optional[str]  # URL for agent logo
 
 class AgentListResponse(BaseModel):
     agents: List[AgentResponse]
@@ -229,7 +235,9 @@ async def get_agents(
                 health_status=agent.health_status,
                 last_health_check=agent.last_health_check,
                 created_at=agent.created_at,
-                updated_at=agent.updated_at
+                updated_at=agent.updated_at,
+                card_color=agent.card_color,
+                logo_url=agent.logo_url
             )
             for agent in agents
         ],
@@ -280,7 +288,9 @@ async def create_agent(
         is_public=request.is_public,
         visibility=request.visibility,
         allowed_users=request.allowed_users,
-        status=AgentStatus.DEVELOPMENT
+        status=AgentStatus.DEVELOPMENT,
+        card_color=request.card_color,
+        logo_url=request.logo_url
     )
     
     db.add(agent)
@@ -304,7 +314,9 @@ async def create_agent(
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        card_color=agent.card_color,
+        logo_url=agent.logo_url
     )
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -339,7 +351,9 @@ async def get_agent(
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        card_color=agent.card_color,
+        logo_url=agent.logo_url
     )
 
 @router.put("/{agent_id}", response_model=AgentResponse)
@@ -397,7 +411,9 @@ async def update_agent(
         health_status=agent.health_status,
         last_health_check=agent.last_health_check,
         created_at=agent.created_at,
-        updated_at=agent.updated_at
+        updated_at=agent.updated_at,
+        card_color=agent.card_color,
+        logo_url=agent.logo_url
     )
 
 @router.delete("/{agent_id}")

@@ -5,21 +5,22 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Input, Textarea, Button } from '@/components/ui';
-import { AgentFramework, AgentStatus, HealthStatus } from '@/types';
+import { type Agent, AgentFramework, AgentStatus, HealthStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 
 interface AddAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  agent?: Agent | null;  // Optional agent for edit mode
 }
 
 const agentSchema = z.object({
   name: z.string().min(3, 'Agent name must be at least 3 characters').max(50, 'Agent name must be less than 50 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description must be less than 500 characters'),
   framework: z.nativeEnum(AgentFramework, { required_error: 'Framework selection is required' }),
-  version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)'),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/, 'Version must be in format X.Y.Z (e.g., 1.0.0)').optional().or(z.literal('')),
   documentationUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  logo: z.instanceof(File).optional(),
+  logoUrl: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   color: z.string(),
   capabilities: z.array(z.string()).min(1, 'Select at least one capability'),
 });
@@ -48,29 +49,45 @@ const capabilities = [
   'Task Automation',
 ];
 
-const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
+const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent }) => {
   const { t } = useTranslation();
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const queryClient = useQueryClient();
+  const isEditMode = !!agent;
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
     defaultValues: {
-      name: '',
-      description: '',
-      version: '',
+      name: agent?.name || '',
+      description: agent?.description || '',
+      version: agent?.capabilities?.version || '1.0.0',
       documentationUrl: '',
-      color: colorSwatches[4], // purple default
-      capabilities: [],
+      logoUrl: agent?.logo_url || '',
+      color: agent?.card_color || colorSwatches[4], // purple default
+      capabilities: agent?.capabilities?.skills || [],
     },
   });
+
+  // Reset form when modal opens/closes or agent changes
+  React.useEffect(() => {
+    if (isOpen) {
+      reset({
+        name: agent?.name || '',
+        description: agent?.description || '',
+        version: agent?.capabilities?.version || '1.0.0',
+        documentationUrl: '',
+        logoUrl: agent?.logo_url || '',
+        color: agent?.card_color || colorSwatches[4],
+        capabilities: agent?.capabilities?.skills || [],
+      });
+    }
+  }, [isOpen, agent, reset]);
 
   const selectedColor = watch('color');
   const selectedCapabilities = watch('capabilities');
@@ -79,24 +96,40 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
   const onSubmit = async (data: AgentFormData) => {
     console.log('Form data:', data);
     try {
-      // Call the agent service to create the agent
-      await agentService.createAgent({
-        name: data.name,
-        description: data.description,
-        framework: data.framework,
-        // a2a_endpoint will be added later via Chat&Debug connection
-        capabilities: {
-          skills: data.capabilities,
-          version: data.version,
+      if (isEditMode && agent) {
+        // Update existing agent
+        await agentService.updateAgent(agent.id, {
+          name: data.name,
           description: data.description,
-        },
-        card_color: data.color,
-        logo_url: data.logo ? URL.createObjectURL(data.logo) : undefined,
-        status: AgentStatus.DEVELOPMENT,
-        visibility: 'private', // Default to private for new agents
-        is_public: false,
-        health_status: HealthStatus.UNKNOWN,
-      });
+          framework: data.framework,
+          capabilities: {
+            skills: data.capabilities,
+            version: data.version || '1.0.0',
+            description: data.description,
+          },
+          card_color: data.color,
+          logo_url: data.logoUrl || undefined,
+        });
+      } else {
+        // Create new agent
+        await agentService.createAgent({
+          name: data.name,
+          description: data.description,
+          framework: data.framework,
+          // a2a_endpoint will be added later via Chat&Debug connection
+          capabilities: {
+            skills: data.capabilities,
+            version: data.version || '1.0.0',
+            description: data.description,
+          },
+          card_color: data.color,
+          logo_url: data.logoUrl || undefined,
+          status: AgentStatus.DEVELOPMENT,
+          visibility: 'private', // Default to private for new agents
+          is_public: false,
+          health_status: HealthStatus.UNKNOWN,
+        });
+      }
 
       // Invalidate and refetch the agents list
       queryClient.invalidateQueries({ queryKey: ['developmentAgents'] });
@@ -104,36 +137,9 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
       // Close modal
       onClose();
     } catch (error) {
-      console.error('Failed to create agent:', error);
+      console.error(`Failed to ${isEditMode ? 'update' : 'create'} agent:`, error);
       // TODO: Show error toast notification
     }
-  };
-
-  const handleLogoUpload = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      setValue('logo', file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleLogoUpload(file);
   };
 
   const toggleCapability = (capability: string) => {
@@ -170,8 +176,8 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
     <Modal
       open={isOpen}
       onOpenChange={onClose}
-      title={t('createAgent.title', 'Create New Agent')}
-      description={t('createAgent.subtitle', 'Fill in the details below to set up your new agent.')}
+      title={isEditMode ? 'Edit Agent' : t('createAgent.title', 'Create New Agent')}
+      description={isEditMode ? 'Update your agent details below.' : t('createAgent.subtitle', 'Fill in the details below to set up your new agent.')}
       size="lg"
     >
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -194,48 +200,10 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Right: Logo & Color */}
+            {/* Right: Color Picker */}
             <div className="flex flex-col gap-4 items-center">
-              <p className="text-base font-medium w-full md:text-center">Logo & Color</p>
+              <p className="text-base font-medium w-full md:text-center">Card Color</p>
               <div className="flex flex-row md:flex-col gap-4">
-                {/* Logo Upload */}
-                <div className="shrink-0">
-                  <label
-                    htmlFor="logo-upload"
-                    className="cursor-pointer group block"
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                  >
-                    <div
-                      className={`relative w-24 h-24 rounded-xl border-2 border-dashed ${
-                        isDragging
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border-light dark:border-border-dark'
-                      } bg-panel-light dark:bg-panel-dark flex items-center justify-center text-text-light-secondary dark:text-text-dark-secondary group-hover:border-primary group-hover:text-primary transition-colors overflow-hidden`}
-                    >
-                      {logoPreview ? (
-                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-center">
-                          <span className="material-symbols-outlined text-3xl">upload_file</span>
-                          <p className="text-xs mt-1">Upload</p>
-                        </div>
-                      )}
-                    </div>
-                    <input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleLogoUpload(file);
-                      }}
-                    />
-                  </label>
-                </div>
-
                 {/* Color Picker */}
                 <div>
                   <div className="grid grid-cols-4 gap-2">
@@ -263,10 +231,29 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
+          {/* Logo URL */}
+          <Input
+            label={
+              <span>
+                {t('createAgent.logoUrlLabel', 'Logo URL')}{' '}
+                <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">(Optional)</span>
+              </span>
+            }
+            placeholder="https://example.com/logo.png"
+            type="url"
+            error={errors.logoUrl?.message}
+            {...register('logoUrl')}
+          />
+
           {/* Version */}
           <Input
-            label={t('createAgent.versionLabel', 'Version')}
-            placeholder="e.g., 1.0.0"
+            label={
+              <span>
+                {t('createAgent.versionLabel', 'Version')}{' '}
+                <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">(Optional, defaults to 1.0.0)</span>
+              </span>
+            }
+            placeholder="1.0.0"
             error={errors.version?.message}
             {...register('version')}
           />
@@ -405,7 +392,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose }) => {
             {t('common.cancel', 'Cancel')}
           </Button>
           <Button type="submit" variant="primary" isLoading={isSubmitting}>
-            {t('createAgent.createButton', 'Create Agent')}
+            {isEditMode ? 'Update Agent' : t('createAgent.createButton', 'Create Agent')}
           </Button>
         </Modal.Footer>
       </form>

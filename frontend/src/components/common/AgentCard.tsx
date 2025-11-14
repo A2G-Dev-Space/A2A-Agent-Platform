@@ -8,16 +8,38 @@ interface AgentCardProps {
 }
 
 const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
+  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // Get card background color with dark mode support
+  const getCardColor = () => {
+    if (!agent.card_color) return isDarkMode ? 'rgba(224, 242, 254, 0.15)' : '#E0F2FE';
+
+    // In dark mode, use the color with reduced opacity for better contrast
+    if (isDarkMode) {
+      // Convert hex to rgba with 15% opacity
+      const hex = agent.card_color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, 0.15)`;
+    }
+
+    return agent.card_color;
+  };
+
   return (
     <Card className="group hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
       <Card.Body className="flex flex-col h-full">
         {/* Header: Logo + Name */}
         <div className="flex items-center gap-4 mb-3">
-          <div className="size-12 rounded-lg bg-hub-accent-light dark:bg-hub-accent/20 flex items-center justify-center overflow-hidden">
+          <div
+            className="size-12 rounded-lg flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: getCardColor() }}
+          >
             {agent.logo_url ? (
               <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
             ) : (
-              <span className="material-symbols-outlined text-2xl text-hub-accent">smart_toy</span>
+              <span className="material-symbols-outlined text-2xl text-gray-700 dark:text-gray-200">smart_toy</span>
             )}
           </div>
           <div className="flex-1 min-w-0">
