@@ -37,6 +37,9 @@ class AgentStatus(str, PyEnum):
     DEVELOPMENT = "DEVELOPMENT"
     STAGING = "STAGING"
     PRODUCTION = "PRODUCTION"
+    DEPLOYED_TEAM = "DEPLOYED_TEAM"
+    DEPLOYED_ALL = "DEPLOYED_ALL"
+    DEPLOYED_DEPT = "DEPLOYED_DEPT"
     ARCHIVED = "ARCHIVED"
 
 class HealthStatus(str, PyEnum):
@@ -69,6 +72,12 @@ class Agent(Base):
     is_public: Mapped[bool] = mapped_column(Boolean, default=True)
     visibility: Mapped[str] = mapped_column(String(20), default="public", index=True)  # public, private, team
     allowed_users: Mapped[Optional[List[str]]] = mapped_column(JSON)  # List of usernames with access
+
+    # Deploy Fields
+    deployed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deployed_by: Mapped[Optional[str]] = mapped_column(String(50))
+    deploy_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default={})
+    validated_endpoint: Mapped[Optional[str]] = mapped_column(String(500))  # Validated public endpoint for deployed agents
 
     # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)

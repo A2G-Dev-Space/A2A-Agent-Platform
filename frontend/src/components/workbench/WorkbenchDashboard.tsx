@@ -6,6 +6,7 @@ import { agentService, type GetAgentsResponse } from '@/services/agentService';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentStatus } from '@/types';
 import AddAgentModal from './AddAgentModal';
+import { DeployModal } from './DeployModal';
 import { AgentCard } from './AgentCard';
 import { ChatPlayground } from './ChatPlayground';
 import { TraceView } from './TraceView';
@@ -17,6 +18,8 @@ export const WorkbenchDashboard: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployingAgent, setDeployingAgent] = useState<Agent | null>(null);
 
   // Dynamic trace_id from SSE stream_start event
   const [traceId, setTraceId] = useState<string | null>(null);
@@ -89,7 +92,13 @@ export const WorkbenchDashboard: React.FC = () => {
   };
 
   const handleDeploy = (agent: Agent) => {
-    console.log('Deploy/undeploy agent:', agent);
+    setDeployingAgent(agent);
+    setDeployModalOpen(true);
+  };
+
+  const handleDeploySuccess = () => {
+    // Refetch agents to update status
+    queryClient.invalidateQueries({ queryKey: ['agents'] });
   };
 
   // Default view: Grid layout
@@ -132,6 +141,15 @@ export const WorkbenchDashboard: React.FC = () => {
         </div>
 
         <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
+
+        {deployingAgent && (
+          <DeployModal
+            isOpen={deployModalOpen}
+            onClose={() => setDeployModalOpen(false)}
+            agent={deployingAgent}
+            onDeploySuccess={handleDeploySuccess}
+          />
+        )}
       </div>
     );
   }
@@ -167,6 +185,15 @@ export const WorkbenchDashboard: React.FC = () => {
       </main>
 
       <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
+
+      {deployingAgent && (
+        <DeployModal
+          isOpen={deployModalOpen}
+          onClose={() => setDeployModalOpen(false)}
+          agent={deployingAgent}
+          onDeploySuccess={handleDeploySuccess}
+        />
+      )}
     </div>
   );
 };

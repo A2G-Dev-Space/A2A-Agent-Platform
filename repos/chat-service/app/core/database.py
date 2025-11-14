@@ -4,8 +4,10 @@ Database configuration and models
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+import uuid
 
 from app.core.config import settings
 
@@ -50,6 +52,18 @@ class WorkbenchSession(Base):
     messages: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, default=[])
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class HubSession(Base):
+    """Hub session model - multi-user multi-session for deployed agents"""
+    __tablename__ = "hub_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[str] = mapped_column(String(50), index=True)
+    session_name: Mapped[Optional[str]] = mapped_column(String(100))
+    messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=[])
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_message_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 async def init_db():
     """Initialize database"""

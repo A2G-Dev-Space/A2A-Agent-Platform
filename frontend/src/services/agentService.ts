@@ -42,4 +42,26 @@ export const agentService = {
   searchAgents: async (query: string): Promise<AgentSearchResponse> => {
     return await api.post<AgentSearchResponse>('/agents/search', { query });
   },
+
+  deployAgent: async (id: number, deployScope: 'team' | 'public'): Promise<{
+    agent_id: number;
+    status: string;
+    deployed_at: string;
+    deployed_by: string;
+    validated_endpoint: string;
+    deploy_scope: string;
+  }> => {
+    return await api.post(`/agents/${id}/deploy`, {
+      deploy_scope: deployScope,
+      deploy_config: {}
+    });
+  },
+
+  undeployAgent: async (id: number): Promise<{
+    agent_id: number;
+    status: string;
+    message: string;
+  }> => {
+    return await api.post(`/agents/${id}/undeploy`);
+  },
 };

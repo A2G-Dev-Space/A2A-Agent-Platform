@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp, Copy, Check, HelpCircle } from 'lucide-react';
+import { RefreshCw, Send, User, Bot, Settings, ChevronDown, ChevronUp, Copy, Check, HelpCircle, Globe } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { type Agent, AgentFramework } from '@/types';
+import { type Agent, AgentFramework, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 import { generateFixedTraceId, getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter } from '@/adapters/chat';
@@ -28,6 +28,14 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
   const displayName = agentName || agent.name;
   const { t } = useTranslation();
   const { accessToken, user } = useAuthStore();
+
+  // Check if agent is deployed
+  const isDeployed = [
+    AgentStatus.DEPLOYED_TEAM,
+    AgentStatus.DEPLOYED_ALL,
+    AgentStatus.DEPLOYED_DEPT,
+    AgentStatus.PRODUCTION
+  ].includes(agent.status);
 
   // Messages state - will be loaded from backend
   const [messages, setMessages] = useState<Message[]>([]);
@@ -405,6 +413,51 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
       setTimeout(() => setAgentEndpointStatus('idle'), 3000);
     }
   };
+
+  // Show deployment notice if agent is deployed
+  if (isDeployed) {
+    return (
+      <div className="flex flex-col bg-panel-light dark:bg-panel-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
+        {/* Header with red accent */}
+        <div
+          className="flex h-16 items-center justify-between px-4"
+          style={{
+            borderBottom: '2px solid',
+            borderColor: 'var(--color-workbench-primary, #EA2831)',
+            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+              ? 'rgba(234, 40, 49, 0.05)'
+              : 'rgba(234, 40, 49, 0.02)'
+          }}
+        >
+          <div className="flex flex-col">
+            <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
+              {t('workbench.chatPlayground')}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
+          </div>
+        </div>
+
+        {/* Deployment Notice */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <div className="mb-4 mx-auto w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Globe className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Agent is Deployed
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              This agent is currently deployed to {agent.status === AgentStatus.DEPLOYED_TEAM ? 'your team' : 'all users'} in Hub.
+              Workbench chat is disabled for deployed agents.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              To use Workbench features, please undeploy the agent first.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col bg-panel-light dark:bg-panel-dark md:col-span-2 rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
