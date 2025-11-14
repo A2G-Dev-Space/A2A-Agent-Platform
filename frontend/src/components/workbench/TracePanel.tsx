@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, PhoneIncoming, Wrench, FileText, ArrowRightLeft, Trash2 } from 'lucide-react';
 
 interface TraceEvent {
@@ -16,11 +17,11 @@ interface TracePanelProps {
   sessionId: string;
 }
 
-// Event type configuration with colors and icons
-const EVENT_CONFIG = {
+// Event type configuration with colors and icons (function to support i18n)
+const getEventConfig = (t: (key: string) => string) => ({
   // LLM Events
   llm_request: {
-    label: 'Send to LLM',
+    label: t('workbench.trace.sendToLLM'),
     color: 'blue',
     icon: Send,
     bgLight: 'bg-blue-100',
@@ -29,7 +30,7 @@ const EVENT_CONFIG = {
     textDark: 'text-blue-300',
   },
   llm_response: {
-    label: 'Receive from LLM',
+    label: t('workbench.trace.receiveFromLLM'),
     color: 'purple',
     icon: PhoneIncoming,
     bgLight: 'bg-purple-100',
@@ -39,7 +40,7 @@ const EVENT_CONFIG = {
   },
   // Tool Events
   tool_call: {
-    label: 'Tool Use',
+    label: t('workbench.trace.toolUse'),
     color: 'green',
     icon: Wrench,
     bgLight: 'bg-green-100',
@@ -48,7 +49,7 @@ const EVENT_CONFIG = {
     textDark: 'text-green-300',
   },
   tool_result: {
-    label: 'Tool Result',
+    label: t('workbench.trace.toolResult'),
     color: 'yellow',
     icon: FileText,
     bgLight: 'bg-yellow-100',
@@ -58,7 +59,7 @@ const EVENT_CONFIG = {
   },
   // Agent Events
   agent_transfer: {
-    label: 'Agent Transfer',
+    label: t('workbench.trace.agentTransfer'),
     color: 'pink',
     icon: ArrowRightLeft,
     bgLight: 'bg-pink-100',
@@ -66,7 +67,7 @@ const EVENT_CONFIG = {
     textLight: 'text-pink-600',
     textDark: 'text-pink-400',
   },
-};
+});
 
 // Get agent color based on agent_id
 const getAgentColor = (agentId: string | undefined): string => {
@@ -79,10 +80,12 @@ const getAgentColor = (agentId: string | undefined): string => {
 };
 
 export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
+  const { t } = useTranslation();
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);
   const eventsEndRef = useRef<HTMLDivElement>(null);
+  const EVENT_CONFIG = getEventConfig(t);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -218,18 +221,18 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-border-light dark:border-border-dark px-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold">Trace</h2>
+          <h2 className="text-base font-bold">{t('workbench.trace.title')}</h2>
           {isConnected && (
             <div className="flex items-center gap-1">
               <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-gray-500 dark:text-gray-400">Live</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('workbench.trace.live')}</span>
             </div>
           )}
         </div>
         <button
           onClick={handleClear}
           className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-white/10 transition-colors"
-          title="Clear trace"
+          title={t('workbench.trace.clearTrace')}
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -242,7 +245,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
             <div className="text-center">
               <FileText className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-2" />
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {traceId ? 'Waiting for trace events...' : 'No trace ID'}
+                {traceId ? t('workbench.trace.waitingForEvents') : t('workbench.trace.noTraceId')}
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import { type Agent, AgentStatus } from '@/types';
 
@@ -10,18 +11,18 @@ interface AgentCardProps {
   onClick: (agent: Agent) => void;
 }
 
-const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boolean) => {
+const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boolean, t: (key: string) => string) => {
   switch (status) {
     case AgentStatus.DEPLOYED_ALL:
       return (
         <span className="inline-flex items-center rounded-full bg-green-500/20 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:text-green-300 border border-green-700/30 dark:border-green-300/30">
-          DEPLOY TO ALL
+          {t('workbench.agentCard.deployedAll')}
         </span>
       );
     case AgentStatus.DEPLOYED_DEPT:
       return (
         <span className="inline-flex items-center rounded-full bg-sky-500/20 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300 border border-sky-700/30 dark:border-sky-300/30">
-          DEPLOY TO DEPARTMENT
+          {t('workbench.agentCard.deployedDept')}
         </span>
       );
     case AgentStatus.DEVELOPMENT:
@@ -32,13 +33,14 @@ const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boo
             ? 'bg-white/20 text-white border-white/30'
             : 'bg-gray-800/20 text-gray-800 border-gray-800/30'
         }`}>
-          DEVELOPMENT
+          {t('workbench.agentCard.development')}
         </span>
       );
   }
 };
 
 export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, onDeploy, onClick }) => {
+  const { t } = useTranslation();
   const isDeployed = agent.status === AgentStatus.DEPLOYED_ALL || agent.status === AgentStatus.DEPLOYED_DEPT;
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 
@@ -147,7 +149,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             {agent.name.charAt(0).toUpperCase()}
           </div>
         )}
-        {getStatusBadge(agent.status, isDarkMode, agent.card_color ? isLightColor(agent.card_color) : true)}
+        {getStatusBadge(agent.status, isDarkMode, agent.card_color ? isLightColor(agent.card_color) : true, t)}
       </div>
 
       {/* Name and Description */}
@@ -156,7 +158,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
           {agent.name}
         </p>
         <p className={`${getSecondaryTextColor()} text-sm font-normal leading-normal line-clamp-2`}>
-          {agent.description || 'No description available'}
+          {agent.description || t('workbench.agentCard.noDescription')}
         </p>
       </div>
 
@@ -178,7 +180,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             e.currentTarget.style.backgroundColor = style.backgroundColor;
           }}
         >
-          Edit
+          {t('workbench.agentCard.edit')}
         </button>
         <button
           onClick={(e) => {
@@ -196,7 +198,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             e.currentTarget.style.backgroundColor = style.backgroundColor;
           }}
         >
-          {isDeployed ? 'UnDeploy' : 'Deploy'}
+          {isDeployed ? t('workbench.agentCard.undeploy') : t('workbench.agentCard.deploy')}
         </button>
         <button
           onClick={(e) => {

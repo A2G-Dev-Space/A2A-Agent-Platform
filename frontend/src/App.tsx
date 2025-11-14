@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Layout } from '@/components/layout/Layout'
 import { WorkbenchDashboard } from '@/components/workbench/WorkbenchDashboard'
 import { HubDashboard } from '@/components/hub/HubDashboard'
@@ -91,16 +92,20 @@ function App() {
 }
 
 // Simple 404 Page
-const NotFoundPage: React.FC = () => (
-  <div className="flex items-center justify-center h-full">
-    <div className="text-center">
-      <h1 className="text-6xl font-bold text-gray-300 dark:text-gray-700">404</h1>
-      <p className="text-xl text-gray-600 dark:text-gray-400 mt-4">Page not found</p>
-      <a href="/hub" className="btn btn-primary mt-6 inline-block">
-        Go to Home
-      </a>
+const NotFoundPage: React.FC = () => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-300 dark:text-gray-700">404</h1>
+        <p className="text-xl text-gray-600 dark:text-gray-400 mt-4">{t('common.pageNotFound')}</p>
+        <a href="/hub" className="btn btn-primary mt-6 inline-block">
+          {t('common.goToHome')}
+        </a>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 export default App

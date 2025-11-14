@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { CheckCircle, XCircle, Loader } from 'lucide-react'
 
 export const CallbackPage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { loginCallback } = useAuthStore()
@@ -22,13 +24,13 @@ export const CallbackPage: React.FC = () => {
       const errorDescription = searchParams.get('error_description')
 
       if (error) {
-        setError(errorDescription || 'Authentication failed')
+        setError(errorDescription || t('callback.errorAuthFailed'))
         setIsProcessing(false)
         return
       }
 
       if (!idToken) {
-        setError('No authentication token received')
+        setError(t('callback.errorNoToken'))
         setIsProcessing(false)
         return
       }
@@ -40,7 +42,7 @@ export const CallbackPage: React.FC = () => {
       navigate('/hub', { replace: true })
     } catch (err: any) {
       console.error('Callback error:', err)
-      setError(err.message || 'Failed to complete authentication')
+      setError(err.message || t('callback.errorFailedComplete'))
       setIsProcessing(false)
     }
   }
@@ -57,17 +59,17 @@ export const CallbackPage: React.FC = () => {
             <div className="text-center">
               <Loader size={48} className="text-purple-600 animate-spin mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                Completing Authentication
+                {t('callback.completingAuth')}
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Please wait while we log you in...
+                {t('callback.pleaseWait')}
               </p>
             </div>
           ) : error ? (
             <div className="text-center">
               <XCircle size={48} className="text-red-500 mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                Authentication Failed
+                {t('callback.authFailed')}
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 {error}
@@ -76,17 +78,17 @@ export const CallbackPage: React.FC = () => {
                 onClick={handleRetry}
                 className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
               >
-                Try Again
+                {t('callback.tryAgain')}
               </button>
             </div>
           ) : (
             <div className="text-center">
               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                Authentication Successful
+                {t('callback.authSuccessful')}
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Redirecting to the platform...
+                {t('callback.redirecting')}
               </p>
             </div>
           )}

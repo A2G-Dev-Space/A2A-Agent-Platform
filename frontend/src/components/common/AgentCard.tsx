@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { type Agent, AgentStatus } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 
@@ -8,6 +9,7 @@ interface AgentCardProps {
 }
 
 const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
+  const { t } = useTranslation();
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 
   // Get card background color with dark mode support
@@ -102,7 +104,7 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
           onClick={onClick}
           leftIcon={<span className="material-symbols-outlined">chat</span>}
         >
-          Start Chat
+          {t('hub.startChat')}
         </Button>
       </Card.Body>
     </Card>

@@ -170,15 +170,21 @@ const StatisticsPage: React.FC = () => {
   useEffect(() => {
     const fetchModelUsageStats = async () => {
       try {
+        // Use AbortController for fetch timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
         const response = await fetch(
-          'http://localhost:8006/api/v1/statistics/model-usage?limit=10'
+          'http://localhost:8006/api/v1/statistics/model-usage?limit=10',
+          { signal: controller.signal }
         );
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const modelUsageData = await response.json();
 
           // Update only the model_usage_stats in the stats state
-          // Create minimal stats object if it doesn't exist yet
           setStats(prevStats => prevStats ? {
             ...prevStats,
             model_usage_stats: modelUsageData
@@ -194,18 +200,25 @@ const StatisticsPage: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Failed to fetch model usage stats:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn('Model usage stats fetch timed out - will retry');
+        } else {
+          console.error('Failed to fetch model usage stats:', error);
+        }
       }
     };
 
-    // Fetch immediately on mount
-    fetchModelUsageStats();
+    // Fetch immediately on mount with a small delay to let main stats load first
+    const initialTimeout = setTimeout(fetchModelUsageStats, 100);
 
     // Set up periodic refresh every 30 seconds
     const intervalId = setInterval(fetchModelUsageStats, 30000);
 
-    // Clean up interval on unmount
-    return () => clearInterval(intervalId);
+    // Clean up interval and timeout on unmount
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(intervalId);
+    };
   }, []); // Empty dependency array - only run on mount/unmount
 
   // Fetch historical trends from worker service
@@ -374,7 +387,7 @@ const StatisticsPage: React.FC = () => {
           </div>
 
           {filteredAgentUsage.length > 0 ? (
-            <div className="mt-4 h-96 w-full">
+            <div className="mt-4" style={{ width: '100%', height: '384px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={filteredAgentUsage.slice(0, topKAgents)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
@@ -417,35 +430,41 @@ const StatisticsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             Model Usage Statistics
           </h3>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
-                  <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.model_usage_stats.map((model, idx) => (
-                  <tr
-                    key={`${model.model}-${model.provider}`}
-                    className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                  >
-                    <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
-                    <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
-                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                      {model.total_tokens.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                      {model.call_count.toLocaleString()}
-                    </td>
+          {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
+                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
+                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stats.model_usage_stats.map((model, idx) => (
+                    <tr
+                      key={`${model.model}-${model.provider}`}
+                      className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
+                    >
+                      <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
+                      <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
+                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
+                        {model.total_tokens.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
+                        {model.call_count.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-4 py-8 text-center text-slate-500">
+              Loading model usage statistics...
+            </div>
+          )}
         </div>
       </div>
 
@@ -462,13 +481,13 @@ const StatisticsPage: React.FC = () => {
               onChange={(e) => setPeriodValue(e.target.value)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
             >
-              <option key="1w" value="1w">1 week</option>
-              <option key="2w" value="2w">2 weeks</option>
-              <option key="1m" value="1m">1 month</option>
-              <option key="3m" value="3m">3 months</option>
-              <option key="6m" value="6m">6 months</option>
-              <option key="12m" value="12m">1 year</option>
-              <option key="24m" value="24m">2 years</option>
+              <option value="1w">1 week</option>
+              <option value="2w">2 weeks</option>
+              <option value="1m">1 month</option>
+              <option value="3m">3 months</option>
+              <option value="6m">6 months</option>
+              <option value="12m">1 year</option>
+              <option value="24m">2 years</option>
             </select>
           </label>
         </div>
@@ -481,7 +500,7 @@ const StatisticsPage: React.FC = () => {
             User Trend
           </h3>
           {historicalTrends?.user_trend && historicalTrends.user_trend.length > 0 ? (
-            <div className="mt-4 h-64 w-full">
+            <div className="mt-4" style={{ width: '100%', height: '256px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historicalTrends.user_trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
@@ -515,8 +534,10 @@ const StatisticsPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="mt-4 h-64 w-full flex items-center justify-center text-slate-500">
-              Loading...
+            <div className="mt-4" style={{ width: '100%', height: '256px' }}>
+              <div className="flex items-center justify-center h-full text-slate-500">
+                Loading...
+              </div>
             </div>
           )}
         </div>
@@ -532,12 +553,12 @@ const StatisticsPage: React.FC = () => {
               onChange={(e) => setAgentGrowthFilter(e.target.value as 'all' | 'deployed')}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
             >
-              <option key="all" value="all">Development + Deployed</option>
-              <option key="deployed" value="deployed">Deployed Only</option>
+              <option value="all">Development + Deployed</option>
+              <option value="deployed">Deployed Only</option>
             </select>
           </div>
           {agentGrowthData && agentGrowthData.length > 0 ? (
-            <div className="mt-4 h-64 w-full">
+            <div className="mt-4" style={{ width: '100%', height: '256px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={agentGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
@@ -571,8 +592,10 @@ const StatisticsPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="mt-4 h-64 w-full flex items-center justify-center text-slate-500">
-              Loading...
+            <div className="mt-4" style={{ width: '100%', height: '256px' }}>
+              <div className="flex items-center justify-center h-full text-slate-500">
+                Loading...
+              </div>
             </div>
           )}
         </div>
@@ -623,7 +646,7 @@ const StatisticsPage: React.FC = () => {
           </div>
         </div>
         {historicalTrends?.token_usage_trend ? (
-          <div className="mt-4 h-80 w-full">
+          <div className="mt-4" style={{ width: '100%', height: '320px' }}>
             <ResponsiveContainer width="100%" height="100%">
               {selectedAgentForToken === 'all' && selectedTopK ? (
               // Multiple lines for top-k agents
@@ -750,8 +773,10 @@ const StatisticsPage: React.FC = () => {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="mt-4 h-80 w-full flex items-center justify-center text-slate-500">
-            Loading...
+          <div className="mt-4" style={{ width: '100%', height: '320px' }}>
+            <div className="flex items-center justify-center h-full text-slate-500">
+              Loading...
+            </div>
           </div>
         )}
       </div>
