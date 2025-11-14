@@ -164,20 +164,30 @@ async def _check_llm_health_async():
 
 
 @celery_app.task
-def collect_daily_snapshot():
-    """Collect daily statistics snapshot at 00:00 UTC"""
+def collect_hourly_snapshot():
+    """Collect hourly statistics snapshot for trend tracking"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_collect_daily_snapshot_async())
+        return loop.run_until_complete(_collect_hourly_snapshot_async())
     finally:
         loop.close()
 
-async def _collect_daily_snapshot_async():
-    """Async implementation of daily snapshot collection"""
-    logger.info("Starting daily statistics snapshot collection...")
+async def _collect_hourly_snapshot_async():
+    """Async implementation of hourly snapshot collection"""
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+    logger.info("Starting hourly statistics snapshot collection...")
 
     try:
+        # Create a new async engine for this task's event loop
+        DATABASE_URL = os.getenv(
+            "DATABASE_URL",
+            "postgresql+asyncpg://postgres:postgres@postgres:5432/worker_db"
+        )
+        engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+        session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
         # Collect data from HTTP APIs first
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 1. Get user count
@@ -243,26 +253,29 @@ async def _collect_daily_snapshot_async():
             except Exception as e:
                 logger.error(f"Failed to get model usage statistics: {e}")
 
-        # 5. Save snapshot to database
-        async with async_session_maker() as session:
-                snapshot = StatisticsSnapshot(
-                    snapshot_date=datetime.utcnow(),
-                    total_users=total_users,
-                    total_agents=total_agents,
-                    deployed_agents=deployed_agents,
-                    development_agents=development_agents,
-                    agent_token_usage=agent_token_usage,
-                    model_usage_stats=model_usage_stats,
-                    created_at=datetime.utcnow()
-                )
-                session.add(snapshot)
-                await session.commit()
+        # 5. Save snapshot to database using the new session maker
+        async with session_maker() as session:
+            snapshot = StatisticsSnapshot(
+                snapshot_date=datetime.utcnow(),
+                total_users=total_users,
+                total_agents=total_agents,
+                deployed_agents=deployed_agents,
+                development_agents=development_agents,
+                agent_token_usage=agent_token_usage,
+                model_usage_stats=model_usage_stats,
+                created_at=datetime.utcnow()
+            )
+            session.add(snapshot)
+            await session.commit()
 
-                logger.info(
-                    f"Daily snapshot saved: users={total_users}, agents={total_agents}, "
-                    f"deployed={deployed_agents}, development={development_agents}, "
-                    f"agents_with_usage={len(agent_token_usage)}"
-                )
+            logger.info(
+                f"Hourly snapshot saved: users={total_users}, agents={total_agents}, "
+                f"deployed={deployed_agents}, development={development_agents}, "
+                f"agents_with_usage={len(agent_token_usage)}"
+            )
+
+        # Dispose of the engine
+        await engine.dispose()
 
         return {
             "snapshot_date": datetime.utcnow().isoformat(),
@@ -275,7 +288,7 @@ async def _collect_daily_snapshot_async():
         }
 
     except Exception as e:
-        logger.error(f"Error collecting daily snapshot: {e}", exc_info=True)
+        logger.error(f"Error collecting hourly snapshot: {e}", exc_info=True)
         return {"error": str(e)}
 
 
@@ -327,9 +340,9 @@ async def _cleanup_old_snapshots_async():
 # Keep the existing placeholder tasks for compatibility
 @celery_app.task
 def aggregate_statistics():
-    """Aggregate platform statistics (deprecated - use collect_daily_snapshot)"""
-    logger.info("aggregate_statistics called - redirecting to collect_daily_snapshot")
-    return collect_daily_snapshot()
+    """Aggregate platform statistics (deprecated - use collect_hourly_snapshot)"""
+    logger.info("aggregate_statistics called - redirecting to collect_hourly_snapshot")
+    return collect_hourly_snapshot()
 
 @celery_app.task
 def check_agent_health():
