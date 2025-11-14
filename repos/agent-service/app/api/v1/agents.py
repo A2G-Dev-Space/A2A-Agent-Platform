@@ -321,6 +321,65 @@ async def create_agent(
         logo_url=agent.logo_url
     )
 
+@router.get("/statistics")
+async def get_agent_statistics(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get agent statistics (Internal API - No Auth Required)
+    Used by worker service for daily snapshots
+    """
+    # Count total agents
+    total_result = await db.execute(
+        select(func.count(Agent.id))
+    )
+    total_agents = total_result.scalar() or 0
+
+    # Count deployed agents (PRODUCTION)
+    from app.core.database import AgentStatus
+    deployed_result = await db.execute(
+        select(func.count(Agent.id)).where(
+            Agent.status == AgentStatus.PRODUCTION
+        )
+    )
+    deployed_agents = deployed_result.scalar() or 0
+
+    # Count development agents (DEVELOPMENT and STAGING)
+    development_result = await db.execute(
+        select(func.count(Agent.id)).where(
+            Agent.status.in_([AgentStatus.DEVELOPMENT, AgentStatus.STAGING])
+        )
+    )
+    development_agents = development_result.scalar() or 0
+
+    return {
+        "total": total_agents,
+        "deployed": deployed_agents,
+        "development": development_agents,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@router.get("/internal/agents")
+async def get_internal_agents(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all agents with minimal data (Internal API - No Auth Required)
+    Used by worker service for collecting token usage statistics
+    Returns: List of agents with id, name, and trace_id
+    """
+    result = await db.execute(select(Agent))
+    agents = result.scalars().all()
+
+    return [
+        {
+            "id": agent.id,
+            "name": agent.name,
+            "trace_id": agent.trace_id
+        }
+        for agent in agents
+    ]
+
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: int,
@@ -788,35 +847,4 @@ async def undeploy_agent(
         "agent_id": agent.id,
         "status": agent.status,
         "message": "Agent undeployed successfully"
-    }
-
-
-@router.get("/statistics")
-async def get_agent_statistics(
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get agent statistics (Internal API - No Auth Required)
-    Used by worker service for daily snapshots
-    """
-    # Count total agents
-    total_result = await db.execute(
-        select(func.count(Agent.id))
-    )
-    total_agents = total_result.scalar() or 0
-
-    # Count deployed agents (is_deployed = true)
-    deployed_result = await db.execute(
-        select(func.count(Agent.id)).where(Agent.is_deployed == True)
-    )
-    deployed_agents = deployed_result.scalar() or 0
-
-    # Count development agents (is_deployed = false)
-    development_agents = total_agents - deployed_agents
-
-    return {
-        "total": total_agents,
-        "deployed": deployed_agents,
-        "development": development_agents,
-        "timestamp": datetime.utcnow().isoformat()
     }

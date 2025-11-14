@@ -213,7 +213,7 @@ services:
       - ../admin-service:/app
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8005 --reload
 
-  # Worker Service (DEV2)
+  # Celery Worker (background tasks only)
   worker-service:
     build:
       context: ../worker-service

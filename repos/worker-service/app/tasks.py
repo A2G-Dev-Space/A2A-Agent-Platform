@@ -29,16 +29,18 @@ USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8000")
 @celery_app.task
 def check_llm_health():
     """Check health of all registered LLMs"""
-    return asyncio.run(_check_llm_health_async())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_check_llm_health_async())
+    finally:
+        loop.close()
 
 async def _check_llm_health_async():
     """Async implementation of LLM health check"""
     logger.info("Starting LLM health check...")
 
     try:
-        # Initialize database
-        await init_db()
-
         # Get all LLMs from admin service
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
@@ -164,16 +166,19 @@ async def _check_llm_health_async():
 @celery_app.task
 def collect_daily_snapshot():
     """Collect daily statistics snapshot at 00:00 UTC"""
-    return asyncio.run(_collect_daily_snapshot_async())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_collect_daily_snapshot_async())
+    finally:
+        loop.close()
 
 async def _collect_daily_snapshot_async():
     """Async implementation of daily snapshot collection"""
     logger.info("Starting daily statistics snapshot collection...")
 
     try:
-        # Initialize database
-        await init_db()
-
+        # Collect data from HTTP APIs first
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 1. Get user count
             try:
@@ -200,8 +205,8 @@ async def _collect_daily_snapshot_async():
             # 3. Get token usage by agent
             agent_token_usage = {}
             try:
-                # Get all agents
-                agents_response = await client.get(f"{AGENT_SERVICE_URL}/api/agents")
+                # Get all agents (using internal endpoint - no auth required)
+                agents_response = await client.get(f"{AGENT_SERVICE_URL}/api/agents/internal/agents")
                 if agents_response.status_code == 200:
                     agents = agents_response.json()
 
@@ -238,8 +243,8 @@ async def _collect_daily_snapshot_async():
             except Exception as e:
                 logger.error(f"Failed to get model usage statistics: {e}")
 
-            # 5. Save snapshot to database
-            async with async_session_maker() as session:
+        # 5. Save snapshot to database
+        async with async_session_maker() as session:
                 snapshot = StatisticsSnapshot(
                     snapshot_date=datetime.utcnow(),
                     total_users=total_users,
@@ -259,15 +264,15 @@ async def _collect_daily_snapshot_async():
                     f"agents_with_usage={len(agent_token_usage)}"
                 )
 
-            return {
-                "snapshot_date": datetime.utcnow().isoformat(),
-                "total_users": total_users,
-                "total_agents": total_agents,
-                "deployed_agents": deployed_agents,
-                "development_agents": development_agents,
-                "agents_with_usage": len(agent_token_usage),
-                "models_tracked": len(model_usage_stats)
-            }
+        return {
+            "snapshot_date": datetime.utcnow().isoformat(),
+            "total_users": total_users,
+            "total_agents": total_agents,
+            "deployed_agents": deployed_agents,
+            "development_agents": development_agents,
+            "agents_with_usage": len(agent_token_usage),
+            "models_tracked": len(model_usage_stats)
+        }
 
     except Exception as e:
         logger.error(f"Error collecting daily snapshot: {e}", exc_info=True)
@@ -277,15 +282,18 @@ async def _collect_daily_snapshot_async():
 @celery_app.task
 def cleanup_old_snapshots():
     """Clean up snapshots older than 2 years"""
-    return asyncio.run(_cleanup_old_snapshots_async())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_cleanup_old_snapshots_async())
+    finally:
+        loop.close()
 
 async def _cleanup_old_snapshots_async():
     """Async implementation of snapshot cleanup"""
     logger.info("Starting cleanup of old snapshots...")
 
     try:
-        await init_db()
-
         cutoff_date = datetime.utcnow() - timedelta(days=730)  # 2 years
 
         async with async_session_maker() as session:

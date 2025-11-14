@@ -79,7 +79,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:9060",  # Frontend dev
-        "http://localhost:3000",  # Frontend prod
         "http://localhost:9050",  # API Gateway
     ],
     allow_credentials=True,

@@ -114,18 +114,28 @@ const StatisticsPage: React.FC = () => {
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
   const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
 
-  // Parse period value to days/weeks/months and auto-determine group_by
+  // Parse period value and auto-determine group_by based on period length
   const getPeriodParams = () => {
     if (periodValue.endsWith('w')) {
+      // 1 week, 2 weeks → day grouping
       const weeks = parseInt(periodValue);
-      return { weeks, group_by: 'week' };
+      return { weeks, group_by: 'day' };
     } else if (periodValue.endsWith('m')) {
       const months = parseInt(periodValue);
-      // Use week grouping for 1-2 months, month grouping for longer periods
-      const group_by = months <= 2 ? 'week' : 'month';
+      // 1 month → day grouping
+      // 3, 6, 12 months → week grouping
+      // 24 months (2 years) → month grouping
+      let group_by = 'month';
+      if (months <= 1) {
+        group_by = 'day';
+      } else if (months <= 12) {
+        group_by = 'week';
+      } else {
+        group_by = 'month';
+      }
       return { months, group_by };
     }
-    return { months: 12, group_by: 'month' }; // default
+    return { months: 12, group_by: 'week' }; // default
   };
 
   // Fetch comprehensive statistics with user growth
@@ -156,12 +166,45 @@ const StatisticsPage: React.FC = () => {
     fetchStatistics();
   }, [periodValue, topKUsers, topKAgents]);
 
+  // Fetch model usage stats periodically for real-time updates
+  useEffect(() => {
+    const fetchModelUsageStats = async () => {
+      try {
+        const response = await fetch(
+          'http://localhost:8006/api/v1/statistics/model-usage?limit=10'
+        );
+
+        if (response.ok) {
+          const modelUsageData = await response.json();
+
+          // Update only the model_usage_stats in the stats state
+          setStats(prevStats => prevStats ? {
+            ...prevStats,
+            model_usage_stats: modelUsageData
+          } : null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch model usage stats:', error);
+      }
+    };
+
+    // Fetch immediately on mount
+    fetchModelUsageStats();
+
+    // Set up periodic refresh every 30 seconds
+    const intervalId = setInterval(fetchModelUsageStats, 30000);
+
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, []); // Empty dependency array - only run on mount/unmount
+
   // Fetch historical trends from worker service
   useEffect(() => {
     const fetchHistoricalTrends = async () => {
       try {
         const queryParams = new URLSearchParams({
           period: periodValue,
+          agent_id: selectedAgentForToken,
           ...(selectedAgentForToken === 'all' && selectedTopK ? { top_k: selectedTopK.toString() } : {})
         });
 
@@ -443,6 +486,7 @@ const StatisticsPage: React.FC = () => {
             >
               <option value="1w">1 week</option>
               <option value="2w">2 weeks</option>
+              <option value="1m">1 month</option>
               <option value="3m">3 months</option>
               <option value="6m">6 months</option>
               <option value="12m">1 year</option>
@@ -653,52 +697,70 @@ const StatisticsPage: React.FC = () => {
                   </LineChart>
                 );
               })()
+            ) : historicalTrends?.token_usage_trend ? (
+              // Single agent or all agents aggregated (from historical data)
+              (() => {
+                const agents = Object.entries(historicalTrends.token_usage_trend);
+                if (agents.length === 0) return <LineChart data={[]} />;
+
+                // Should only have one entry (either specific agent or "all")
+                const [agent_id, agentData] = agents[0];
+                const data = agentData.data || [];
+
+                return (
+                  <LineChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <YAxis
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Line
+                      type="monotone"
+                      dataKey="total_tokens"
+                      stroke="#a78bfa"
+                      strokeWidth={3}
+                      name="Total Tokens"
+                      dot={{ fill: '#a78bfa', r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="prompt_tokens"
+                      stroke="#22d3ee"
+                      strokeWidth={3}
+                      name="Prompt Tokens"
+                      dot={{ fill: '#22d3ee', r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="completion_tokens"
+                      stroke="#fbbf24"
+                      strokeWidth={3}
+                      name="Completion Tokens"
+                      dot={{ fill: '#fbbf24', r: 3 }}
+                    />
+                  </LineChart>
+                );
+              })()
             ) : (
-              // Single agent or all agents (cumulative)
-              <LineChart data={stats.token_monthly_usage}>
+              // No data available
+              <LineChart data={[]}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis
-                  dataKey="month"
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #475569',
-                    borderRadius: '8px'
-                  }}
-                  labelStyle={{ color: '#f1f5f9' }}
-                />
-                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                <Line
-                  type="monotone"
-                  dataKey="total_tokens"
-                  stroke="#a78bfa"
-                  strokeWidth={3}
-                  name="Total Tokens"
-                  dot={{ fill: '#a78bfa', r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="request_tokens"
-                  stroke="#22d3ee"
-                  strokeWidth={3}
-                  name="Request Tokens"
-                  dot={{ fill: '#22d3ee', r: 3 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="response_tokens"
-                  stroke="#fbbf24"
-                  strokeWidth={3}
-                  name="Response Tokens"
-                  dot={{ fill: '#fbbf24', r: 3 }}
-                />
+                <XAxis stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
               </LineChart>
             )}
           </ResponsiveContainer>

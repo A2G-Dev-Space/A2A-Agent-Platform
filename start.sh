@@ -74,7 +74,7 @@ case $MODE in
 
         # Verify databases were created by init-db.sql
         echo "🔍 Verifying databases..."
-        EXPECTED_DBS=("user_service_db" "agent_service_db" "chat_service_db" "tracing_service_db" "admin_service_db" "llm_proxy_db")
+        EXPECTED_DBS=("user_service_db" "agent_service_db" "chat_service_db" "tracing_service_db" "admin_service_db" "llm_proxy_db" "worker_db")
 
         for db in "${EXPECTED_DBS[@]}"; do
             if docker exec a2g-postgres psql -U dev_user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
@@ -107,6 +107,7 @@ case $MODE in
             ["tracing-service"]="a2g-tracing-service"
             ["admin-service"]="a2g-admin-service"
             ["llm-proxy-service"]="a2g-llm-proxy"
+            ["worker-service"]="a2g-worker-service"
         )
 
         SUCCESS_COUNT=0
@@ -188,26 +189,42 @@ case $MODE in
 
         echo ""
         echo "🗑️  Initializing databases with clean state..."
+        echo ""
+        echo "⚠️  WARNING: This will DELETE ALL existing data!"
+        echo "   This should only be done on first-time setup."
+        echo ""
+        read -p "   Do you want to clear all data and create admin user? (yes/no): " CONFIRM
 
-        # Clear all data and create admin user
-        docker exec a2g-postgres psql -U dev_user -d user_service_db -c "DELETE FROM users;" > /dev/null 2>&1
-        docker exec a2g-postgres psql -U dev_user -d user_service_db -c "INSERT INTO users (username, username_kr, username_en, email, department_kr, department_en, role, created_at, updated_at, preferences) VALUES ('admin', 'Admin', 'Admin', 'admin@company.com', 'admin-team', 'admin-team', 'ADMIN', NOW(), NOW(), '{}');" > /dev/null 2>&1
-        echo "   ✅ User database initialized (1 admin user)"
+        if [ "$CONFIRM" = "yes" ]; then
+            echo ""
+            echo "   Clearing all databases..."
 
-        docker exec a2g-postgres psql -U dev_user -d agent_service_db -c "DELETE FROM agents;" > /dev/null 2>&1
-        echo "   ✅ Agent database cleared"
+            # Clear all data and create admin user
+            docker exec a2g-postgres psql -U dev_user -d user_service_db -c "DELETE FROM users;" > /dev/null 2>&1
+            docker exec a2g-postgres psql -U dev_user -d user_service_db -c "INSERT INTO users (username, username_kr, username_en, email, department_kr, department_en, role, created_at, updated_at, preferences) VALUES ('admin', 'Admin', 'Admin', 'admin@company.com', 'admin-team', 'admin-team', 'ADMIN', NOW(), NOW(), '{}');" > /dev/null 2>&1
+            echo "   ✅ User database initialized (1 admin user)"
 
-        docker exec a2g-postgres psql -U dev_user -d admin_service_db -c "DELETE FROM llm_models;" > /dev/null 2>&1
-        echo "   ✅ LLM models database cleared"
+            docker exec a2g-postgres psql -U dev_user -d agent_service_db -c "DELETE FROM agents;" > /dev/null 2>&1
+            echo "   ✅ Agent database cleared"
 
-        docker exec a2g-postgres psql -U dev_user -d llm_proxy_db -c "DELETE FROM llm_calls; DELETE FROM trace_events; DELETE FROM tool_calls;" > /dev/null 2>&1
-        echo "   ✅ LLM proxy database cleared"
+            docker exec a2g-postgres psql -U dev_user -d admin_service_db -c "DELETE FROM llm_models;" > /dev/null 2>&1
+            echo "   ✅ LLM models database cleared"
 
-        docker exec a2g-postgres psql -U dev_user -d chat_service_db -c "DELETE FROM sessions; DELETE FROM messages;" > /dev/null 2>&1
-        echo "   ✅ Chat database cleared"
+            docker exec a2g-postgres psql -U dev_user -d llm_proxy_db -c "DELETE FROM llm_calls; DELETE FROM trace_events; DELETE FROM tool_calls;" > /dev/null 2>&1
+            echo "   ✅ LLM proxy database cleared"
 
-        docker exec a2g-postgres psql -U dev_user -d tracing_service_db -c "DELETE FROM trace_logs;" > /dev/null 2>&1
-        echo "   ✅ Tracing database cleared"
+            docker exec a2g-postgres psql -U dev_user -d chat_service_db -c "DELETE FROM sessions; DELETE FROM messages;" > /dev/null 2>&1
+            echo "   ✅ Chat database cleared"
+
+            docker exec a2g-postgres psql -U dev_user -d tracing_service_db -c "DELETE FROM trace_logs;" > /dev/null 2>&1
+            echo "   ✅ Tracing database cleared"
+
+            docker exec a2g-postgres psql -U dev_user -d worker_db -c "DELETE FROM statistics_snapshots;" > /dev/null 2>&1
+            echo "   ✅ Worker database cleared"
+        else
+            echo ""
+            echo "   ⏭️  Skipping data initialization - keeping existing data"
+        fi
 
         echo ""
         echo "🎉 Setup completed successfully!"
@@ -239,6 +256,7 @@ case $MODE in
             ["tracing-service"]="a2g-tracing-service"
             ["admin-service"]="a2g-admin-service"
             ["llm-proxy-service"]="a2g-llm-proxy"
+            ["worker-service"]="a2g-worker-service"
         )
 
         SUCCESS_COUNT=0
@@ -348,10 +366,19 @@ case $MODE in
         ;;
     *)
         echo "Usage: ./start.sh [setup|start|update|stop]"
+        echo ""
+        echo "Commands:"
         echo "  setup   - First-time setup: start services and run all database migrations"
+        echo "            ⚠️  WARNING: Will ask to delete all data and create admin user"
         echo "  start   - Start all services (default)"
         echo "  update  - Update all service databases with latest migrations (after git pull)"
         echo "  stop    - Stop all services"
+        echo ""
+        echo "Common workflows:"
+        echo "  First time:    ./start.sh setup (answer 'yes' to initialize with admin user)"
+        echo "  After git pull: ./start.sh && ./start.sh update"
+        echo "  Daily use:     ./start.sh"
+        echo ""
         exit 1
         ;;
 esac

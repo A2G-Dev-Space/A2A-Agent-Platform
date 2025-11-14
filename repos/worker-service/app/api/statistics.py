@@ -14,13 +14,18 @@ logger = logging.getLogger(__name__)
 
 @router.get("/api/statistics/historical/trends")
 async def get_historical_trends(
-    period: Optional[str] = Query("12m", description="Period: 1w, 2w, 3m, 6m, 12m, 24m"),
-    top_k: Optional[int] = Query(None, description="Top K agents for token usage"),
+    period: Optional[str] = Query("12m", description="Period: 1w, 2w, 1m, 3m, 6m, 12m, 24m"),
+    agent_id: Optional[str] = Query("all", description="Agent ID or 'all' for all agents"),
+    top_k: Optional[int] = Query(None, description="Top K agents for token usage (only when agent_id='all')"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get historical trends data for User Trend, Agent Trend, and LLM Token Usage Trend
     Returns daily snapshot data for line graphs
+
+    - agent_id='all' + no top_k: Returns aggregated total for all agents
+    - agent_id='all' + top_k=N: Returns individual trends for top N agents
+    - agent_id=<specific_id>: Returns trend for that specific agent
     """
     try:
         # Parse period to get date range
@@ -81,24 +86,54 @@ async def get_historical_trends(
                         "call_count": usage.get("call_count", 0)
                     })
 
-        # Apply top-k filtering if requested
-        if top_k and token_usage_trend:
-            # Calculate total tokens for each agent
-            agent_totals = {}
-            for agent_id, trend_data in token_usage_trend.items():
-                total = sum(d["total_tokens"] for d in trend_data["data"])
-                agent_totals[agent_id] = total
+        # Process token_usage_trend based on agent_id and top_k parameters
+        if agent_id == "all":
+            if top_k and token_usage_trend:
+                # Return top-k agents individually
+                agent_totals = {}
+                for aid, trend_data in token_usage_trend.items():
+                    total = sum(d["total_tokens"] for d in trend_data["data"])
+                    agent_totals[aid] = total
 
-            # Get top-k agents by total tokens
-            top_agents = sorted(agent_totals.items(), key=lambda x: x[1], reverse=True)[:top_k]
-            top_agent_ids = [agent_id for agent_id, _ in top_agents]
+                top_agents = sorted(agent_totals.items(), key=lambda x: x[1], reverse=True)[:top_k]
+                top_agent_ids = [aid for aid, _ in top_agents]
 
-            # Filter token usage to only top-k
-            filtered_token_usage = {}
-            for agent_id in top_agent_ids:
-                if agent_id in token_usage_trend:
-                    filtered_token_usage[agent_id] = token_usage_trend[agent_id]
-            token_usage_trend = filtered_token_usage
+                filtered_token_usage = {}
+                for aid in top_agent_ids:
+                    if aid in token_usage_trend:
+                        filtered_token_usage[aid] = token_usage_trend[aid]
+                token_usage_trend = filtered_token_usage
+            elif token_usage_trend:
+                # Aggregate all agents into a single trend
+                aggregated_data = {}
+                for aid, trend_data in token_usage_trend.items():
+                    for data_point in trend_data["data"]:
+                        date = data_point["date"]
+                        if date not in aggregated_data:
+                            aggregated_data[date] = {
+                                "date": date,
+                                "total_tokens": 0,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                                "call_count": 0
+                            }
+                        aggregated_data[date]["total_tokens"] += data_point["total_tokens"]
+                        aggregated_data[date]["prompt_tokens"] += data_point["prompt_tokens"]
+                        aggregated_data[date]["completion_tokens"] += data_point["completion_tokens"]
+                        aggregated_data[date]["call_count"] += data_point["call_count"]
+
+                token_usage_trend = {
+                    "all": {
+                        "agent_name": "All Agents",
+                        "data": sorted(aggregated_data.values(), key=lambda x: x["date"])
+                    }
+                }
+        else:
+            # Filter to specific agent
+            if agent_id in token_usage_trend:
+                token_usage_trend = {agent_id: token_usage_trend[agent_id]}
+            else:
+                token_usage_trend = {}
 
         # Ensure all trends have same date range (pad with zeros if needed)
         all_dates = set()
