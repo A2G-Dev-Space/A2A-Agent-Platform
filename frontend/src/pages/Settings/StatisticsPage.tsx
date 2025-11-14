@@ -462,13 +462,13 @@ const StatisticsPage: React.FC = () => {
               onChange={(e) => setPeriodValue(e.target.value)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
             >
-              <option value="1w">1 week</option>
-              <option value="2w">2 weeks</option>
-              <option value="1m">1 month</option>
-              <option value="3m">3 months</option>
-              <option value="6m">6 months</option>
-              <option value="12m">1 year</option>
-              <option value="24m">2 years</option>
+              <option key="1w" value="1w">1 week</option>
+              <option key="2w" value="2w">2 weeks</option>
+              <option key="1m" value="1m">1 month</option>
+              <option key="3m" value="3m">3 months</option>
+              <option key="6m" value="6m">6 months</option>
+              <option key="12m" value="12m">1 year</option>
+              <option key="24m" value="24m">2 years</option>
             </select>
           </label>
         </div>
@@ -480,39 +480,45 @@ const StatisticsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             User Trend
           </h3>
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={historicalTrends?.user_trend || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #475569',
-                    borderRadius: '8px'
-                  }}
-                  labelStyle={{ color: '#f1f5f9' }}
-                />
-                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#60a5fa"
-                  strokeWidth={3}
-                  name="Users"
-                  dot={{ fill: '#60a5fa', r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {historicalTrends?.user_trend && historicalTrends.user_trend.length > 0 ? (
+            <div className="mt-4 h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historicalTrends.user_trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#f1f5f9' }}
+                  />
+                  <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#60a5fa"
+                    strokeWidth={3}
+                    name="Users"
+                    dot={{ fill: '#60a5fa', r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="mt-4 h-64 w-full flex items-center justify-center text-slate-500">
+              Loading...
+            </div>
+          )}
         </div>
 
         {/* Agent Monthly Growth */}
@@ -526,43 +532,49 @@ const StatisticsPage: React.FC = () => {
               onChange={(e) => setAgentGrowthFilter(e.target.value as 'all' | 'deployed')}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
             >
-              <option value="all">Development + Deployed</option>
-              <option value="deployed">Deployed Only</option>
+              <option key="all" value="all">Development + Deployed</option>
+              <option key="deployed" value="deployed">Deployed Only</option>
             </select>
           </div>
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={agentGrowthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #475569',
-                    borderRadius: '8px'
-                  }}
-                  labelStyle={{ color: '#f1f5f9' }}
-                />
-                <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#34d399"
-                  strokeWidth={3}
-                  name="Agents"
-                  dot={{ fill: '#34d399', r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {agentGrowthData && agentGrowthData.length > 0 ? (
+            <div className="mt-4 h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={agentGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tick={{ fill: '#94a3b8' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1e293b',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                    labelStyle={{ color: '#f1f5f9' }}
+                  />
+                  <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#34d399"
+                    strokeWidth={3}
+                    name="Agents"
+                    dot={{ fill: '#34d399', r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="mt-4 h-64 w-full flex items-center justify-center text-slate-500">
+              Loading...
+            </div>
+          )}
         </div>
       </div>
 
@@ -610,9 +622,10 @@ const StatisticsPage: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="mt-4 h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {selectedAgentForToken === 'all' && selectedTopK && historicalTrends?.token_usage_trend ? (
+        {historicalTrends?.token_usage_trend ? (
+          <div className="mt-4 h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              {selectedAgentForToken === 'all' && selectedTopK ? (
               // Multiple lines for top-k agents
               (() => {
                 // Restructure data for multi-line chart
@@ -675,7 +688,7 @@ const StatisticsPage: React.FC = () => {
                   </LineChart>
                 );
               })()
-            ) : historicalTrends?.token_usage_trend ? (
+            ) : (
               // Single agent or all agents aggregated (from historical data)
               (() => {
                 const agents = Object.entries(historicalTrends.token_usage_trend);
@@ -733,16 +746,14 @@ const StatisticsPage: React.FC = () => {
                   </LineChart>
                 );
               })()
-            ) : (
-              // No data available
-              <LineChart data={[]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                <XAxis stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
-              </LineChart>
             )}
-          </ResponsiveContainer>
-        </div>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="mt-4 h-80 w-full flex items-center justify-center text-slate-500">
+            Loading...
+          </div>
+        )}
       </div>
       </div>
     </div>
