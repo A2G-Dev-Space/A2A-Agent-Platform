@@ -10,6 +10,7 @@ import uuid
 import httpx
 import logging
 import re
+import os
 
 from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
 from app.core.security import get_current_user
@@ -423,26 +424,41 @@ async def delete_agent(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete agent"""
+    """Delete agent and associated token usage records"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agent not found"
         )
-    
+
     # Check ownership
     if agent.owner_id != current_user["username"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this agent"
         )
-    
+
+    # Delete agent from database
     await db.delete(agent)
     await db.commit()
-    
+
+    # Delete associated LLM call records from llm-proxy-service
+    llm_proxy_url = os.getenv('LLM_PROXY_SERVICE_URL', 'http://llm-proxy-service:8006')
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.delete(f"{llm_proxy_url}/api/internal/llm-calls/agent/{agent_id}")
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Deleted LLM records for agent {agent_id}: {data.get('deleted_counts', {})}")
+            else:
+                logger.warning(f"Failed to delete LLM records for agent {agent_id}: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Error calling llm-proxy-service to delete records for agent {agent_id}: {e}")
+        # Don't fail the agent deletion if LLM record deletion fails
+
     return {"message": "Agent deleted successfully"}
 
 # This is a dummy in-memory storage for the search endpoint.

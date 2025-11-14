@@ -1,5 +1,6 @@
 import api from './api';
-import { type Agent, type AgentStatus, type AgentFramework } from '@/types';
+import type { Agent } from '@/types';
+import { AgentStatus, AgentFramework } from '@/types';
 
 export interface AgentSearchResponse {
     agents: Agent[];

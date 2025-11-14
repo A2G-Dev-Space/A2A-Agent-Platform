@@ -391,7 +391,12 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent })
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            isLoading={isSubmitting}
+            className="!bg-workbench-primary hover:!opacity-90"
+          >
             {isEditMode ? 'Update Agent' : t('createAgent.createButton', 'Create Agent')}
           </Button>
         </Modal.Footer>

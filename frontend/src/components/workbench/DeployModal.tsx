@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Globe, Users, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Agent, AgentStatus } from '@/types';
+import type { Agent } from '@/types';
+import { AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 
 interface DeployModalProps {

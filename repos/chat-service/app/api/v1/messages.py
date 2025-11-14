@@ -213,13 +213,12 @@ async def _get_agent_url(agent_id: int, token: str) -> Optional[str]:
         logger.info(f"[Messages API] Getting agent URL for agent_id={agent_id}")
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
-                f"http://agent-service:8002/api/agents/by-id/{agent_id}",
+                f"http://agent-service:8002/api/agents/{agent_id}",
                 headers={"Authorization": f"Bearer {token}"}
             )
             if response.status_code == 200:
                 agent_data = response.json()
-                agent_card = agent_data.get("agent_card", {})
-                agent_url = agent_card.get("url") or agent_card.get("a2a_endpoint")
+                agent_url = agent_data.get("a2a_endpoint")
                 logger.info(f"[Messages API] Got agent URL: {agent_url}")
                 return agent_url
             else:
