@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import httpx
 import logging
+import re
+import os
 
 from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
 from app.core.security import get_current_user
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 
 logger = logging.getLogger(__name__)
 
@@ -319,6 +321,65 @@ async def create_agent(
         logo_url=agent.logo_url
     )
 
+@router.get("/statistics")
+async def get_agent_statistics(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get agent statistics (Internal API - No Auth Required)
+    Used by worker service for daily snapshots
+    """
+    # Count total agents
+    total_result = await db.execute(
+        select(func.count(Agent.id))
+    )
+    total_agents = total_result.scalar() or 0
+
+    # Count deployed agents (PRODUCTION)
+    from app.core.database import AgentStatus
+    deployed_result = await db.execute(
+        select(func.count(Agent.id)).where(
+            Agent.status == AgentStatus.PRODUCTION
+        )
+    )
+    deployed_agents = deployed_result.scalar() or 0
+
+    # Count development agents (DEVELOPMENT and STAGING)
+    development_result = await db.execute(
+        select(func.count(Agent.id)).where(
+            Agent.status.in_([AgentStatus.DEVELOPMENT, AgentStatus.STAGING])
+        )
+    )
+    development_agents = development_result.scalar() or 0
+
+    return {
+        "total": total_agents,
+        "deployed": deployed_agents,
+        "development": development_agents,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@router.get("/internal/agents")
+async def get_internal_agents(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all agents with minimal data (Internal API - No Auth Required)
+    Used by worker service for collecting token usage statistics
+    Returns: List of agents with id, name, and trace_id
+    """
+    result = await db.execute(select(Agent))
+    agents = result.scalars().all()
+
+    return [
+        {
+            "id": agent.id,
+            "name": agent.name,
+            "trace_id": agent.trace_id
+        }
+        for agent in agents
+    ]
+
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: int,
@@ -422,26 +483,41 @@ async def delete_agent(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete agent"""
+    """Delete agent and associated token usage records"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agent not found"
         )
-    
+
     # Check ownership
     if agent.owner_id != current_user["username"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this agent"
         )
-    
+
+    # Delete agent from database
     await db.delete(agent)
     await db.commit()
-    
+
+    # Delete associated LLM call records from llm-proxy-service
+    llm_proxy_url = os.getenv('LLM_PROXY_SERVICE_URL', 'http://llm-proxy-service:8006')
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.delete(f"{llm_proxy_url}/api/internal/llm-calls/agent/{agent_id}")
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Deleted LLM records for agent {agent_id}: {data.get('deleted_counts', {})}")
+            else:
+                logger.warning(f"Failed to delete LLM records for agent {agent_id}: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Error calling llm-proxy-service to delete records for agent {agent_id}: {e}")
+        # Don't fail the agent deletion if LLM record deletion fails
+
     return {"message": "Agent deleted successfully"}
 
 # This is a dummy in-memory storage for the search endpoint.
@@ -534,4 +610,241 @@ async def update_agent_trace_id(
         "name": agent.name,
         "trace_id": agent.trace_id,
         "updated": True
+    }
+
+
+# Deploy Request/Response Models
+class DeployRequest(BaseModel):
+    """Deploy request model"""
+    deploy_scope: str  # 'team' or 'public'
+    deploy_config: Optional[Dict[str, Any]] = {}
+
+
+class DeployResponse(BaseModel):
+    """Deploy response model"""
+    agent_id: int
+    status: str
+    deployed_at: datetime
+    deployed_by: str
+    validated_endpoint: str
+    deploy_scope: str
+
+
+def validate_host_for_deploy(endpoint: str) -> tuple[bool, str]:
+    """
+    Validate that endpoint is not localhost/127.0.0.1/0.0.0.0
+    Returns (is_valid, error_message)
+    """
+    if not endpoint:
+        return False, "Endpoint is required for deployment"
+
+    # Extract hostname from URL
+    import re
+    pattern = r'^(?:https?://)?([^:/]+)'
+    match = re.match(pattern, endpoint.lower())
+    if not match:
+        return False, "Invalid endpoint format"
+
+    hostname = match.group(1)
+
+    # Check for localhost variations
+    invalid_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
+    if hostname in invalid_hosts:
+        return False, f"Cannot deploy with local endpoint '{hostname}'. Please provide a public URL."
+
+    # Check for private IP ranges (optional, more strict validation)
+    private_ip_patterns = [
+        r'^10\.',  # 10.0.0.0 - 10.255.255.255
+        r'^172\.(1[6-9]|2[0-9]|3[0-1])\.',  # 172.16.0.0 - 172.31.255.255
+        r'^192\.168\.',  # 192.168.0.0 - 192.168.255.255
+    ]
+
+    for pattern in private_ip_patterns:
+        if re.match(pattern, hostname):
+            return False, f"Cannot deploy with private IP '{hostname}'. Please provide a public URL."
+
+    return True, ""
+
+
+async def test_agent_connection(endpoint: str, timeout: int = 5) -> tuple[bool, str]:
+    """
+    Test if agent endpoint is reachable
+    Returns (is_reachable, error_message)
+    """
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            # Test with A2A info request
+            response = await client.post(
+                endpoint,
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "agent/info",
+                    "params": {},
+                    "id": "deploy-test"
+                }
+            )
+
+            if response.status_code == 200:
+                return True, ""
+            else:
+                return False, f"Agent returned status code {response.status_code}"
+
+    except httpx.ConnectTimeout:
+        return False, "Connection timeout - endpoint is not reachable"
+    except httpx.ConnectError:
+        return False, "Connection failed - endpoint is not accessible"
+    except Exception as e:
+        return False, f"Connection test failed: {str(e)}"
+
+
+@router.post("/{agent_id}/deploy", response_model=DeployResponse)
+async def deploy_agent(
+    agent_id: int,
+    request: DeployRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Deploy an agent to Hub
+
+    Requirements:
+    1. Agent must be owned by current user
+    2. Endpoint must not be localhost/127.0.0.1
+    3. Endpoint must be reachable
+    4. Agent must be in DEVELOPMENT status
+    """
+    # Get agent
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only agent owner can deploy"
+        )
+
+    # Check if already deployed
+    if agent.status in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agent is already deployed with status: {agent.status}"
+        )
+
+    # Validate endpoint is not localhost
+    endpoint = agent.a2a_endpoint
+    is_valid, error_msg = validate_host_for_deploy(endpoint)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
+        )
+
+    # Test agent connection
+    logger.info(f"[Deploy] Testing connection to {endpoint}")
+    is_reachable, error_msg = await test_agent_connection(endpoint)
+    if not is_reachable:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agent endpoint validation failed: {error_msg}"
+        )
+
+    # Update agent status based on deploy scope
+    new_status = AgentStatus.DEPLOYED_TEAM if request.deploy_scope == "team" else AgentStatus.DEPLOYED_ALL
+
+    # For team deployment, check department is set
+    if request.deploy_scope == "team" and not agent.department:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Department must be set for team deployment"
+        )
+
+    # Update agent
+    agent.status = new_status
+    agent.deployed_at = datetime.utcnow()
+    agent.deployed_by = current_user["username"]
+    agent.validated_endpoint = endpoint
+    agent.deploy_config = request.deploy_config
+
+    # Update visibility based on deploy scope
+    if request.deploy_scope == "team":
+        agent.visibility = "team"
+    else:
+        agent.visibility = "public"
+
+    await db.commit()
+    await db.refresh(agent)
+
+    logger.info(f"[Deploy] Agent {agent_id} deployed successfully as {new_status}")
+
+    return DeployResponse(
+        agent_id=agent.id,
+        status=agent.status,
+        deployed_at=agent.deployed_at,
+        deployed_by=agent.deployed_by,
+        validated_endpoint=agent.validated_endpoint,
+        deploy_scope=request.deploy_scope
+    )
+
+
+@router.post("/{agent_id}/undeploy")
+async def undeploy_agent(
+    agent_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Undeploy an agent from Hub
+
+    Requirements:
+    1. Agent must be owned by current user
+    2. Agent must be in deployed status
+    """
+    # Get agent
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only agent owner can undeploy"
+        )
+
+    # Check if deployed
+    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agent is not deployed. Current status: {agent.status}"
+        )
+
+    # Update agent status back to DEVELOPMENT
+    agent.status = AgentStatus.DEVELOPMENT
+    agent.deployed_at = None
+    agent.deployed_by = None
+    agent.validated_endpoint = None
+    agent.deploy_config = {}
+    agent.visibility = "private"  # Reset to private
+
+    await db.commit()
+    await db.refresh(agent)
+
+    logger.info(f"[Undeploy] Agent {agent_id} undeployed successfully")
+
+    return {
+        "agent_id": agent.id,
+        "status": agent.status,
+        "message": "Agent undeployed successfully"
     }

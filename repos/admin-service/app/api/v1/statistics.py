@@ -273,8 +273,9 @@ class ComprehensiveStatisticsResponse(BaseModel):
 
 @router.get("/statistics/comprehensive/", response_model=ComprehensiveStatisticsResponse)
 async def get_comprehensive_statistics(
-    months: int = Query(12, ge=1, le=24, description="Months for growth charts"),
-    group_by: str = Query("month", regex="^(week|month)$", description="Group by week or month"),
+    weeks: Optional[int] = Query(None, ge=1, le=104, description="Weeks for growth charts (takes precedence over months)"),
+    months: Optional[int] = Query(None, ge=1, le=24, description="Months for growth charts"),
+    group_by: str = Query("month", regex="^(week|month|day)$", description="Group by day, week or month"),
     top_k_users: int = Query(5, ge=1, le=50, description="Top K token consumers"),
     top_k_agents: int = Query(10, ge=1, le=50, description="Top K agent usage"),
     admin_user: dict = Depends(require_admin),
@@ -302,6 +303,15 @@ async def get_comprehensive_statistics(
     model_stats = []
     agent_usage = []
 
+    # Determine time period parameters - weeks takes precedence
+    if weeks is not None and weeks > 0:
+        time_param = f"weeks={weeks}"
+    elif months is not None and months > 0:
+        time_param = f"months={months}"
+    else:
+        # Default to 12 months
+        time_param = "months=12"
+
     # Fetch all data in parallel using httpx
     async with httpx.AsyncClient(timeout=10.0) as client:
         # Get auth header
@@ -318,7 +328,7 @@ async def get_comprehensive_statistics(
 
         # 2. User monthly growth
         tasks.append(client.get(
-            f"{settings.USER_SERVICE_URL}/api/admin/users/monthly-growth?months={months}&group_by={group_by}",
+            f"{settings.USER_SERVICE_URL}/api/admin/users/monthly-growth?{time_param}&group_by={group_by}",
             headers=auth_header
         ))
 
@@ -330,7 +340,7 @@ async def get_comprehensive_statistics(
 
         # 4. Agent monthly growth
         tasks.append(client.get(
-            f"{settings.AGENT_SERVICE_URL}/api/admin/agents/monthly-growth?months={months}&group_by={group_by}",
+            f"{settings.AGENT_SERVICE_URL}/api/admin/agents/monthly-growth?{time_param}&group_by={group_by}",
             headers=auth_header
         ))
 
@@ -347,7 +357,7 @@ async def get_comprehensive_statistics(
 
         # 7. Monthly token usage (default to all agents with monthly grouping)
         tasks.append(client.get(
-            f"{settings.LLM_PROXY_SERVICE_URL}/api/v1/statistics/monthly-token-usage?months={months}&group_by={group_by}&trace_id=all",
+            f"{settings.LLM_PROXY_SERVICE_URL}/api/v1/statistics/monthly-token-usage?{time_param}&group_by={group_by}&trace_id=all",
             headers=auth_header
         ))
 

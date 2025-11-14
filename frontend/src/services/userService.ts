@@ -1,4 +1,4 @@
-import api from './api';
+import { apiClient as api } from './api';
 // Import official types from the central types file
 import type { User, APIKey } from '@/types';
 

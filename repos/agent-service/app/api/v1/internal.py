@@ -113,6 +113,7 @@ async def get_agent_by_trace_id(
             "id": agent.id,
             "name": agent.name,
             "owner_id": agent.owner_id,
-            "trace_id": agent.trace_id
+            "trace_id": agent.trace_id,
+            "status": agent.status.value if agent.status else None
         }
     }

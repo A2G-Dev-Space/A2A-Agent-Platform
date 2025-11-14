@@ -20,7 +20,8 @@
         "subtitle": "Discover and launch production-ready agents.",
         "searchPlaceholder": "Search for agents by name, tag, or description...",
         "topPicks": "Top Picks for You",
-        "allAgents": "All Agents"
+        "allAgents": "All Agents",
+        "startChat": "Start Chat"
     },
     "workbench": {
         "agentsTitle": "Agents",
@@ -40,6 +41,57 @@
         "scrollToBottom": "Scroll to bottom",
         "you": "You",
         "creatingSession": "Creating session...",
+        "myDevelopmentAgents": "My Development Agents",
+        "addNewAgent": "Add New Agent",
+        "loadingAgents": "Loading agents...",
+        "backToAgents": "Back to Agents",
+        "deleteAgentFailed": "Failed to delete agent:",
+        "unknownError": "Unknown error",
+        "deleteConfirmation": "Are you sure you want to delete \"{{name}}\"?\n\nThis will permanently remove the agent and all associated data including:\n- Agent configuration\n- Chat history\n- Trace logs\n\nThis action cannot be undone.",
+        "agentCard": {
+            "deployedAll": "DEPLOY TO ALL",
+            "deployedDept": "DEPLOY TO DEPARTMENT",
+            "development": "DEVELOPMENT",
+            "noDescription": "No description available",
+            "edit": "Edit",
+            "deploy": "Deploy",
+            "undeploy": "UnDeploy"
+        },
+        "deployModal": {
+            "deploymentFailed": "Deployment failed",
+            "undeployAgent": "Undeploy Agent",
+            "deployAgent": "Deploy Agent",
+            "agentInformation": "Agent Information",
+            "name": "Name:",
+            "framework": "Framework:",
+            "endpoint": "Endpoint:",
+            "notConfigured": "Not configured",
+            "currentStatus": "Current Status:",
+            "deploymentScope": "Deployment Scope",
+            "teamOnly": "Team Only",
+            "teamOnlyDesc": "Available only to your team members",
+            "public": "Public",
+            "publicDesc": "Available to all platform users",
+            "endpointNotConfigured": "Endpoint Not Configured",
+            "endpointNotConfiguredDesc": "Please configure the agent endpoint before deployment.",
+            "agentCurrentlyDeployed": "Agent is Currently Deployed",
+            "undeployingWill": "Undeploying will:",
+            "removeFromHub": "Remove agent from Hub",
+            "stopStatistics": "Stop collecting usage statistics",
+            "enableWorkbench": "Enable Workbench chat and trace"
+        },
+        "trace": {
+            "sendToLLM": "Send to LLM",
+            "receiveFromLLM": "Receive from LLM",
+            "toolUse": "Tool Use",
+            "toolResult": "Tool Result",
+            "agentTransfer": "Agent Transfer",
+            "title": "Trace",
+            "live": "Live",
+            "clearTrace": "Clear trace",
+            "waitingForEvents": "Waiting for trace events...",
+            "noTraceId": "No trace ID"
+        },
         "guide": {
             "title": "What Playground Can Show",
             "intro": "The A2A Chat Playground supports rich markdown rendering with advanced features. This guide shows you what you can display and how to format your agent responses for the best user experience.",
@@ -156,7 +208,14 @@
     "common": {
         "cancel": "Cancel",
         "creating": "Creating...",
-        "save": "Save"
+        "save": "Save",
+        "pageNotFound": "Page not found",
+        "goToHome": "Go to Home",
+        "loading": "Loading...",
+        "openMenu": "Open menu",
+        "notifications": "Notifications",
+        "settings": "Settings",
+        "logout": "Logout"
     },
     "flow": {
         "title": "Flow Dashboard",
@@ -272,6 +331,26 @@
       "submitting": "Submitting...",
       "needHelp": "Need help?",
       "contactAdmin": "Contact Administrator"
+    },
+    "callback": {
+      "completingAuth": "Completing Authentication",
+      "pleaseWait": "Please wait while we log you in...",
+      "authFailed": "Authentication Failed",
+      "tryAgain": "Try Again",
+      "authSuccessful": "Authentication Successful",
+      "redirecting": "Redirecting to the platform...",
+      "errorAuthFailed": "Authentication failed",
+      "errorNoToken": "No authentication token received",
+      "errorFailedComplete": "Failed to complete authentication"
+    },
+    "chat": {
+      "diagramError": "Diagram Error:",
+      "diagramRenderError": "Failed to render diagram",
+      "code": "code",
+      "copyCode": "Copy code",
+      "copied": "Copied!",
+      "copy": "Copy",
+      "image": "Image"
     }
   }
 }

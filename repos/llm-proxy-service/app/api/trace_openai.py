@@ -77,6 +77,7 @@ async def create_traced_chat_completion(
     # Lookup agent_id from trace_id via Agent Service
     # Agent doesn't need to provide this - we resolve it automatically!
     resolved_agent_id = "unknown"
+    agent_status = None
 
     import httpx
     import os
@@ -88,7 +89,15 @@ async def create_traced_chat_completion(
                 data = response.json()
                 if data.get("agent") and data["agent"].get("id"):
                     resolved_agent_id = str(data["agent"]["id"])
-                    logger.info(f"[Traced LLM] ✅ Resolved agent_id={resolved_agent_id} from trace_id={trace_id}")
+                    agent_status = data["agent"].get("status")
+                    logger.info(f"[Traced LLM] ✅ Resolved agent_id={resolved_agent_id}, status={agent_status} from trace_id={trace_id}")
+
+                    # Check if agent is deployed - if so, don't collect trace
+                    deployed_statuses = ["DEPLOYED_TEAM", "DEPLOYED_ALL", "DEPLOYED_DEPT", "PRODUCTION"]
+                    if agent_status in deployed_statuses:
+                        logger.info(f"[Traced LLM] 🚫 Agent is deployed ({agent_status}), skipping trace collection")
+                        # Clear trace_id to prevent trace collection
+                        trace_id = None
                 else:
                     logger.warning(f"[Traced LLM] ⚠️  No agent found for trace_id={trace_id}")
             else:

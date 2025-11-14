@@ -20,7 +20,8 @@
         "subtitle": "프로덕션 준비가 된 에이전트를 찾아보세요.",
         "searchPlaceholder": "이름, 태그, 또는 설명으로 에이전트 검색...",
         "topPicks": "추천 에이전트",
-        "allAgents": "모든 에이전트"
+        "allAgents": "모든 에이전트",
+        "startChat": "채팅 시작"
     },
     "workbench": {
         "agentsTitle": "에이전트",
@@ -40,6 +41,57 @@
         "scrollToBottom": "아래로 스크롤",
         "you": "나",
         "creatingSession": "세션 생성 중...",
+        "myDevelopmentAgents": "내 개발 에이전트",
+        "addNewAgent": "새 에이전트 추가",
+        "loadingAgents": "에이전트 로드 중...",
+        "backToAgents": "에이전트 목록으로",
+        "deleteAgentFailed": "에이전트 삭제 실패:",
+        "unknownError": "알 수 없는 오류",
+        "deleteConfirmation": "정말로 \"{{name}}\"을(를) 삭제하시겠습니까?\n\n다음을 포함한 모든 관련 데이터가 영구적으로 제거됩니다:\n- 에이전트 구성\n- 채팅 기록\n- 추적 로그\n\n이 작업은 취소할 수 없습니다.",
+        "agentCard": {
+            "deployedAll": "전체 배포",
+            "deployedDept": "부서 배포",
+            "development": "개발 중",
+            "noDescription": "설명 없음",
+            "edit": "수정",
+            "deploy": "배포",
+            "undeploy": "배포 취소"
+        },
+        "deployModal": {
+            "deploymentFailed": "배포 실패",
+            "undeployAgent": "에이전트 배포 취소",
+            "deployAgent": "에이전트 배포",
+            "agentInformation": "에이전트 정보",
+            "name": "이름:",
+            "framework": "프레임워크:",
+            "endpoint": "엔드포인트:",
+            "notConfigured": "설정되지 않음",
+            "currentStatus": "현재 상태:",
+            "deploymentScope": "배포 범위",
+            "teamOnly": "팀 전용",
+            "teamOnlyDesc": "팀 멤버만 사용 가능",
+            "public": "전체 공개",
+            "publicDesc": "모든 플랫폼 사용자가 사용 가능",
+            "endpointNotConfigured": "엔드포인트 미설정",
+            "endpointNotConfiguredDesc": "배포 전에 에이전트 엔드포인트를 설정해 주세요.",
+            "agentCurrentlyDeployed": "에이전트가 현재 배포됨",
+            "undeployingWill": "배포 취소 시:",
+            "removeFromHub": "허브에서 에이전트 제거",
+            "stopStatistics": "사용 통계 수집 중지",
+            "enableWorkbench": "워크벤치 채팅 및 추적 활성화"
+        },
+        "trace": {
+            "sendToLLM": "LLM으로 전송",
+            "receiveFromLLM": "LLM으로부터 수신",
+            "toolUse": "도구 사용",
+            "toolResult": "도구 결과",
+            "agentTransfer": "에이전트 전환",
+            "title": "추적",
+            "live": "실시간",
+            "clearTrace": "추적 지우기",
+            "waitingForEvents": "추적 이벤트 대기 중...",
+            "noTraceId": "추적 ID 없음"
+        },
         "guide": {
             "title": "플레이그라운드에서 표시 가능한 기능",
             "intro": "A2A 채팅 플레이그라운드는 고급 기능을 갖춘 풍부한 마크다운 렌더링을 지원합니다. 이 가이드는 표시할 수 있는 것과 최상의 사용자 경험을 위해 에이전트 응답을 포맷하는 방법을 보여줍니다.",
@@ -156,7 +208,14 @@
     "common": {
         "cancel": "취소",
         "creating": "생성 중...",
-        "save": "저장"
+        "save": "저장",
+        "pageNotFound": "페이지를 찾을 수 없습니다",
+        "goToHome": "홈으로 이동",
+        "loading": "로딩 중...",
+        "openMenu": "메뉴 열기",
+        "notifications": "알림",
+        "settings": "설정",
+        "logout": "로그아웃"
     },
     "flow": {
         "title": "플로우 대시보드",
@@ -272,6 +331,26 @@
       "submitting": "신청 중...",
       "needHelp": "도움이 필요하신가요?",
       "contactAdmin": "관리자에게 문의"
+    },
+    "callback": {
+      "completingAuth": "인증 완료 중",
+      "pleaseWait": "로그인하는 동안 잠시 기다려 주세요...",
+      "authFailed": "인증 실패",
+      "tryAgain": "다시 시도",
+      "authSuccessful": "인증 성공",
+      "redirecting": "플랫폼으로 이동 중...",
+      "errorAuthFailed": "인증에 실패했습니다",
+      "errorNoToken": "인증 토큰을 받지 못했습니다",
+      "errorFailedComplete": "인증을 완료하지 못했습니다"
+    },
+    "chat": {
+      "diagramError": "다이어그램 오류:",
+      "diagramRenderError": "다이어그램 렌더링 실패",
+      "code": "코드",
+      "copyCode": "코드 복사",
+      "copied": "복사됨!",
+      "copy": "복사",
+      "image": "이미지"
     }
   }
 }

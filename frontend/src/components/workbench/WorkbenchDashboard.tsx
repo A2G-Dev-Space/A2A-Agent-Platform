@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
-import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentStatus } from '@/types';
 import AddAgentModal from './AddAgentModal';
+import { DeployModal } from './DeployModal';
 import { AgentCard } from './AgentCard';
 import { ChatPlayground } from './ChatPlayground';
 import { TraceView } from './TraceView';
@@ -13,10 +13,11 @@ import { TraceView } from './TraceView';
 export const WorkbenchDashboard: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployingAgent, setDeployingAgent] = useState<Agent | null>(null);
 
   // Dynamic trace_id from SSE stream_start event
   const [traceId, setTraceId] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export const WorkbenchDashboard: React.FC = () => {
     },
     onError: (error: any) => {
       console.error('Failed to delete agent:', error);
-      alert(`Failed to delete agent: ${error.message || 'Unknown error'}`);
+      alert(`${t('workbench.deleteAgentFailed')} ${error.message || t('workbench.unknownError')}`);
     },
   });
 
@@ -75,12 +76,7 @@ export const WorkbenchDashboard: React.FC = () => {
   const handleDelete = (agent: Agent) => {
     // Show confirmation dialog before deletion
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${agent.name}"?\n\n` +
-      `This will permanently remove the agent and all associated data including:\n` +
-      `- Agent configuration\n` +
-      `- Chat history\n` +
-      `- Trace logs\n\n` +
-      `This action cannot be undone.`
+      t('workbench.deleteConfirmation', { name: agent.name })
     );
 
     if (confirmDelete) {
@@ -89,7 +85,13 @@ export const WorkbenchDashboard: React.FC = () => {
   };
 
   const handleDeploy = (agent: Agent) => {
-    console.log('Deploy/undeploy agent:', agent);
+    setDeployingAgent(agent);
+    setDeployModalOpen(true);
+  };
+
+  const handleDeploySuccess = () => {
+    // Refetch agents to update status
+    queryClient.invalidateQueries({ queryKey: ['agents'] });
   };
 
   // Default view: Grid layout
@@ -99,7 +101,7 @@ export const WorkbenchDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h1 className="text-gray-900 dark:text-white text-2xl sm:text-3xl lg:text-4xl font-black leading-tight tracking-[-0.033em]">
-            My Development Agents
+            {t('workbench.myDevelopmentAgents')}
           </h1>
         </div>
 
@@ -111,12 +113,12 @@ export const WorkbenchDashboard: React.FC = () => {
             className="flex min-h-[198px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-black/20 text-gray-500 dark:text-gray-400 transition-all hover:border-primary hover:text-primary dark:hover:border-primary/50 dark:hover:text-primary"
           >
             <Plus className="h-12 w-12" />
-            <p className="text-base font-semibold">Add New Agent</p>
+            <p className="text-base font-semibold">{t('workbench.addNewAgent')}</p>
           </div>
 
           {/* Agent Cards */}
           {isLoading ? (
-            <p className="col-span-full text-center text-gray-500">Loading agents...</p>
+            <p className="col-span-full text-center text-gray-500">{t('workbench.loadingAgents')}</p>
           ) : (
             developmentAgents?.map((agent: Agent) => (
               <AgentCard
@@ -132,6 +134,15 @@ export const WorkbenchDashboard: React.FC = () => {
         </div>
 
         <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
+
+        {deployingAgent && (
+          <DeployModal
+            isOpen={deployModalOpen}
+            onClose={() => setDeployModalOpen(false)}
+            agent={deployingAgent}
+            onDeploySuccess={handleDeploySuccess}
+          />
+        )}
       </div>
     );
   }
@@ -149,7 +160,7 @@ export const WorkbenchDashboard: React.FC = () => {
               className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Back to Agents</span>
+              <span>{t('workbench.backToAgents')}</span>
             </button>
             <div className="h-6 w-px bg-border-light dark:bg-border-dark" />
             <h2 className="text-base font-bold">{selectedAgent.name}</h2>
@@ -167,6 +178,15 @@ export const WorkbenchDashboard: React.FC = () => {
       </main>
 
       <AddAgentModal isOpen={isModalOpen} onClose={handleCloseModal} agent={editingAgent} />
+
+      {deployingAgent && (
+        <DeployModal
+          isOpen={deployModalOpen}
+          onClose={() => setDeployModalOpen(false)}
+          agent={deployingAgent}
+          onDeploySuccess={handleDeploySuccess}
+        />
+      )}
     </div>
   );
 };

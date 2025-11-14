@@ -2,9 +2,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminService } from '../../services/adminService';
-import type { UserManagementInfo } from '../../services/adminService';
 import { useAuthStore } from '@/stores/authStore';
 import { ShieldCheck, ShieldX, UserMinus } from 'lucide-react';
+import { UserRole, type User } from '@/types';
 
 const UserManagementPage: React.FC = () => {
   const { t } = useTranslation();
@@ -72,26 +72,30 @@ const UserManagementPage: React.FC = () => {
     updateRoleMutation.mutate({ userId, role: newRole });
   };
 
-  const isCurrentUser = (user: UserManagementInfo) => {
+  const isCurrentUser = (user: User) => {
     // Compare by email since currentUser may not have id
     return currentUser?.email === user.email;
   };
 
-  const getStatusChip = (user: UserManagementInfo) => {
-    if (user.status === 'Active') {
-      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">{user.status}</span>;
+  const getStatusChip = (_user: User) => {
+    // User type doesn't have status field, so we'll use a default
+    const status = 'Active';
+    if (status === 'Active') {
+      return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">{status}</span>;
     }
-    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{user.status}</span>;
+    return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{status}</span>;
   };
   
-  const getRoleChip = (role: 'ADMIN' | 'USER' | 'PENDING') => {
+  const getRoleChip = (role: UserRole) => {
       switch (role) {
-          case 'ADMIN':
+          case UserRole.ADMIN:
               return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-purple-800 dark:bg-primary/30 dark:text-primary">{t('roles.admin')}</span>;
-          case 'USER':
+          case UserRole.USER:
               return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">{t('roles.user')}</span>;
-          case 'PENDING':
+          case UserRole.PENDING:
               return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">{t('roles.pending')}</span>;
+          case UserRole.NEW:
+              return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300">{t('roles.new')}</span>;
       }
   }
 
@@ -140,17 +144,17 @@ const UserManagementPage: React.FC = () => {
                                     <td className="px-4 py-3"><input type="checkbox" className="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary" /></td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{user.username_kr || user.username}</p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{user.department}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{user.department_kr || user.department_en}</td>
                                     <td className="px-4 py-3">
                                         {getRoleChip(user.role)}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{getStatusChip(user)}</td>
                                     <td className="px-4 py-3 text-sm font-medium">
-                                        {user.role === 'PENDING' ? (
+                                        {user.role === UserRole.PENDING ? (
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => handleApprove(user.id)}

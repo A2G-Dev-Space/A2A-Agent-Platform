@@ -9,7 +9,6 @@ import type {
   ChatAdapterConfig,
   ChatAdapterCallbacks,
   ChatMessage,
-  ChatResponseChunk,
 } from './types';
 
 export class ADKChatAdapter implements ChatAdapter {
@@ -172,7 +171,6 @@ export class ADKChatAdapter implements ChatAdapter {
     switch (data.type) {
       case 'stream_start':
         console.log('[ADKChatAdapter] Stream started');
-        // Note: trace_id is not used in the adapter, it's handled at a higher level
         break;
 
       case 'text_token':

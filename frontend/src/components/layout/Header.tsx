@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '@/components/ui';
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
+  const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -19,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
       <button
         onClick={onMobileMenuClick}
         className="lg:hidden p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors"
-        aria-label="Open menu"
+        aria-label={t('common.openMenu')}
       >
         <Menu className="h-6 w-6 text-text-light-secondary dark:text-text-dark-secondary" />
       </button>
@@ -28,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
         {/* Notification Bell */}
         <button
           className="p-2 rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors relative"
-          title="Notifications"
+          title={t('common.notifications')}
         >
           <span className="material-symbols-outlined text-text-light-secondary dark:text-text-dark-secondary">
             notifications
@@ -43,8 +45,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
             <DropdownMenu.Trigger asChild>
               <button className="focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-full">
                 <Avatar
-                  src={user.avatar}
-                  alt={user.name || user.username_kr}
+                  alt={user.username_kr}
                   fallback={user.username_kr?.charAt(0)?.toUpperCase()}
                   size="md"
                   status="online"
@@ -82,7 +83,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
                   onSelect={() => navigate('/settings')}
                 >
                   <span className="material-symbols-outlined text-lg">settings</span>
-                  Settings
+                  {t('common.settings')}
                 </DropdownMenu.Item>
 
                 <DropdownMenu.Separator className="h-px bg-border-light dark:bg-border-dark my-1" />
@@ -92,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
                   onSelect={() => logout()}
                 >
                   <span className="material-symbols-outlined text-lg">logout</span>
-                  Logout
+                  {t('common.logout')}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>

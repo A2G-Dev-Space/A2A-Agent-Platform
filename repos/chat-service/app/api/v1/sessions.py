@@ -1,11 +1,12 @@
 """
 Chat session management API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import uuid
+import logging
 
 from app.core.database import get_db, ChatSession
 from app.core.security import get_current_user
@@ -13,6 +14,7 @@ from app.core.redis_client import get_redis_client, RedisClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class SessionCreate(BaseModel):
@@ -37,12 +39,39 @@ class SessionListItem(BaseModel):
 async def create_session(
     request: SessionCreate,
     current_user: dict = Depends(get_current_user),
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
     redis: RedisClient = Depends(get_redis_client)
 ):
     """Create new chat session"""
+    import httpx
+
     session_id = str(uuid.uuid4())
-    trace_id = str(uuid.uuid4())
+
+    # Get agent's trace_id from Agent Service (generated at agent creation)
+    token = authorization.replace("Bearer ", "") if authorization else ""
+    trace_id = None
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"http://agent-service:8002/api/agents/{request.agent_id}",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if response.status_code == 200:
+                agent_data = response.json()
+                trace_id = agent_data.get("trace_id")
+                logger.info(f"[Sessions] Retrieved trace_id for agent {request.agent_id}: {trace_id}")
+            else:
+                logger.warning(f"[Sessions] Failed to get agent trace_id: {response.status_code}")
+    except Exception as e:
+        logger.error(f"[Sessions] Error getting agent trace_id: {e}")
+
+    if not trace_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Agent not found or trace_id missing"
+        )
 
     session = ChatSession(
         session_id=session_id,

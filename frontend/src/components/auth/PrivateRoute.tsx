@@ -1,9 +1,11 @@
 import React from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { UserRole } from '@/types'
 
 export const PrivateRoute: React.FC = () => {
+  const { t } = useTranslation()
   const { isAuthenticated, isLoading, user } = useAuthStore()
   const location = useLocation()
 
@@ -11,8 +13,8 @@ export const PrivateRoute: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="loading-spinner w-8 h-8 border-purple-500 mx-auto mb-4" />
-          <p className="text-gray-500">Loading...</p>
+          <div className="loading-spinner w-8 h-8 mx-auto mb-4" style={{ borderColor: 'var(--color-primary)' }} />
+          <p className="text-text-light-secondary dark:text-text-dark-secondary">{t('common.loading')}</p>
         </div>
       </div>
     )

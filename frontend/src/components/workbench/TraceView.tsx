@@ -31,7 +31,7 @@ interface LogEntry {
 }
 
 interface TraceViewProps {
-  traceId: string;
+  traceId: string | null;
 }
 
 // Log type icons and colors (returns actual color values for inline styles)
@@ -286,7 +286,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
   // Logs will come from tracing service via WebSocket
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [, setIsLoadingHistory] = useState(true);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -417,7 +417,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
       >
         <div className="flex flex-col">
           <h2 className="text-base font-bold" style={{ color: 'var(--color-workbench-primary, #EA2831)' }}>
-            {t('workbench.trace')}
+            {t('workbench.trace.title')}
           </h2>
           <div className="flex items-center gap-2 text-xs">
             {isConnected ? (

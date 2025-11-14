@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -6,7 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
-import { Copy, Check, ZoomIn } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import Zoom from 'react-medium-image-zoom';
 import mermaid from 'mermaid';
 import 'highlight.js/styles/github-dark.css';
@@ -41,6 +42,7 @@ interface CodeBlockProps {
 }
 
 const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -56,18 +58,18 @@ const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
         setError('');
       } catch (err) {
         console.error('Mermaid rendering error:', err);
-        setError('Failed to render diagram');
+        setError(t('chat.diagramRenderError'));
       }
     };
 
     renderDiagram();
-  }, [chart]);
+  }, [chart, t]);
 
   if (error) {
     return (
       <div className="my-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
         <p className="text-red-600 dark:text-red-400 text-sm">
-          <strong>Diagram Error:</strong> {error}
+          <strong>{t('chat.diagramError')}</strong> {error}
         </p>
         <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">
           {chart}
@@ -86,6 +88,7 @@ const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
 };
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...props }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -118,22 +121,22 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
       {/* Language badge and copy button */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 text-gray-200 rounded-t-lg border-b border-gray-700">
         <span className="text-xs font-semibold uppercase tracking-wide">
-          {language || 'code'}
+          {language || t('chat.code')}
         </span>
         <button
           onClick={handleCopy}
           className="flex items-center gap-1.5 px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-          aria-label="Copy code"
+          aria-label={t('chat.copyCode')}
         >
           {copied ? (
             <>
               <Check className="w-3 h-3" />
-              <span>Copied!</span>
+              <span>{t('chat.copied')}</span>
             </>
           ) : (
             <>
               <Copy className="w-3 h-3" />
-              <span>Copy</span>
+              <span>{t('chat.copy')}</span>
             </>
           )}
         </button>
@@ -154,6 +157,8 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   contentType = 'markdown',
   className = '',
 }) => {
+  const { t } = useTranslation();
+
   // Plain text rendering
   if (contentType === 'text') {
     return (
@@ -178,7 +183,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
             <Zoom>
               <img
                 src={src}
-                alt={alt || 'Image'}
+                alt={alt || t('chat.image')}
                 className="max-w-full h-auto rounded-lg my-4 cursor-zoom-in"
                 loading="lazy"
                 {...props}

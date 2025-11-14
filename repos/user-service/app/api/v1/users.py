@@ -261,3 +261,21 @@ async def update_user_preferences(
         language=current_user.preferences.get("language", "en"),
         fontScale=current_user.preferences.get("fontScale", 80)
     )
+
+
+@router.get("/count")
+async def get_user_count(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get total user count (Internal API - No Auth Required)
+    Used by worker service for daily snapshots
+    """
+    from sqlalchemy import func
+
+    result = await db.execute(
+        select(func.count(User.id))
+    )
+    count = result.scalar() or 0
+
+    return {"count": count, "timestamp": datetime.utcnow().isoformat()}

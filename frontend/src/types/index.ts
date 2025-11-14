@@ -31,6 +31,9 @@ export enum AgentStatus {
   DEVELOPMENT = 'DEVELOPMENT',
   STAGING = 'STAGING',
   PRODUCTION = 'PRODUCTION',
+  DEPLOYED_TEAM = 'DEPLOYED_TEAM',
+  DEPLOYED_ALL = 'DEPLOYED_ALL',
+  DEPLOYED_DEPT = 'DEPLOYED_DEPT',
   ARCHIVED = 'ARCHIVED',
 }
 
@@ -48,6 +51,7 @@ export interface Agent {
   framework: AgentFramework
   status: AgentStatus
   a2a_endpoint: string
+  trace_id?: string  // Unique trace ID for LLM tracking
   capabilities: {
     skills?: string[]
     description?: string
