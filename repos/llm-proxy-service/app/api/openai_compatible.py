@@ -774,6 +774,20 @@ async def save_llm_call_to_db(
     """Save LLM call information to database"""
     try:
         async with async_session_maker() as session:
+            # If agent_id is unknown, lookup from Redis (stored by Workbench)
+            # Workbench stores trace_id -> agent_id mapping when generating trace_id
+            if agent_id == "unknown" and trace_id:
+                try:
+                    from ..core.redis_client import get_redis_client
+                    redis_client = await get_redis_client()
+                    stored_agent_id = await redis_client.get(f"trace:agent:{trace_id}")
+                    if stored_agent_id:
+                        # Found it! Use the stored agent_id
+                        agent_id = stored_agent_id.decode() if isinstance(stored_agent_id, bytes) else str(stored_agent_id)
+                        logger.info(f"[DB] Resolved agent_id from Redis: trace_id={trace_id} -> agent_id={agent_id}")
+                except Exception as e:
+                    logger.warning(f"[DB] Failed to lookup agent_id from Redis for trace_id={trace_id}: {e}")
+
             # Extract usage information
             usage = response_data.get("usage", {}) if success else {}
             request_tokens = usage.get("prompt_tokens", 0)

@@ -37,7 +37,10 @@ class WorkbenchMessage(BaseModel):
     session_id: Optional[str] = None  # Optional sessionId for agent-managed sessions
 
 async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
-    """Generate a fixed trace_id from user_id and agent_id"""
+    """
+    Generate a fixed trace_id from user_id and agent_id
+    Also stores agent_id in Redis for LLM proxy to lookup
+    """
     # Create deterministic trace_id that's always the same for user+agent combination
     combined = f"{user_id}_{agent_id}"
     # Use hash to create a valid UUID-like format
@@ -45,6 +48,18 @@ async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
     hex_dig = hash_obj.hexdigest()
     # Format as UUID-like string
     trace_id = f"{hex_dig[:8]}-{hex_dig[8:12]}-{hex_dig[12:16]}-{hex_dig[16:20]}-{hex_dig[20:32]}"
+
+    # Store trace_id -> agent_id mapping in Redis for LLM proxy
+    # This allows LLM proxy to correctly attribute token usage to agents
+    try:
+        from app.core.redis_client import get_redis_client
+        redis_client = await get_redis_client()
+        # Store for 24 hours (workbench sessions are typically shorter)
+        await redis_client.set(f"trace:agent:{trace_id}", str(agent_id), ex=86400)
+        logger.info(f"[Workbench] Stored trace_id -> agent_id mapping: {trace_id} -> {agent_id}")
+    except Exception as e:
+        logger.error(f"[Workbench] Failed to store trace_id mapping in Redis: {e}")
+
     return trace_id
 
 @router.post("/workbench/chat/stream")

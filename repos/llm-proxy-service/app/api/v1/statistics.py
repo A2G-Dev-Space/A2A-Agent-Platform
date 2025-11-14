@@ -31,9 +31,10 @@ async def get_agent_token_usage(
     - Includes agent name and owner information
     """
 
-    # Build query - Group by trace_id (agent) and model
+    # Build query - Group by agent_id (not trace_id!) and model
+    # agent_id is now properly stored thanks to Redis lookup in LLM proxy
     query = select(
-        LLMCall.trace_id,
+        LLMCall.agent_id,
         LLMCall.model,
         LLMCall.provider,
         func.sum(LLMCall.request_tokens).label('prompt_tokens'),
@@ -42,7 +43,7 @@ async def get_agent_token_usage(
         func.count(LLMCall.id).label('call_count')
     ).where(
         and_(
-            LLMCall.trace_id.isnot(None),
+            LLMCall.agent_id != "unknown",  # Exclude calls without agent_id
             LLMCall.success == True
         )
     )
@@ -51,9 +52,9 @@ async def get_agent_token_usage(
     if model and model.lower() != 'all':
         query = query.where(LLMCall.model == model)
 
-    # Group by trace_id and model, order by total tokens
+    # Group by agent_id and model, order by total tokens
     query = query.group_by(
-        LLMCall.trace_id,
+        LLMCall.agent_id,
         LLMCall.model,
         LLMCall.provider
     ).order_by(desc('total_tokens')).limit(limit)
@@ -61,21 +62,22 @@ async def get_agent_token_usage(
     result = await db.execute(query)
     rows = result.all()
 
-    # Get agent information from Agent Service (Internal API - No Auth Required)
+    # Get agent information from Agent Service by ID (Internal API - No Auth Required)
     agent_service_url = os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002')
-    agent_info_map = {}  # Map trace_id -> {name, owner_id}
+    agent_info_map = {}  # Map agent_id -> {name, owner_id}
 
-    # Collect unique trace_ids
-    trace_ids = list(set(row.trace_id for row in rows))
+    # Collect unique agent_ids
+    agent_ids = list(set(row.agent_id for row in rows))
 
-    if trace_ids:
-        # Fetch agent info in bulk using internal API
+    if agent_ids:
+        # Fetch agent info by IDs using internal API
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                trace_ids_param = ",".join(trace_ids)
+                # Query agents by IDs
+                agent_ids_param = ",".join(agent_ids)
                 response = await client.get(
-                    f"{agent_service_url}/api/internal/agents/by-trace-ids",
-                    params={"trace_ids": trace_ids_param}
+                    f"{agent_service_url}/api/internal/agents/by-ids",
+                    params={"agent_ids": agent_ids_param}
                 )
                 if response.status_code == 200:
                     data = response.json()
@@ -87,11 +89,11 @@ async def get_agent_token_usage(
     # Build response with agent names
     agent_usage = []
     for row in rows:
-        agent_info = agent_info_map.get(row.trace_id, {"name": "Unknown", "owner_id": "Unknown"})
+        agent_info = agent_info_map.get(row.agent_id, {"name": "Unknown", "owner_id": "Unknown"})
         agent_display_name = f"{agent_info['name']} ({agent_info['owner_id']})"
 
         agent_usage.append({
-            "trace_id": row.trace_id,
+            "agent_id": row.agent_id,
             "agent_name": agent_info["name"],
             "owner_id": agent_info["owner_id"],
             "agent_display_name": agent_display_name,
