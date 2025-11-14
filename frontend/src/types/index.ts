@@ -51,6 +51,7 @@ export interface Agent {
   framework: AgentFramework
   status: AgentStatus
   a2a_endpoint: string
+  trace_id?: string  // Unique trace ID for LLM tracking
   capabilities: {
     skills?: string[]
     description?: string

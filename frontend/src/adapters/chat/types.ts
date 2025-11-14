@@ -47,7 +47,6 @@ export interface ChatAdapterCallbacks {
   onChunk?: (chunk: ChatResponseChunk) => void;
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
-  onTraceId?: (traceId: string) => void;
 }
 
 /**

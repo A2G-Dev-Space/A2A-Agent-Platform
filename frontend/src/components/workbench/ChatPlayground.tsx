@@ -47,8 +47,8 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // trace_id will be received from the stream_start event via onTraceIdReceived callback
-  const [traceId, setTraceId] = useState<string | null>(null);
+  // Use agent's trace_id directly (generated when agent was created)
+  const traceId = agent.trace_id || null;
   const platformLlmEndpoint = traceId ? getPlatformLlmEndpointUrl(traceId) : null;
 
   // Configuration state
@@ -213,12 +213,14 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  // Send trace_id to parent component when available
+  // Send trace_id to parent component on mount (agent.trace_id is available immediately)
   useEffect(() => {
     if (traceId && onTraceIdReceived) {
       onTraceIdReceived(traceId);
     }
-  }, [traceId, onTraceIdReceived]);
+    // Only run once on mount since agent.trace_id doesn't change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isStreaming || !chatAdapterRef.current) return;
@@ -279,13 +281,6 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ agentName, agent
             setIsStreaming(false);
             // Optionally show error to user
             alert(`Chat error: ${error.message}`);
-          },
-          onTraceId: (newTraceId) => {
-            console.log('[ChatPlayground] Received trace_id:', newTraceId);
-            setTraceId(newTraceId);
-            if (onTraceIdReceived) {
-              onTraceIdReceived(newTraceId);
-            }
           },
         },
         conversationHistory // Pass conversation history for context
