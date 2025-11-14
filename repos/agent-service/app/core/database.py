@@ -59,6 +59,10 @@ class Agent(Base):
     capabilities: Mapped[Dict[str, Any]] = mapped_column(JSON)
     embedding_vector: Mapped[Optional[List[float]]] = mapped_column(JSON)  # Store embedding as JSON array
 
+    # UI Customization Fields
+    card_color: Mapped[Optional[str]] = mapped_column(String(20))  # Hex color for agent card
+    logo_url: Mapped[Optional[str]] = mapped_column(String(500))  # URL for agent logo
+
     # Access Control Fields
     owner_id: Mapped[str] = mapped_column(String(50), index=True)
     department: Mapped[Optional[str]] = mapped_column(String(100))

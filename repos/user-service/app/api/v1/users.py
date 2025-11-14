@@ -196,7 +196,7 @@ async def delete_api_key(
 # User Preferences Models
 class UserPreferences(BaseModel):
     """User preferences model"""
-    theme: str = "system"  # system, light, dark
+    theme: str = "light"  # system, light, dark
     language: str = "en"    # en, ko
     fontScale: int = 80      # 70-120
 
@@ -215,7 +215,7 @@ async def get_user_preferences(
     # For NEW users (not yet in DB), return defaults
     if current_user.role == "NEW" or current_user.id == 0:
         return UserPreferences(
-            theme="system",
+            theme="light",
             language="en",
             fontScale=80
         )
@@ -223,7 +223,7 @@ async def get_user_preferences(
     # Return preferences from database or defaults
     prefs = current_user.preferences or {}
     return UserPreferences(
-        theme=prefs.get("theme", "system"),
+        theme=prefs.get("theme", "light"),
         language=prefs.get("language", "en"),
         fontScale=prefs.get("fontScale", 80)
     )
@@ -257,7 +257,7 @@ async def update_user_preferences(
     await db.refresh(current_user)
 
     return UserPreferences(
-        theme=current_user.preferences.get("theme", "system"),
+        theme=current_user.preferences.get("theme", "light"),
         language=current_user.preferences.get("language", "en"),
         fontScale=current_user.preferences.get("fontScale", 80)
     )

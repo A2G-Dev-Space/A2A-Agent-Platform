@@ -171,10 +171,12 @@ async def get_users_count(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get total number of users (ADMIN only)
+    Get total number of approved users (ADMIN only)
+
+    Excludes PENDING users who haven't been approved yet.
     """
     result = await db.execute(
-        select(func.count(User.id))
+        select(func.count(User.id)).where(User.role != "PENDING")
     )
     count = result.scalar()
 
@@ -234,9 +236,10 @@ async def get_users_monthly_growth(
             else:
                 period_end = datetime(year, month + 1, 1)
 
-        # Count users created up to this period
+        # Count approved users created up to this period (exclude PENDING users)
         count_query = select(func.count(User.id)).where(
-            User.created_at < period_end
+            User.created_at < period_end,
+            User.role != "PENDING"
         )
 
         result = await db.execute(count_query)

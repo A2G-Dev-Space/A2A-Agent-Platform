@@ -37,7 +37,10 @@ class WorkbenchMessage(BaseModel):
     session_id: Optional[str] = None  # Optional sessionId for agent-managed sessions
 
 async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
-    """Generate a fixed trace_id from user_id and agent_id"""
+    """
+    Generate a fixed trace_id from user_id and agent_id
+    Updates Agent Service with this trace_id for LLM proxy lookup
+    """
     # Create deterministic trace_id that's always the same for user+agent combination
     combined = f"{user_id}_{agent_id}"
     # Use hash to create a valid UUID-like format
@@ -45,6 +48,22 @@ async def generate_fixed_trace_id(user_id: str, agent_id: int) -> str:
     hex_dig = hash_obj.hexdigest()
     # Format as UUID-like string
     trace_id = f"{hex_dig[:8]}-{hex_dig[8:12]}-{hex_dig[12:16]}-{hex_dig[16:20]}-{hex_dig[20:32]}"
+
+    # Update Agent Service with this trace_id
+    # LLM proxy will use trace_id to lookup agent_id for token usage tracking
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.patch(
+                f"http://agent-service:8002/api/agents/{agent_id}/trace-id",
+                json={"trace_id": trace_id}
+            )
+            if response.status_code == 200:
+                logger.info(f"[Workbench] Updated agent {agent_id} with trace_id: {trace_id}")
+            else:
+                logger.warning(f"[Workbench] Failed to update agent trace_id: {response.status_code}")
+    except Exception as e:
+        logger.error(f"[Workbench] Error updating agent trace_id: {e}")
+
     return trace_id
 
 @router.post("/workbench/chat/stream")

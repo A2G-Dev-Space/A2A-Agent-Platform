@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 600000, // 10 minutes for long-running LLM requests
   headers: {
     'Content-Type': 'application/json',
   },
@@ -135,7 +135,7 @@ export const apiClient = {
 // Admin API client (points to admin service via API Gateway)
 export const adminAPI = axios.create({
   baseURL: 'http://localhost:9050/api/admin',
-  timeout: 30000,
+  timeout: 600000, // 10 minutes for long-running operations
   headers: {
     'Content-Type': 'application/json',
   },

@@ -430,12 +430,14 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
             onClick={() => setShowGuide(!showGuide)}
             className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
             style={{
-              color: showGuide ? 'var(--color-workbench-primary, #EA2831)' : '#6b7280',
+              color: showGuide ? 'var(--color-workbench-primary, #EA2831)' : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280'),
               backgroundColor: showGuide
                 ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.1)' : 'rgba(234, 40, 49, 0.08)')
                 : 'transparent',
               border: '1px solid',
-              borderColor: showGuide ? 'var(--color-workbench-primary, #EA2831)' : 'var(--color-border-light, #e5e7eb)'
+              borderColor: showGuide
+                ? 'var(--color-workbench-primary, #EA2831)'
+                : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#2d2938' : '#e5e7eb')
             }}
             title="Playground Guide"
           >
@@ -445,12 +447,14 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
             onClick={() => setShowConfig(!showConfig)}
             className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
             style={{
-              color: showConfig ? 'var(--color-workbench-primary, #EA2831)' : '#6b7280',
+              color: showConfig ? 'var(--color-workbench-primary, #EA2831)' : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280'),
               backgroundColor: showConfig
                 ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.1)' : 'rgba(234, 40, 49, 0.08)')
                 : 'transparent',
               border: '1px solid',
-              borderColor: showConfig ? 'var(--color-workbench-primary, #EA2831)' : 'var(--color-border-light, #e5e7eb)'
+              borderColor: showConfig
+                ? 'var(--color-workbench-primary, #EA2831)'
+                : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#2d2938' : '#e5e7eb')
             }}
             title="Configuration"
           >
@@ -458,14 +462,11 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
           </button>
           <button
             onClick={handleClearSession}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 gap-2 text-sm font-medium transition-all hover:border-red-400"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-3 gap-2 text-sm font-medium transition-all"
             style={{
-              color: '#6b7280',
-              border: '1px solid var(--color-border-light, #e5e7eb)',
-              ':hover': {
-                borderColor: 'var(--color-workbench-primary, #EA2831)',
-                color: 'var(--color-workbench-primary, #EA2831)'
-              }
+              color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280',
+              border: '1px solid',
+              borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#2d2938' : '#e5e7eb'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = 'var(--color-workbench-primary, #EA2831)';
@@ -475,8 +476,9 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 : 'rgba(234, 40, 49, 0.05)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border-light, #e5e7eb)';
-              e.currentTarget.style.color = '#6b7280';
+              const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+              e.currentTarget.style.borderColor = isDark ? '#2d2938' : '#e5e7eb';
+              e.currentTarget.style.color = isDark ? '#9ca3af' : '#6b7280';
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
@@ -769,8 +771,19 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
               </h4>
               {platformLlmEndpoint ? (
                 <>
-                  <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded border border-black dark:border-gray-100">
-                    <code className="text-xs text-gray-700 dark:text-gray-300 break-all">
+                  <div
+                    className="flex items-center justify-between p-2 rounded border"
+                    style={{
+                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1f2937' : '#ffffff',
+                      borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#4b5563' : '#d1d5db'
+                    }}
+                  >
+                    <code
+                      className="text-xs break-all"
+                      style={{
+                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e5e7eb' : '#1f2937'
+                      }}
+                    >
                       {platformLlmEndpoint}
                     </code>
                     <button
@@ -807,7 +820,12 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                   value={agentEndpoint}
                   onChange={(e) => setAgentEndpoint(e.target.value)}
                   placeholder="http://localhost:8011"
-                  className="w-full rounded-lg border border-black dark:border-gray-100 bg-white dark:bg-gray-800 p-2 text-sm text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  className="w-full rounded-lg border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                  style={{
+                    backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1f2937' : '#ffffff',
+                    borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#4b5563' : '#d1d5db',
+                    color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e5e7eb' : '#1f2937'
+                  }}
                 />
                 <p className="text-xs text-green-700 dark:text-green-400 mt-1">
                   Enter your agent's hosted A2A endpoint (e.g., http://localhost:8011)
@@ -820,11 +838,26 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 disabled={!agentEndpoint.trim() || isSavingEndpoint}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-2"
                 style={{
-                  backgroundColor: 'white',
-                  color: '#16a34a',
-                  borderWidth: '2px',
-                  borderColor: '#86efac',
-                  borderStyle: 'solid'
+                  backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.1)'
+                    : '#ffffff',
+                  color: 'var(--color-workbench-primary, #EA2831)',
+                  borderWidth: '1px',
+                  borderColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.5)'
+                    : 'var(--color-workbench-primary, #EA2831)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                      ? 'rgba(234, 40, 49, 0.2)'
+                      : 'rgba(234, 40, 49, 0.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.1)'
+                    : '#ffffff';
                 }}
               >
                 {isSavingEndpoint && (
@@ -873,11 +906,26 @@ export const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ sessionId, agent
                 disabled={!agentEndpoint.trim() || agentEndpointStatus === 'testing'}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  backgroundColor: 'white',
-                  color: '#16a34a',
-                  borderWidth: '2px',
-                  borderColor: '#86efac',
-                  borderStyle: 'solid'
+                  backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.1)'
+                    : '#ffffff',
+                  color: 'var(--color-workbench-primary, #EA2831)',
+                  borderWidth: '1px',
+                  borderColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.5)'
+                    : 'var(--color-workbench-primary, #EA2831)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                      ? 'rgba(234, 40, 49, 0.2)'
+                      : 'rgba(234, 40, 49, 0.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = document.documentElement.getAttribute('data-theme') === 'dark'
+                    ? 'rgba(234, 40, 49, 0.1)'
+                    : '#ffffff';
                 }}
               >
                 {agentEndpointStatus === 'testing' && (

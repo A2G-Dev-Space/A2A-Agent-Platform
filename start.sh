@@ -183,8 +183,34 @@ case $MODE in
             echo "⚠️  Setup completed with some failures. Check error messages above."
             echo "   You can try running './start.sh update' to retry migrations."
         else
-            echo "🎉 Setup completed successfully!"
+            echo "✅ Migrations completed successfully!"
         fi
+
+        echo ""
+        echo "🗑️  Initializing databases with clean state..."
+
+        # Clear all data and create admin user
+        docker exec a2g-postgres psql -U dev_user -d user_service_db -c "DELETE FROM users;" > /dev/null 2>&1
+        docker exec a2g-postgres psql -U dev_user -d user_service_db -c "INSERT INTO users (username, username_kr, username_en, email, department_kr, department_en, role, created_at, updated_at, preferences) VALUES ('admin', 'Admin', 'Admin', 'admin@company.com', 'admin-team', 'admin-team', 'ADMIN', NOW(), NOW(), '{}');" > /dev/null 2>&1
+        echo "   ✅ User database initialized (1 admin user)"
+
+        docker exec a2g-postgres psql -U dev_user -d agent_service_db -c "DELETE FROM agents;" > /dev/null 2>&1
+        echo "   ✅ Agent database cleared"
+
+        docker exec a2g-postgres psql -U dev_user -d admin_service_db -c "DELETE FROM llm_models;" > /dev/null 2>&1
+        echo "   ✅ LLM models database cleared"
+
+        docker exec a2g-postgres psql -U dev_user -d llm_proxy_db -c "DELETE FROM llm_calls; DELETE FROM trace_events; DELETE FROM tool_calls;" > /dev/null 2>&1
+        echo "   ✅ LLM proxy database cleared"
+
+        docker exec a2g-postgres psql -U dev_user -d chat_service_db -c "DELETE FROM sessions; DELETE FROM messages;" > /dev/null 2>&1
+        echo "   ✅ Chat database cleared"
+
+        docker exec a2g-postgres psql -U dev_user -d tracing_service_db -c "DELETE FROM trace_logs;" > /dev/null 2>&1
+        echo "   ✅ Tracing database cleared"
+
+        echo ""
+        echo "🎉 Setup completed successfully!"
 
         echo ""
         echo "📌 Next steps:"

@@ -7,6 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db
 from app.core.redis_client import redis_client
+from alembic.config import Config
+from alembic import command
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -15,12 +18,38 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def run_migrations():
+    """Run alembic migrations"""
+    try:
+        # Get the alembic.ini path (relative to the project root)
+        alembic_cfg = Config("alembic.ini")
+
+        # Override sqlalchemy.url with environment variable
+        database_url = os.getenv("DATABASE_URL", "postgresql://dev_user:dev_password@postgres:5432/llm_proxy_db")
+        # Convert asyncpg URL to psycopg2 for alembic
+        if database_url.startswith("postgresql+asyncpg://"):
+            database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+        alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+        logger.info("Running database migrations...")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}")
+        # Don't raise - let the service continue if migrations fail
+        # This is important for development when database might already be up to date
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Starting LLM Proxy Service...")
 
-    # Initialize database
+    # Run database migrations
+    run_migrations()
+
+    # Initialize database (creates tables if they don't exist)
     logger.info("Initializing database...")
     await init_db()
     logger.info("Database initialized successfully")

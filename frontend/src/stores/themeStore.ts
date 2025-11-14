@@ -29,7 +29,7 @@ const applyFontScale = (scale: number) => {
 };
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: 'system',
+  theme: 'light',
   fontScale: 80,
   language: 'en',
   isLoading: false,
@@ -57,11 +57,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const preferences = await userService.getUserPreferences();
       if (preferences) {
         set({
-          theme: preferences.theme || 'system',
+          theme: preferences.theme || 'light',
           fontScale: preferences.fontScale || 80,
           language: preferences.language || 'en',
         });
-        applyTheme(preferences.theme || 'system');
+        applyTheme(preferences.theme || 'light');
         applyFontScale(preferences.fontScale || 80);
       }
     } catch (error) {
