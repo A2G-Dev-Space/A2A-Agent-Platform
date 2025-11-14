@@ -185,7 +185,10 @@ const StatisticsPage: React.FC = () => {
           } : {
             total_users: 0,
             active_agents: 0,
-            development_agents: 0,
+            agents_in_dev: 0,
+            user_monthly_growth: [],
+            agent_monthly_growth: [],
+            token_monthly_usage: [],
             agent_token_usage: [],
             model_usage_stats: modelUsageData
           });
