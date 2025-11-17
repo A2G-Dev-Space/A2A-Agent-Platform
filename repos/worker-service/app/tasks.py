@@ -235,18 +235,22 @@ async def _collect_daily_snapshot_async():
                                     usage_data = usage_response.json()
                                     agent_id_str = str(agent["id"])
 
-                                    # Store total usage
-                                    agent_token_usage[agent_id_str] = {
+                                    # Store total usage with trace_id as key (trace_id is the real identifier)
+                                    agent_token_usage[trace_id] = {
+                                        "agent_id": agent_id_str,
+                                        "trace_id": trace_id,
                                         "name": agent.get("name", "Unknown"),
+                                        "display_name": agent.get("display_name", agent.get("name", "Unknown")),
+                                        "owner_id": agent.get("owner_id"),
                                         "total_tokens": usage_data.get("total_tokens", 0),
                                         "call_count": usage_data.get("call_count", 0),
                                         "prompt_tokens": usage_data.get("prompt_tokens", 0),
                                         "completion_tokens": usage_data.get("completion_tokens", 0)
                                     }
 
-                                    # Store by-model usage
+                                    # Store by-model usage with trace_id as key
                                     if "by_model" in usage_data and usage_data["by_model"]:
-                                        agent_token_usage_by_model[agent_id_str] = usage_data["by_model"]
+                                        agent_token_usage_by_model[trace_id] = usage_data["by_model"]
                             except Exception as e:
                                 logger.error(f"Failed to get usage for agent {agent['id']}: {e}")
             except Exception as e:

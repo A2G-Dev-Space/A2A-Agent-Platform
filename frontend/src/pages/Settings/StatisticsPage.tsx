@@ -473,46 +473,111 @@ const StatisticsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Model Usage Stats Table */}
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            Model Usage Statistics
-          </h3>
-          {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.model_usage_stats.map((model, idx) => (
-                    <tr
-                      key={`${model.model}-${model.provider}`}
-                      className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                    >
-                      <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
-                      <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
-                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                        {model.total_tokens.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                        {model.call_count.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="mt-4 py-8 text-center text-slate-500">
-              Loading model usage statistics...
-            </div>
-          )}
+        {/* Model Usage Stats - Bar Charts */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Total Tokens by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Total Tokens by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="total_tokens"
+                      fill="#359EFF"
+                      name="Total Tokens"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
+
+          {/* LLM Calls by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              LLM Calls by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="call_count"
+                      fill="#16a34a"
+                      name="LLM Calls"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
