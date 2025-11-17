@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, User, Bot, Settings, ChevronUp, ChevronDown, Copy, Check, HelpCircle, Globe } from 'lucide-react';
+import { RefreshCw, Send, User, Bot, Settings, ChevronUp, ChevronDown, Copy, Check, HelpCircle, Globe, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
@@ -8,6 +8,8 @@ import { getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
+import { WorkflowGuideModal } from './WorkflowGuideModal';
+import { downloadExampleCode } from '@/utils/downloadExamples';
 
 interface Message {
   id: string;
@@ -57,6 +59,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   // Configuration state
   const [showConfig, setShowConfig] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
   const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
@@ -94,6 +97,30 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
     setAgentSessionId(storedSessionId);
   }, [agent.id]);
+
+  // Check if this is the first visit and show workflow guide
+  useEffect(() => {
+    const workflowSeenKey = `workbench-workflow-seen-${agent.framework}`;
+    const hasSeenWorkflow = localStorage.getItem(workflowSeenKey);
+
+    if (!hasSeenWorkflow) {
+      // Show workflow guide after a short delay
+      const timer = setTimeout(() => {
+        setShowWorkflowGuide(true);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [agent.framework]);
+
+  // Download example code handler
+  const handleDownloadExamples = async () => {
+    try {
+      await downloadExampleCode(agent.framework);
+    } catch (error) {
+      console.error('Failed to download example code:', error);
+    }
+  };
 
   // Load messages from backend
   useEffect(() => {
@@ -617,6 +644,19 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowWorkflowGuide(true)}
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
+            style={{
+              color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280',
+              backgroundColor: 'transparent',
+              border: '1px solid',
+              borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#2d2938' : '#e5e7eb'
+            }}
+            title="Workflow Guide"
+          >
+            <BookOpen className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 w-9 transition-all"
@@ -1595,6 +1635,14 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           </button>
         </div>
       </div>
+
+      {/* Workflow Guide Modal */}
+      <WorkflowGuideModal
+        isOpen={showWorkflowGuide}
+        onClose={() => setShowWorkflowGuide(false)}
+        framework={agent.framework}
+        onDownloadExamples={handleDownloadExamples}
+      />
     </div>
   );
 };

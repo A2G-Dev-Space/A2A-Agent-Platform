@@ -109,6 +109,43 @@
             "TeamRunError": "팀 오류",
             "RunError": "에이전트 오류"
         },
+        "workflow": {
+            "title": "워크벤치 사용 가이드",
+            "downloadExamples": "예시 코드 다운로드",
+            "dontShowAgain": "다시 보지 않기",
+            "adk": {
+                "step1Title": "1. 에이전트 생성",
+                "step1Desc": "워크벤치에서 개발할 에이전트를 생성합니다.",
+                "step2Title": "2. 엔드포인트 확인",
+                "step2Desc": "생성된 에이전트를 클릭하면 Chat과 Trace 창이 나오고, Configuration 안에 사용할 수 있는 LLM Proxy 엔드포인트가 표시됩니다.",
+                "step3Title": "3. 에이전트 개발",
+                "step3Desc": "제공된 엔드포인트와 Settings에서 발급받은 API 키로 ADK 에이전트를 개발합니다. 에이전트는 A2A JSON-RPC 방식으로 통신합니다.",
+                "step4Title": "4. 연결 테스트",
+                "step4Desc": "Chat Playground의 Config에 개발한 에이전트의 호스트 주소를 입력하고 Connection Test를 수행합니다.",
+                "step5Title": "5. 채팅 테스트",
+                "step5Desc": "Chat Playground에서 개발한 에이전트와 대화를 테스트할 수 있습니다.",
+                "step6Title": "6. 실시간 추적",
+                "step6Desc": "LLM Proxy가 제공하는 trace_id를 통해 Trace 창에서 5가지 이벤트 정보를 실시간으로 확인할 수 있습니다 (확장/축소 가능).",
+                "step7Title": "7. 세션 히스토리",
+                "step7Desc": "워크벤치는 하나의 세션에 대한 대화 히스토리를 제공합니다."
+            },
+            "agno": {
+                "step1Title": "1. 에이전트 생성",
+                "step1Desc": "워크벤치에서 개발할 에이전트를 생성합니다.",
+                "step2Title": "2. 엔드포인트 확인",
+                "step2Desc": "생성된 에이전트를 클릭하면 Chat과 Trace 창이 나오고, Configuration 안에 사용할 수 있는 LLM Proxy 엔드포인트가 표시됩니다.",
+                "step3Title": "3. 에이전트 개발",
+                "step3Desc": "제공된 엔드포인트와 Settings에서 발급받은 API 키로 Agno 에이전트를 개발합니다. 에이전트는 REST API /run 엔드포인트로 통신합니다.",
+                "step4Title": "4. 연결 및 리소스 선택",
+                "step4Desc": "Chat Playground의 Config에 개발한 에이전트의 호스트 주소를 입력하고 Connection Test를 수행합니다. 연결 성공 후 채팅할 Agent 또는 Team을 선택합니다.",
+                "step5Title": "5. 채팅 테스트",
+                "step5Desc": "Chat Playground에서 개발한 에이전트와 대화를 테스트할 수 있습니다.",
+                "step6Title": "6. 실시간 추적",
+                "step6Desc": "LLM Proxy가 제공하는 trace_id를 통해 Trace 창에서 5가지 이벤트 정보를 실시간으로 확인할 수 있습니다 (확장/축소 가능).",
+                "step7Title": "7. 세션 히스토리",
+                "step7Desc": "워크벤치는 하나의 세션에 대한 대화 히스토리를 제공합니다."
+            }
+        },
         "guide": {
             "title": "플레이그라운드에서 표시 가능한 기능",
             "intro": "A2A 채팅 플레이그라운드는 고급 기능을 갖춘 풍부한 마크다운 렌더링을 지원합니다. 이 가이드는 표시할 수 있는 것과 최상의 사용자 경험을 위해 에이전트 응답을 포맷하는 방법을 보여줍니다.",
@@ -238,6 +275,7 @@
     },
     "common": {
         "cancel": "취소",
+        "close": "닫기",
         "creating": "생성 중...",
         "save": "저장",
         "pageNotFound": "페이지를 찾을 수 없습니다",
