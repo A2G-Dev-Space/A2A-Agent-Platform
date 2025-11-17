@@ -62,7 +62,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [showCorsExample, setShowCorsExample] = useState(false);
 
   // Agno-specific state
-  const [selectedResource, setSelectedResource] = useState('');
+  const [selectedResource, setSelectedResource] = useState(() => {
+    // Load from localStorage on mount
+    const stored = localStorage.getItem(`agno_selected_resource_${agent.id}`);
+    return stored || '';
+  });
   const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>([]);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false);
@@ -231,6 +235,29 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
+
+  // Save selectedResource to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedResource) {
+      localStorage.setItem(`agno_selected_resource_${agent.id}`, selectedResource);
+      console.log('[ChatPlaygroundAgno] Saved selected resource to localStorage:', selectedResource);
+    }
+  }, [selectedResource, agent.id]);
+
+  // Validate selectedResource when agnoResources are loaded
+  useEffect(() => {
+    if (agnoResources.length > 0 && selectedResource) {
+      // Check if the stored resource still exists
+      const exists = agnoResources.some((r) => r.id === selectedResource);
+      if (!exists) {
+        console.log('[ChatPlaygroundAgno] Stored resource no longer exists, clearing selection');
+        setSelectedResource('');
+        localStorage.removeItem(`agno_selected_resource_${agent.id}`);
+      } else {
+        console.log('[ChatPlaygroundAgno] Restored selected resource from localStorage:', selectedResource);
+      }
+    }
+  }, [agnoResources, selectedResource, agent.id]);
 
   // Send trace_id to parent
   useEffect(() => {
