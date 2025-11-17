@@ -287,13 +287,8 @@
         "logout": "Logout"
     },
     "flow": {
-        "title": "Flow Dashboard",
-        "subtitle": "Select agents and start a conversation.",
-        "newChat": "New Chat",
-        "allAgents": "All Agents",
-        "welcomeTitle": "Welcome to Flow Chat",
-        "welcomeSubtitle": "Select one or more agents from the dropdown above to start your conversation. If no agent is selected, you'll be interacting with all available agents.",
-        "messagePlaceholder": "Type your message here..."
+        "title": "Flow",
+        "underDevelopment": "Multi Agent Orchestration feature is under development..!"
     },
     "settings": {
         "title": "Settings",

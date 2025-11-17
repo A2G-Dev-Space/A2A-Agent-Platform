@@ -287,13 +287,8 @@
         "logout": "로그아웃"
     },
     "flow": {
-        "title": "플로우 대시보드",
-        "subtitle": "에이전트를 선택하고 대화를 시작하세요.",
-        "newChat": "새 채팅",
-        "allAgents": "모든 에이전트",
-        "welcomeTitle": "플로우 채팅에 오신 것을 환영합니다",
-        "welcomeSubtitle": "대화를 시작하려면 위 드롭다운에서 하나 이상의 에이전트를 선택하세요. 에이전트를 선택하지 않으면 사용 가능한 모든 에이전트와 상호 작용하게 됩니다.",
-        "messagePlaceholder": "여기에 메시지를 입력하세요..."
+        "title": "플로우",
+        "underDevelopment": "Multi Agent Orchestration 기능 개발중입니다..!"
     },
     "settings": {
         "title": "설정",
