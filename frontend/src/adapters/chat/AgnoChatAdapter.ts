@@ -30,13 +30,11 @@ export class AgnoChatAdapter implements ChatAdapter {
   async sendMessage(
     message: ChatMessage,
     callbacks: ChatAdapterCallbacks,
-    _conversationHistory?: import('./types').ConversationMessage[]
+    conversationHistory?: import('./types').ConversationMessage[]
   ): Promise<void> {
     if (!this.config) {
       throw new Error('AgnoChatAdapter not initialized');
     }
-
-    // TODO: Implement conversation history support for Agno (streaming supported)
 
     // Reset streaming buffer
     this.streamingMessageBuffer = '';
@@ -45,7 +43,7 @@ export class AgnoChatAdapter implements ChatAdapter {
     this.abortController = new AbortController();
 
     try {
-      await this.handleSSEStream(message, callbacks);
+      await this.handleSSEStream(message, callbacks, conversationHistory);
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('[AgnoChatAdapter] Stream aborted');
@@ -79,7 +77,8 @@ export class AgnoChatAdapter implements ChatAdapter {
 
   private async handleSSEStream(
     message: ChatMessage,
-    callbacks: ChatAdapterCallbacks
+    callbacks: ChatAdapterCallbacks,
+    conversationHistory?: import('./types').ConversationMessage[]
   ): Promise<void> {
     if (!this.config || !this.abortController) {
       throw new Error('Invalid adapter state');
@@ -96,16 +95,29 @@ export class AgnoChatAdapter implements ChatAdapter {
     const resourceType = selectedResourceType || 'team';
     const endpoint = `${agentEndpoint}/${resourceType}s/${selectedResource}/runs`;
 
+    // Build message content with conversation history
+    let messageContent = message.content;
+
+    // Add conversation history as text prefix if provided
+    if (conversationHistory && conversationHistory.length > 0) {
+      const historyText = conversationHistory
+        .map(msg => `${msg.role}: ${msg.content}`)
+        .join('\n');
+      messageContent = `history:\n${historyText}\n\n${message.content}`;
+    }
+
     console.log('[AgnoChatAdapter] Sending message:', {
       endpoint,
-      messageLength: message.content.length,
+      messageLength: messageContent.length,
+      hasHistory: conversationHistory && conversationHistory.length > 0,
+      historyLength: conversationHistory?.length || 0,
       selectedResource,
       selectedResourceType: resourceType,
     });
 
     // Use FormData for Agno's multipart/form-data API
     const formData = new FormData();
-    formData.append('message', message.content);
+    formData.append('message', messageContent);
     formData.append('stream', 'true');
     formData.append('user_id', 'workbench_user');
 
