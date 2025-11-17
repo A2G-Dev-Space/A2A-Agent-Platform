@@ -85,7 +85,7 @@ export class AgnoChatAdapter implements ChatAdapter {
       throw new Error('Invalid adapter state');
     }
 
-    const { apiBaseUrl, accessToken, agentId, sessionId } = this.config;
+    const { apiBaseUrl, accessToken, agentId, sessionId, selectedResource } = this.config;
 
     // Use workbench API if no sessionId, otherwise use chat API
     const endpoint = sessionId
@@ -94,11 +94,12 @@ export class AgnoChatAdapter implements ChatAdapter {
 
     const body = sessionId
       ? { content: message.content }
-      : { agent_id: agentId, content: message.content };
+      : { agent_id: agentId, content: message.content, selected_resource: selectedResource };
 
     console.log('[AgnoChatAdapter] Sending message:', {
       endpoint,
       messageLength: message.content.length,
+      selectedResource,
     });
 
     const response = await fetch(endpoint, {

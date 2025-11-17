@@ -197,7 +197,17 @@ async def proxy_request(request: Request, service_url: str, path: str):
     if request.method != "GET":
         body = await request.body()
 
-    logger.info(f"Proxying {request.method} {path} -> {target_url}")
+    logger.info("=" * 80)
+    logger.info(f"[API Gateway] Proxying request:")
+    logger.info(f"  Method: {request.method}")
+    logger.info(f"  Original path: {path}")
+    logger.info(f"  Target URL: {target_url}")
+    logger.info(f"  Query params: {query_params}")
+    logger.info(f"  Headers: {dict(headers)}")
+    if body:
+        logger.info(f"  Body length: {len(body)} bytes")
+        logger.info(f"  Body preview: {body[:200]}")
+    logger.info("=" * 80)
 
     try:
         # Make the request to the backend service
@@ -208,6 +218,8 @@ async def proxy_request(request: Request, service_url: str, path: str):
             headers=headers,
             content=body
         )
+
+        logger.info(f"[API Gateway] Response received: status={response.status_code}, content-type={response.headers.get('content-type')}")
 
         # Return the response
         return StreamingResponse(

@@ -30,10 +30,13 @@ class Message(BaseModel):
     timestamp: Optional[str] = None  # Timestamp from frontend
 
 class WorkbenchMessage(BaseModel):
-    """Message request for Workbench with conversation history"""
+    """Message request for Workbench with conversation history (ADK and Agno)"""
     agent_id: int
-    messages: list[Message]  # Array of messages for conversation context
-    session_id: Optional[str] = None  # Optional sessionId for agent-managed sessions
+    messages: list[Message] = []  # Array of messages for conversation context (ADK)
+    session_id: Optional[str] = None  # Optional sessionId for agent-managed sessions (ADK)
+    # Agno-specific fields
+    content: Optional[str] = None  # Single message content for Agno
+    selected_resource: Optional[str] = None  # team_id or agent_id for Agno framework
 
 async def get_agent_trace_id(agent_id: int, token: str) -> Optional[str]:
     """
@@ -58,6 +61,25 @@ async def get_agent_trace_id(agent_id: int, token: str) -> Optional[str]:
         logger.error(f"[Workbench] Error getting agent trace_id: {e}")
         return None
 
+async def get_agent_info(agent_id: int, token: str) -> Optional[dict]:
+    """
+    Get full agent info from Agent Service (framework, a2a_endpoint, trace_id, etc.)
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"http://agent-service:8002/api/agents/{agent_id}",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning(f"[Workbench] Failed to get agent info: {response.status_code}")
+                return None
+    except Exception as e:
+        logger.error(f"[Workbench] Error getting agent info: {e}")
+        return None
+
 @router.post("/workbench/chat/stream")
 async def workbench_chat_stream(
     request: WorkbenchMessage,
@@ -65,53 +87,73 @@ async def workbench_chat_stream(
     authorization: Optional[str] = Header(None)
 ):
     """
-    Stream chat response from agent for Workbench mode
-    Maintains conversation history within the session (client-managed)
-    Uses trace_id from Agent Service (generated at agent creation)
+    Stream chat response from agent for Workbench mode (ADK and Agno)
+    - ADK: Uses messages array with A2A JSON-RPC protocol
+    - Agno: Uses content + selected_resource with multipart/form-data
     """
     user_id = current_user["username"]
     token = authorization.replace("Bearer ", "") if authorization else ""
-    trace_id = await get_agent_trace_id(request.agent_id, token)
 
-    if not trace_id:
-        raise HTTPException(status_code=404, detail="Agent not found or trace_id missing")
-
-    # Log session info
-    session_info = f", session_id={request.session_id}" if request.session_id else " (no session)"
-    logger.info(f"[Workbench] Chat request from {user_id} to agent {request.agent_id}, messages={len(request.messages)}, trace_id={trace_id}{session_info}")
-
-    # Get agent URL
-    agent_url = await _get_agent_url(request.agent_id, token)
-    if not agent_url:
+    # Get full agent info (framework, endpoint, trace_id)
+    agent_info = await get_agent_info(request.agent_id, token)
+    if not agent_info:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    # Stream response from agent
-    async def event_stream() -> AsyncGenerator[str, None]:
-        """Stream events from agent"""
-        yield f"data: {json.dumps({'type': 'stream_start', 'trace_id': trace_id})}\n\n"
+    framework = agent_info.get("framework", "ADK")
+    agent_url = agent_info.get("a2a_endpoint")
+    trace_id = agent_info.get("trace_id")
 
-        try:
-            async for event in _stream_from_agent_a2a(agent_url, request.messages, trace_id, request.session_id):
-                if event["type"] == "text_token":
-                    yield f"data: {json.dumps(event)}\n\n"
+    if not agent_url:
+        raise HTTPException(status_code=400, detail="Agent endpoint not configured")
 
-            yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+    logger.info(f"[Workbench] Chat request: agent={request.agent_id}, framework={framework}, user={user_id}")
 
-        except Exception as e:
-            logger.error(f"[Workbench] Error streaming from agent: {e}")
-            error_event = {"type": "error", "message": str(e)}
-            yield f"data: {json.dumps(error_event)}\n\n"
+    # Branch based on framework
+    if framework == "Agno":
+        # Agno: Use content + selected_resource
+        if not request.content:
+            raise HTTPException(status_code=400, detail="content is required for Agno agents")
 
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-            "X-Trace-ID": trace_id  # Include trace_id in response header
-        }
-    )
+        return await _handle_agno_stream(request, agent_url, user_id, trace_id)
+
+    else:  # ADK or other frameworks
+        # ADK: Use messages array (existing logic)
+        if not trace_id:
+            raise HTTPException(status_code=404, detail="trace_id missing for ADK agent")
+
+        if not request.messages:
+            raise HTTPException(status_code=400, detail="messages array is required for ADK agents")
+
+        session_info = f", session_id={request.session_id}" if request.session_id else " (no session)"
+        logger.info(f"[Workbench] ADK: messages={len(request.messages)}, trace_id={trace_id}{session_info}")
+
+        # Stream response from ADK agent (existing logic)
+        async def event_stream() -> AsyncGenerator[str, None]:
+            """Stream events from ADK agent"""
+            yield f"data: {json.dumps({'type': 'stream_start', 'trace_id': trace_id})}\n\n"
+
+            try:
+                async for event in _stream_from_agent_a2a(agent_url, request.messages, trace_id, request.session_id):
+                    if event["type"] == "text_token":
+                        yield f"data: {json.dumps(event)}\n\n"
+
+                yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+
+            except Exception as e:
+                logger.error(f"[Workbench] Error streaming from ADK agent: {e}")
+                error_event = {"type": "error", "message": str(e)}
+                yield f"data: {json.dumps(error_event)}\n\n"
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+                "X-Trace-ID": trace_id
+            }
+        )
 
 @router.get("/workbench/messages/{agent_id}")
 async def get_workbench_messages(
@@ -400,3 +442,110 @@ async def _stream_from_agent_a2a(agent_url: str, messages: list[Message], trace_
         elif "error" in result_data:
             error = result_data["error"]
             raise Exception(f"Agent error: {error.get('message')}")
+
+
+async def _handle_agno_stream(
+    request: WorkbenchMessage,
+    agent_url: str,
+    user_id: str,
+    trace_id: Optional[str]
+) -> StreamingResponse:
+    """
+    Handle Agno framework streaming using multipart/form-data
+    Agno uses team-based routing with direct SSE streaming
+    """
+    # Replace localhost with host.docker.internal for Docker network
+    agent_url = agent_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+
+    # Build Agno chat endpoint based on selected_resource
+    # Agno uses team-based routing: {agent_url}/teams/{team_id}/runs
+    if request.selected_resource:
+        # Remove 'team_' prefix if exists, otherwise use as-is
+        team_id = request.selected_resource.replace("team_", "") if request.selected_resource.startswith("team_") else request.selected_resource
+        chat_endpoint = f"{agent_url.rstrip('/')}/teams/{team_id}/runs"
+    else:
+        # Default to direct endpoint (no team routing)
+        chat_endpoint = f"{agent_url.rstrip('/')}/runs"
+
+    logger.info(f"[Workbench] Agno endpoint: {chat_endpoint}")
+
+    async def stream_generator():
+        """Generator that forwards streaming response from Agno agent"""
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                # Build message content with conversation history if provided
+                message_content = request.content or ""
+
+                if request.messages and len(request.messages) > 0:
+                    history_text = "Previous conversation:\n"
+                    for msg in request.messages:
+                        role = "User" if msg.role == "user" else "Assistant"
+                        history_text += f"{role}: {msg.content}\n"
+                    message_content = f"{history_text}\nCurrent message:\n{message_content}"
+
+                # Agno uses multipart/form-data
+                form_data = {
+                    "message": message_content,
+                    "stream": "true",
+                    "monitor": "true",
+                    "user_id": user_id,
+                }
+
+                logger.info("=" * 80)
+                logger.info(f"[Workbench] Sending Agno request:")
+                logger.info(f"  Endpoint: {chat_endpoint}")
+                logger.info(f"  Message length: {len(message_content)}")
+                logger.info(f"  User: {user_id}")
+                logger.info(f"  Form data: {form_data}")
+                logger.info("=" * 80)
+
+                # Start SSE streaming
+                async with client.stream(
+                    "POST",
+                    chat_endpoint,
+                    data=form_data,
+                    files=[],  # Empty files list ensures multipart/form-data encoding
+                    headers={"Accept": "text/event-stream"}
+                ) as response:
+                    logger.info(f"[Workbench] Agno response received: status={response.status_code}, headers={dict(response.headers)}")
+
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        logger.error(f"[Workbench] Agno agent returned error: {response.status_code} - {error_text}")
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'Agent returned error: {response.status_code}'})}\n\n"
+                        return
+
+                    # Stream start event with trace_id if available
+                    if trace_id:
+                        yield f"data: {json.dumps({'type': 'stream_start', 'trace_id': trace_id})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'type': 'stream_start'})}\n\n"
+
+                    # Forward SSE events line-by-line from Agno agent
+                    logger.info(f"[Workbench] Starting real-time SSE streaming from Agno agent")
+                    async for line in response.aiter_lines():
+                        # Forward ALL lines including empty ones (SSE event separators)
+                        logger.debug(f"[Workbench] Agno SSE line: {line[:100] if line else '(empty)'}...")
+                        yield f"{line}\n"
+
+                    # Stream end event
+                    yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+                    logger.info(f"[Workbench] Agno stream completed")
+
+        except httpx.TimeoutException:
+            logger.error(f"[Workbench] Agno stream timeout")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Request timeout'})}\n\n"
+        except Exception as e:
+            logger.error(f"[Workbench] Error streaming from Agno agent: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            **({"X-Trace-ID": trace_id} if trace_id else {})
+        }
+    )

@@ -38,6 +38,7 @@ export interface ChatAdapterConfig {
   apiBaseUrl: string;
   accessToken: string;
   sessionId?: string; // Optional for workbench mode
+  selectedResource?: string; // Optional team/agent ID for Agno framework
 }
 
 /**
