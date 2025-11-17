@@ -17,15 +17,18 @@ async def get_historical_trends(
     period: Optional[str] = Query("12m", description="Period: 1w, 2w, 1m, 3m, 6m, 12m, 24m"),
     agent_id: Optional[str] = Query("all", description="Agent ID or 'all' for all agents"),
     top_k: Optional[int] = Query(None, description="Top K agents for token usage (only when agent_id='all')"),
+    model: Optional[str] = Query("all", description="Model filter: 'all' for all models or specific model name"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get historical trends data for User Trend, Agent Trend, and LLM Token Usage Trend
     Returns daily snapshot data for line graphs
 
-    - agent_id='all' + no top_k: Returns aggregated total for all agents
-    - agent_id='all' + top_k=N: Returns individual trends for top N agents
-    - agent_id=<specific_id>: Returns trend for that specific agent
+    - agent_id='all' + no top_k + model='all': Returns aggregated total for all agents across all models
+    - agent_id='all' + top_k=N + model='all': Returns individual trends for top N agents (all models)
+    - agent_id='all' + top_k=N + model=<specific>: Returns individual trends for top N agents (specific model only)
+    - agent_id=<specific_id> + model='all': Returns trend for that specific agent across all models
+    - agent_id=<specific_id> + model=<specific>: Returns trend for that specific agent for specific model
     """
     try:
         # Parse period to get date range
@@ -70,21 +73,47 @@ async def get_historical_trends(
             })
 
             # Token usage trend
-            if snapshot.agent_token_usage:
-                for agent_id, usage in snapshot.agent_token_usage.items():
-                    if agent_id not in token_usage_trend:
-                        token_usage_trend[agent_id] = {
-                            "agent_name": usage.get("name", f"Agent {agent_id}"),
-                            "data": []
-                        }
+            if model == "all":
+                # Use aggregated data from agent_token_usage (all models combined)
+                if snapshot.agent_token_usage:
+                    for agent_id, usage in snapshot.agent_token_usage.items():
+                        if agent_id not in token_usage_trend:
+                            token_usage_trend[agent_id] = {
+                                "agent_name": usage.get("name", f"Agent {agent_id}"),
+                                "data": []
+                            }
 
-                    token_usage_trend[agent_id]["data"].append({
-                        "date": date_str,
-                        "total_tokens": usage.get("total_tokens", 0),
-                        "prompt_tokens": usage.get("prompt_tokens", 0),
-                        "completion_tokens": usage.get("completion_tokens", 0),
-                        "call_count": usage.get("call_count", 0)
-                    })
+                        token_usage_trend[agent_id]["data"].append({
+                            "date": date_str,
+                            "total_tokens": usage.get("total_tokens", 0),
+                            "prompt_tokens": usage.get("prompt_tokens", 0),
+                            "completion_tokens": usage.get("completion_tokens", 0),
+                            "call_count": usage.get("call_count", 0)
+                        })
+            else:
+                # Use model-specific data from agent_token_usage_by_model
+                if snapshot.agent_token_usage_by_model:
+                    for agent_id, models_data in snapshot.agent_token_usage_by_model.items():
+                        if model in models_data:
+                            if agent_id not in token_usage_trend:
+                                # Get agent name from agent_token_usage
+                                agent_name = f"Agent {agent_id}"
+                                if snapshot.agent_token_usage and agent_id in snapshot.agent_token_usage:
+                                    agent_name = snapshot.agent_token_usage[agent_id].get("name", agent_name)
+
+                                token_usage_trend[agent_id] = {
+                                    "agent_name": agent_name,
+                                    "data": []
+                                }
+
+                            model_usage = models_data[model]
+                            token_usage_trend[agent_id]["data"].append({
+                                "date": date_str,
+                                "total_tokens": model_usage.get("total_tokens", 0),
+                                "prompt_tokens": model_usage.get("prompt_tokens", 0),
+                                "completion_tokens": model_usage.get("completion_tokens", 0),
+                                "call_count": model_usage.get("call_count", 0)
+                            })
 
         # Process token_usage_trend based on agent_id and top_k parameters
         if agent_id == "all":

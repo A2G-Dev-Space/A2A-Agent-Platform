@@ -212,31 +212,41 @@ async def _collect_hourly_snapshot_async():
                 logger.error(f"Failed to get agent statistics: {e}")
                 total_agents = deployed_agents = development_agents = 0
 
-            # 3. Get token usage by agent
+            # 3. Get token usage by agent (both total and by-model)
             agent_token_usage = {}
+            agent_token_usage_by_model = {}
             try:
                 # Get all agents (using internal endpoint - no auth required)
                 agents_response = await client.get(f"{AGENT_SERVICE_URL}/api/agents/internal/agents")
                 if agents_response.status_code == 200:
                     agents = agents_response.json()
 
-                    # Get token usage for each agent
+                    # Get token usage for each agent by trace_id
+                    # This ensures token usage is accumulated even when agent changes models
                     for agent in agents:
                         trace_id = agent.get("trace_id")
                         if trace_id:
                             try:
+                                # Get both total and by-model breakdown
                                 usage_response = await client.get(
-                                    f"{LLM_PROXY_SERVICE_URL}/api/v1/statistics/agent-usage/{trace_id}"
+                                    f"{LLM_PROXY_SERVICE_URL}/api/v1/statistics/agent-usage/{trace_id}?include_by_model=true"
                                 )
                                 if usage_response.status_code == 200:
                                     usage_data = usage_response.json()
-                                    agent_token_usage[str(agent["id"])] = {
+                                    agent_id_str = str(agent["id"])
+
+                                    # Store total usage
+                                    agent_token_usage[agent_id_str] = {
                                         "name": agent.get("name", "Unknown"),
                                         "total_tokens": usage_data.get("total_tokens", 0),
                                         "call_count": usage_data.get("call_count", 0),
                                         "prompt_tokens": usage_data.get("prompt_tokens", 0),
                                         "completion_tokens": usage_data.get("completion_tokens", 0)
                                     }
+
+                                    # Store by-model usage
+                                    if "by_model" in usage_data and usage_data["by_model"]:
+                                        agent_token_usage_by_model[agent_id_str] = usage_data["by_model"]
                             except Exception as e:
                                 logger.error(f"Failed to get usage for agent {agent['id']}: {e}")
             except Exception as e:
@@ -262,6 +272,7 @@ async def _collect_hourly_snapshot_async():
                 deployed_agents=deployed_agents,
                 development_agents=development_agents,
                 agent_token_usage=agent_token_usage,
+                agent_token_usage_by_model=agent_token_usage_by_model,
                 model_usage_stats=model_usage_stats,
                 created_at=datetime.utcnow()
             )
@@ -269,9 +280,10 @@ async def _collect_hourly_snapshot_async():
             await session.commit()
 
             logger.info(
-                f"Hourly snapshot saved: users={total_users}, agents={total_agents}, "
+                f"Daily snapshot saved: users={total_users}, agents={total_agents}, "
                 f"deployed={deployed_agents}, development={development_agents}, "
-                f"agents_with_usage={len(agent_token_usage)}"
+                f"agents_with_usage={len(agent_token_usage)}, "
+                f"agents_with_model_breakdown={len(agent_token_usage_by_model)}"
             )
 
         # Dispose of the engine

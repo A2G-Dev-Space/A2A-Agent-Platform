@@ -113,6 +113,7 @@ const StatisticsPage: React.FC = () => {
   const [searchUserId] = useState<string>('');
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
   const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
+  const [selectedModelForTrend, setSelectedModelForTrend] = useState<string>('all'); // For model filter in trend
 
   // Parse period value and auto-determine group_by based on period length
   const getPeriodParams = () => {
@@ -228,6 +229,7 @@ const StatisticsPage: React.FC = () => {
         const queryParams = new URLSearchParams({
           period: periodValue,
           agent_id: selectedAgentForToken,
+          model: selectedModelForTrend,
           ...(selectedAgentForToken === 'all' && selectedTopK ? { top_k: selectedTopK.toString() } : {})
         });
 
@@ -247,7 +249,7 @@ const StatisticsPage: React.FC = () => {
     };
 
     fetchHistoricalTrends();
-  }, [periodValue, selectedTopK, selectedAgentForToken]);
+  }, [periodValue, selectedTopK, selectedAgentForToken, selectedModelForTrend]);
 
   // Token usage is already included in historical trends
   // No separate fetch needed
@@ -279,6 +281,57 @@ const StatisticsPage: React.FC = () => {
     return () => clearTimeout(debounce);
   }, [searchUserId]);
 
+  // Filter and aggregate agent token usage by selected model
+  // IMPORTANT: This must be before any conditional returns to maintain hook order
+  const filteredAgentUsage = React.useMemo(() => {
+    if (!stats?.agent_token_usage) return [];
+
+    if (selectedModel === 'all') {
+      // Aggregate by trace_id across all models
+      const aggregated = new Map<string, {
+        trace_id: string;
+        agent_id: string;
+        agent_name: string;
+        owner_id: string;
+        agent_display_name: string;
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+        call_count: number;
+      }>();
+
+      stats.agent_token_usage.forEach(item => {
+        const existing = aggregated.get(item.trace_id);
+        if (existing) {
+          existing.prompt_tokens += item.prompt_tokens;
+          existing.completion_tokens += item.completion_tokens;
+          existing.total_tokens += item.total_tokens;
+          existing.call_count += item.call_count;
+        } else {
+          aggregated.set(item.trace_id, {
+            trace_id: item.trace_id,
+            agent_id: item.agent_id,
+            agent_name: item.agent_name,
+            owner_id: item.owner_id,
+            agent_display_name: item.agent_display_name,
+            prompt_tokens: item.prompt_tokens,
+            completion_tokens: item.completion_tokens,
+            total_tokens: item.total_tokens,
+            call_count: item.call_count
+          });
+        }
+      });
+
+      // Sort by total_tokens descending
+      return Array.from(aggregated.values()).sort((a, b) => b.total_tokens - a.total_tokens);
+    } else {
+      // Filter by specific model
+      return stats.agent_token_usage
+        .filter(item => item.model === selectedModel)
+        .sort((a, b) => b.total_tokens - a.total_tokens);
+    }
+  }, [stats?.agent_token_usage, selectedModel]);
+
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -296,11 +349,6 @@ const StatisticsPage: React.FC = () => {
   }
 
   if (!stats) return null;
-
-  // Filter agent token usage by selected model
-  const filteredAgentUsage = selectedModel === 'all'
-    ? stats.agent_token_usage
-    : stats.agent_token_usage.filter(item => item.model === selectedModel);
 
   // Filter agent growth data based on selected filter
   const agentGrowthData = historicalTrends?.agent_trend?.map(item => ({
@@ -607,7 +655,22 @@ const StatisticsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             LLM Token Usage Trend
           </h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <span>Model:</span>
+              <select
+                value={selectedModelForTrend}
+                onChange={(e) => setSelectedModelForTrend(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
+              >
+                <option value="all">All Models</option>
+                {stats.model_usage_stats.map((model) => (
+                  <option key={`${model.model}-${model.provider}`} value={model.model}>
+                    {model.model} ({model.provider})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
               <span>Agent:</span>
               <select
