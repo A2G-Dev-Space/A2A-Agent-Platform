@@ -28,8 +28,8 @@ import uvicorn
 
 
 # ======================== Platform Configuration ========================
-PLATFORM_LLM_ENDPOINT = os.getenv("PLATFORM_LLM_ENDPOINT", "http://localhost:8006/v1")
-PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "test-user-api-key")
+PLATFORM_LLM_ENDPOINT = "http://localhost:9050/api/llm/trace/86348a14-0f9f-4f15-9925-4c72029810fb/v1"
+PLATFORM_API_KEY = "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490"
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration")
@@ -200,7 +200,7 @@ square_root_tool = FunctionTool(square_root)
 
 
 # ======================== Create LLM Model Instance ========================
-def create_platform_llm(model_name: str = "hosted_vllm/openai/gpt-oss-20b") -> LiteLlm:
+def create_platform_llm(model_name: str = "hosted_vllm/qwen/qwen3-32b") -> LiteLlm:
     """
     Platform LLM Proxy를 사용하는 LiteLLM 인스턴스를 생성합니다.
     
