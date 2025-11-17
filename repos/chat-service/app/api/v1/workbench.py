@@ -22,12 +22,19 @@ from sqlalchemy.orm import attributes
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+class SystemEvent(BaseModel):
+    """System event from agent (tool calls, agent transfers, etc.)"""
+    event: str
+    data: dict
+    timestamp: str
+
 class Message(BaseModel):
     """Individual message in conversation"""
     id: Optional[str] = None  # Message ID from frontend
-    role: str  # 'user' or 'assistant'
+    role: str  # 'user' or 'assistant' or 'system'
     content: str
     timestamp: Optional[str] = None  # Timestamp from frontend
+    systemEvents: Optional[list[SystemEvent]] = None  # System events for this message
 
 class WorkbenchMessage(BaseModel):
     """Message request for Workbench with conversation history (ADK and Agno)"""

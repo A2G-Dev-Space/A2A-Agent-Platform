@@ -46,6 +46,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [streamingMessage, setStreamingMessage] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [expandedSystemMessages, setExpandedSystemMessages] = useState<Set<string>>(new Set());
+  const [expandedEventDetails, setExpandedEventDetails] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -316,12 +317,41 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           onSystemEvent: (event) => {
             if (systemEventsMessageId) {
               console.log('[ChatPlaygroundAgno] System event:', event.event, event.data);
+
+              // Events that should be merged when they repeat
+              const mergeableEvents = ['RunContent', 'TeamRunContent'];
+              const isMergeable = mergeableEvents.includes(event.event);
+
               setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === systemEventsMessageId
-                    ? { ...msg, systemEvents: [...(msg.systemEvents || []), event] }
-                    : msg
-                )
+                prev.map((msg) => {
+                  if (msg.id !== systemEventsMessageId) return msg;
+
+                  const existingEvents = msg.systemEvents || [];
+
+                  if (isMergeable) {
+                    // Find existing event of same type
+                    const existingIndex = existingEvents.findIndex((e) => e.event === event.event);
+
+                    if (existingIndex >= 0) {
+                      // Update existing event (merge occurrences)
+                      const updated = [...existingEvents];
+                      const existing = updated[existingIndex];
+                      updated[existingIndex] = {
+                        ...existing,
+                        data: {
+                          ...existing.data,
+                          count: (existing.data.count || 1) + 1, // Track occurrence count
+                          lastUpdate: event.timestamp,
+                        },
+                        timestamp: event.timestamp, // Update to latest timestamp
+                      };
+                      return { ...msg, systemEvents: updated };
+                    }
+                  }
+
+                  // Add new event
+                  return { ...msg, systemEvents: [...existingEvents, event] };
+                })
               );
             }
           },
@@ -976,17 +1006,73 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                           // Get translated event name
                           const translatedEvent = t(`workbench.events.${eventName}`, { defaultValue: eventName });
 
+                          // Count display for merged events
+                          const count = event.data?.count;
+                          const hasCount = count && count > 1;
+
+                          // Tooltip content
+                          const tooltipText = `${eventName}${hasCount ? ` (${count}회)` : ''}\n${new Date(event.timestamp).toLocaleTimeString()}`;
+
+                          // Event detail key for expansion
+                          const eventKey = `${message.id}-event-${idx}`;
+                          const isDetailExpanded = expandedEventDetails.has(eventKey);
+
+                          const toggleEventDetail = () => {
+                            setExpandedEventDetails((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(eventKey)) {
+                                next.delete(eventKey);
+                              } else {
+                                next.add(eventKey);
+                              }
+                              return next;
+                            });
+                          };
+
                           return (
-                            <span
-                              key={`${message.id}-event-${idx}`}
-                              className="px-3 py-1 rounded-full text-[11px] font-semibold"
-                              style={{
-                                backgroundColor: badgeColor,
-                                color: textColor,
-                              }}
-                            >
-                              {translatedEvent}
-                            </span>
+                            <div key={eventKey} className="flex flex-col gap-1">
+                              <button
+                                onClick={toggleEventDetail}
+                                className="px-3 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-all hover:scale-105"
+                                style={{
+                                  backgroundColor: badgeColor,
+                                  color: textColor,
+                                }}
+                                title={tooltipText}
+                              >
+                                {translatedEvent}
+                                {hasCount && (
+                                  <span className="ml-1 opacity-75">×{count}</span>
+                                )}
+                              </button>
+
+                              {/* Expanded detail view */}
+                              {isDetailExpanded && (
+                                <div
+                                  className="text-[10px] px-3 py-2 rounded-md mt-1"
+                                  style={{
+                                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.8)',
+                                    border: `1px solid ${badgeColor}`,
+                                    color: isDark ? '#d1d5db' : '#374151',
+                                  }}
+                                >
+                                  <div className="font-semibold mb-1">{eventName}</div>
+                                  <div className="opacity-75 mb-1">
+                                    {new Date(event.timestamp).toLocaleString()}
+                                  </div>
+                                  {hasCount && (
+                                    <div className="opacity-75 mb-1">
+                                      Occurrences: {count}
+                                    </div>
+                                  )}
+                                  <div className="mt-2 max-h-32 overflow-auto">
+                                    <pre className="whitespace-pre-wrap break-all">
+                                      {JSON.stringify(event.data, null, 2)}
+                                    </pre>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
