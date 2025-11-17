@@ -1065,119 +1065,123 @@ async def proxy_openai_compatible(
 
     logger.info(f"[OpenAI Proxy] Request payload: {json.dumps(payload)[:500]}")
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
-        if request.stream:
-            # Streaming response
-            return StreamingResponse(
-                stream_openai_response(
-                    agent_id=agent_id,
-                    client=client,
-                    url=f"{base_url}/chat/completions",
-                    headers=headers,
-                    payload=payload,
-                    model=request.model,
-                    trace_id=trace_id
-                ),
-                media_type="text/event-stream"
-            )
-        else:
-            # Non-streaming response
-            logger.info(f"[OpenAI Proxy] Making non-streaming request to {base_url}/chat/completions")
-            response = await client.post(
-                f"{base_url}/chat/completions",
-                headers=headers,
-                json=payload
-            )
-
-            logger.info(f"[OpenAI Proxy] Response status: {response.status_code}")
-
-            if response.status_code != 200:
-                error_text = response.text
-                logger.error(f"[OpenAI Proxy] Error response: {error_text}")
-                raise HTTPException(status_code=response.status_code, detail=error_text)
-
-            data = response.json()
-            logger.info(f"[OpenAI Proxy] Response data (truncated): {json.dumps(data)[:500]}")
-
-            # ===== RAW RESPONSE LOGGING =====
-            logger.info(f"[OpenAI Proxy] ===== FULL RAW RESPONSE START =====")
-            logger.info(f"[OpenAI Proxy] Complete JSON response:\n{json.dumps(data, indent=2)}")
-
-            # Extract and log specific fields for debugging
-            if "choices" in data and len(data["choices"]) > 0:
-                message = data["choices"][0].get("message", {})
-                content = message.get("content", "")
-                tool_calls = message.get("tool_calls", [])
-
-                logger.info(f"[OpenAI Proxy] Message content: {repr(content)}")
-                logger.info(f"[OpenAI Proxy] Message content length: {len(content) if content else 0} characters")
-                logger.info(f"[OpenAI Proxy] Tool calls present: {len(tool_calls) > 0}")
-                logger.info(f"[OpenAI Proxy] Tool calls count: {len(tool_calls)}")
-
-                if tool_calls:
-                    logger.info(f"[OpenAI Proxy] Tool calls detail:\n{json.dumps(tool_calls, indent=2)}")
-                else:
-                    logger.info(f"[OpenAI Proxy] No tool calls in response")
-
-            logger.info(f"[OpenAI Proxy] ===== FULL RAW RESPONSE END =====")
-            # ===== END RAW RESPONSE LOGGING =====
-
-            # Process response and emit trace events
-            if "choices" in data and len(data["choices"]) > 0:
-                message = data["choices"][0].get("message", {})
-                content = message.get("content", "")
-                tool_calls = message.get("tool_calls", [])
-                usage = data.get("usage", {})
-
-                # IMPORTANT: Always ensure content field exists for messages with tool_calls
-                # This is required by OpenAI API spec - some clients strip empty content fields
-                if tool_calls:
-                    # Force content to exist, even if empty
-                    if "content" not in message or message.get("content") is None or message.get("content") == "":
-                        message["content"] = ""
-                    data["choices"][0]["message"] = message
-                    logger.info(f"[OpenAI Proxy] Ensured content field for tool_calls message: content={repr(message.get('content'))}")
-
-                # Emit LLM response event
-                await emit_trace_event(
-                    agent_id,
-                    "llm_response",
-                    {
-                        "content": content,
-                        "provider": provider,
-                        "model": request.model,
-                        "usage": usage,
-                        "has_tool_calls": len(tool_calls) > 0
-                    },
-                    trace_id=trace_id
-                )
-
-                # Process tool calls if present
-                if tool_calls:
-                    await process_tool_calls(agent_id, tool_calls, trace_id)
-
-            # Calculate latency
-            latency_ms = int((time.time() - start_time) * 1000)
-
-            # Save to database
-            await save_llm_call_to_db(
+    if request.stream:
+        # Streaming response - client must be created inside the stream function
+        # to avoid "client has been closed" error
+        logger.info(f"[OpenAI Proxy] Starting streaming request to {base_url}/chat/completions")
+        logger.info(f"[OpenAI Proxy] Streaming payload model={request.model}, messages_count={len(request.messages)}")
+        return StreamingResponse(
+            stream_openai_response(
                 agent_id=agent_id,
-                user_id=user_id,
-                trace_id=trace_id,
-                provider=provider,
+                client=None,  # Will be created inside stream_openai_response
+                url=f"{base_url}/chat/completions",
+                headers=headers,
+                payload=payload,
                 model=request.model,
-                request=request,
-                response_data=data,
-                latency_ms=latency_ms,
-                success=True
+                trace_id=trace_id
+            ),
+            media_type="text/event-stream"
+        )
+
+    # Non-streaming response - use context manager for automatic cleanup
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        # Non-streaming response
+        logger.info(f"[OpenAI Proxy] Making non-streaming request to {base_url}/chat/completions")
+        response = await client.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json=payload
+        )
+
+        logger.info(f"[OpenAI Proxy] Response status: {response.status_code}")
+
+        if response.status_code != 200:
+            error_text = response.text
+            logger.error(f"[OpenAI Proxy] Error response: {error_text}")
+            raise HTTPException(status_code=response.status_code, detail=error_text)
+
+        data = response.json()
+        logger.info(f"[OpenAI Proxy] Response data (truncated): {json.dumps(data)[:500]}")
+
+        # ===== RAW RESPONSE LOGGING =====
+        logger.info(f"[OpenAI Proxy] ===== FULL RAW RESPONSE START =====")
+        logger.info(f"[OpenAI Proxy] Complete JSON response:\n{json.dumps(data, indent=2)}")
+
+        # Extract and log specific fields for debugging
+        if "choices" in data and len(data["choices"]) > 0:
+            message = data["choices"][0].get("message", {})
+            content = message.get("content", "")
+            tool_calls = message.get("tool_calls", [])
+
+            logger.info(f"[OpenAI Proxy] Message content: {repr(content)}")
+            logger.info(f"[OpenAI Proxy] Message content length: {len(content) if content else 0} characters")
+            logger.info(f"[OpenAI Proxy] Tool calls present: {len(tool_calls) > 0}")
+            logger.info(f"[OpenAI Proxy] Tool calls count: {len(tool_calls)}")
+
+            if tool_calls:
+                logger.info(f"[OpenAI Proxy] Tool calls detail:\n{json.dumps(tool_calls, indent=2)}")
+            else:
+                logger.info(f"[OpenAI Proxy] No tool calls in response")
+
+        logger.info(f"[OpenAI Proxy] ===== FULL RAW RESPONSE END =====")
+        # ===== END RAW RESPONSE LOGGING =====
+
+        # Process response and emit trace events
+        if "choices" in data and len(data["choices"]) > 0:
+            message = data["choices"][0].get("message", {})
+            content = message.get("content", "")
+            tool_calls = message.get("tool_calls", [])
+            usage = data.get("usage", {})
+
+            # IMPORTANT: Always ensure content field exists for messages with tool_calls
+            # This is required by OpenAI API spec - some clients strip empty content fields
+            if tool_calls:
+                # Force content to exist, even if empty
+                if "content" not in message or message.get("content") is None or message.get("content") == "":
+                    message["content"] = ""
+                data["choices"][0]["message"] = message
+                logger.info(f"[OpenAI Proxy] Ensured content field for tool_calls message: content={repr(message.get('content'))}")
+
+            # Emit LLM response event
+            await emit_trace_event(
+                agent_id,
+                "llm_response",
+                {
+                    "content": content,
+                    "provider": provider,
+                    "model": request.model,
+                    "usage": usage,
+                    "has_tool_calls": len(tool_calls) > 0
+                },
+                trace_id=trace_id
             )
 
-            return data
+            # Process tool calls if present
+            if tool_calls:
+                await process_tool_calls(agent_id, tool_calls, trace_id)
+
+        # Calculate latency
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Save to database
+        await save_llm_call_to_db(
+            agent_id=agent_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            provider=provider,
+            model=request.model,
+            request=request,
+            response_data=data,
+            latency_ms=latency_ms,
+            success=True
+        )
+
+        return data
 
 
 async def stream_openai_response(
     agent_id: str,
-    client: httpx.AsyncClient,
+    client: Optional[httpx.AsyncClient],
     url: str,
     headers: Dict,
     payload: Dict,
@@ -1185,14 +1189,27 @@ async def stream_openai_response(
     trace_id: Optional[str] = None
 ):
     """Stream OpenAI response and emit trace events"""
-    logger.info(f"[OpenAI Proxy] Starting streaming request to {url}, trace_id={trace_id}")
+    logger.info(f"[OpenAI Proxy] ===== STREAMING FLOW START =====")
+    logger.info(f"[OpenAI Proxy] Stream URL: {url}")
+    logger.info(f"[OpenAI Proxy] Stream Model: {model}")
+    logger.info(f"[OpenAI Proxy] Stream Trace ID: {trace_id}")
+    logger.info(f"[OpenAI Proxy] Stream Payload: {json.dumps(payload)[:300]}")
 
     accumulated_content = ""
     chunk_count = 0
     # Accumulate tool calls from streaming chunks
     accumulated_tool_calls: Dict[int, Dict] = {}  # index -> tool_call data
 
+    # Create client if not provided (needed for streaming to avoid "client closed" error)
+    if client is None:
+        logger.info(f"[OpenAI Proxy] Creating new HTTP client for streaming")
+        client = httpx.AsyncClient(timeout=300.0)
+        should_close_client = True
+    else:
+        should_close_client = False
+
     try:
+        logger.info(f"[OpenAI Proxy] Opening streaming connection...")
         async with client.stream("POST", url, headers=headers, json=payload) as response:
             logger.info(f"[OpenAI Proxy] Stream response status: {response.status_code}")
 
@@ -1248,6 +1265,7 @@ async def stream_openai_response(
                             # Accumulate content
                             if content:
                                 accumulated_content += content
+                                logger.info(f"[OpenAI Proxy] Stream content chunk #{chunk_count}: {content[:100]}... (total: {len(accumulated_content)} chars)")
 
                                 # Emit trace event: stream token
                                 await emit_trace_event(
@@ -1309,16 +1327,25 @@ async def stream_openai_response(
                         continue
 
     except Exception as e:
+        logger.error(f"[OpenAI Proxy] ===== STREAMING ERROR =====")
         logger.error(f"[OpenAI Proxy] Stream error: {e}", exc_info=True)
 
         # Emit trace event: error
         await emit_trace_event(
             agent_id,
             "llm_error",
-            {"error": str(e), "provider": "openai", "model": model}
+            {"error": str(e), "provider": "openai", "model": model},
+            trace_id=trace_id
         )
 
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    finally:
+        # Close client if we created it
+        if should_close_client and client is not None:
+            logger.info(f"[OpenAI Proxy] Closing HTTP client after streaming")
+            await client.aclose()
+        logger.info(f"[OpenAI Proxy] ===== STREAMING FLOW END =====")
 
 
 async def proxy_gemini(

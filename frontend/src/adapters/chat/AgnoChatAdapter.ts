@@ -85,16 +85,17 @@ export class AgnoChatAdapter implements ChatAdapter {
       throw new Error('Invalid adapter state');
     }
 
-    const { apiBaseUrl, accessToken, agentId, sessionId, selectedResource } = this.config;
+    const { agentEndpoint, selectedResource } = this.config;
 
-    // Use workbench API if no sessionId, otherwise use chat API
-    const endpoint = sessionId
-      ? `${apiBaseUrl}/api/chat/sessions/${sessionId}/messages/stream`
-      : `${apiBaseUrl}/api/workbench/chat/stream`;
+    if (!selectedResource) {
+      throw new Error('No team or agent selected');
+    }
 
-    const body = sessionId
-      ? { content: message.content }
-      : { agent_id: agentId, content: message.content, selected_resource: selectedResource };
+    // Construct Agno endpoint based on selected resource type
+    // selectedResource format: "team-name" or "agent-name"
+    // We need to determine if it's a team or agent
+    // For now, we'll try teams first (most common case)
+    const endpoint = `${agentEndpoint}/teams/${selectedResource}/runs`;
 
     console.log('[AgnoChatAdapter] Sending message:', {
       endpoint,
@@ -102,13 +103,15 @@ export class AgnoChatAdapter implements ChatAdapter {
       selectedResource,
     });
 
+    // Use FormData for Agno's multipart/form-data API
+    const formData = new FormData();
+    formData.append('message', message.content);
+    formData.append('stream', 'true');
+    formData.append('user_id', 'workbench_user');
+
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
+      body: formData,
       signal: this.abortController.signal,
     });
 
@@ -152,14 +155,16 @@ export class AgnoChatAdapter implements ChatAdapter {
     data: any,
     callbacks: ChatAdapterCallbacks
   ): void {
-    console.log('[AgnoChatAdapter] SSE event:', data.type);
+    console.log('[AgnoChatAdapter] SSE event:', data.event);
 
-    switch (data.type) {
-      case 'stream_start':
-        console.log('[AgnoChatAdapter] Stream started');
+    switch (data.event) {
+      case 'TeamRunStarted':
+      case 'RunStarted':
+        console.log('[AgnoChatAdapter] Run started:', data.event);
         break;
 
-      case 'text_token':
+      case 'TeamRunContent':
+      case 'RunContent':
         if (data.content) {
           this.streamingMessageBuffer += data.content;
           callbacks.onChunk?.({
@@ -169,8 +174,9 @@ export class AgnoChatAdapter implements ChatAdapter {
         }
         break;
 
-      case 'stream_end':
-        console.log('[AgnoChatAdapter] Stream ended, total length:', this.streamingMessageBuffer.length);
+      case 'TeamRunCompleted':
+      case 'RunCompleted':
+        console.log('[AgnoChatAdapter] Run completed, total length:', this.streamingMessageBuffer.length);
         callbacks.onComplete?.({
           content: this.streamingMessageBuffer,
           timestamp: new Date(),
@@ -178,13 +184,25 @@ export class AgnoChatAdapter implements ChatAdapter {
         this.streamingMessageBuffer = '';
         break;
 
+      case 'TeamToolCallStarted':
+      case 'ToolCallStarted':
+      case 'TeamToolCallCompleted':
+      case 'ToolCallCompleted':
+      case 'TeamRunContentCompleted':
+      case 'RunContentCompleted':
+        // System events - can be used for system events display in the future
+        console.log('[AgnoChatAdapter] System event:', data.event);
+        break;
+
+      case 'TeamRunError':
+      case 'RunError':
       case 'error':
-        console.error('[AgnoChatAdapter] Error event:', data.message);
-        callbacks.onError?.(new Error(data.message || 'Unknown error'));
+        console.error('[AgnoChatAdapter] Error event:', data.event, data.message || data.error);
+        callbacks.onError?.(new Error(data.message || data.error || 'Unknown error'));
         break;
 
       default:
-        console.warn('[AgnoChatAdapter] Unknown event type:', data.type);
+        console.warn('[AgnoChatAdapter] Unknown event type:', data.event);
     }
   }
 }
