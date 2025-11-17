@@ -168,12 +168,51 @@ export const MessageContent: React.FC<MessageContentProps> = ({
     );
   }
 
+  // Preprocess content to prevent mathematical expressions from being parsed as lists
+  const preprocessContent = (text: string): string => {
+    let processed = text;
+
+    // Wrap \boxed{...} with $ delimiters if not already wrapped
+    // This ensures LaTeX \boxed command is properly rendered
+    processed = processed.replace(/(?<!\$)\\boxed\{([^}]+)\}(?!\$)/g, '$\\boxed{$1}$');
+
+    // Split by lines and process each line
+    const lines = processed.split('\n');
+    const processedLines = lines.map(line => {
+      const trimmedLine = line.trim();
+
+      // Check if line looks like a simple math expression starting with + or *
+      // Pattern: starts with optional spaces, then + or *, then spaces and numbers/operators
+      const mathExpressionPattern = /^(\s*)[+*]\s*[\d\s+\-*/=().,%]+$/;
+
+      if (mathExpressionPattern.test(trimmedLine)) {
+        // Escape the list marker by adding a backslash
+        return line.replace(/^(\s*)([+*])(\s)/, '$1\\$2$3');
+      }
+
+      return line;
+    });
+
+    return processedLines.join('\n');
+  };
+
+  const processedContent = preprocessContent(content);
+
   // Markdown rendering with LaTeX and Mermaid support
   return (
     <div className={`prose prose-sm dark:prose-invert max-w-none ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw, rehypeKatex]}
+        rehypePlugins={[
+          rehypeHighlight,
+          rehypeRaw,
+          [rehypeKatex, {
+            strict: false,
+            macros: {
+              "\\boxed": "\\fbox{$#1$}"
+            }
+          }]
+        ]}
         components={{
           // Code blocks with syntax highlighting, copy button, and Mermaid support
           code: CodeBlock,
@@ -260,6 +299,27 @@ export const MessageContent: React.FC<MessageContentProps> = ({
             </ol>
           ),
 
+          // List items - special handling for mathematical expressions
+          li: ({ children, ...props }) => {
+            // Check if content is just a simple mathematical expression
+            const textContent = typeof children === 'string' ? children :
+                               (Array.isArray(children) ? children.join('') : String(children));
+
+            // Pattern: starts with number/space and contains only math operators and numbers
+            const isMathExpression = /^[\d\s+\-*/=().,%]+$/.test(textContent.trim());
+
+            if (isMathExpression) {
+              // Render without list marker for math expressions
+              return (
+                <li className="list-none" {...props}>
+                  {children}
+                </li>
+              );
+            }
+
+            return <li {...props}>{children}</li>;
+          },
+
           // Headings
           h1: ({ children, ...props }) => (
             <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-900 dark:text-gray-100" {...props}>
@@ -306,7 +366,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
           ),
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );
