@@ -115,7 +115,12 @@
             "textFormatting": {
                 "title": "Text Formatting",
                 "basicLabel": "Basic Formatting:",
-                "taskListsLabel": "Task Lists:"
+                "taskListsLabel": "Task Lists:",
+                "boldExample": "**Bold text**",
+                "italicExample": "*Italic text*",
+                "strikeExample": "~~Strikethrough~~",
+                "codeExample": "`Inline code`",
+                "taskExample": "- [x] Completed task\n- [ ] Incomplete task"
             },
             "codeBlocks": {
                 "title": "Code Blocks",
@@ -126,13 +131,18 @@
                 "feature4": "Collapsible for long code (10+ lines)",
                 "feature5": "Language badge",
                 "exampleLabel": "Example:",
+                "pythonExample": "```python\ndef greet(name):\n    return f\"Hello, {name}!\"\n\nprint(greet(\"World\"))\n```",
+                "jsExample": "```javascript\nconst greet = (name) => {\n  return `Hello, ${name}!`;\n};\n\nconsole.log(greet('World'));\n```",
                 "diffLabel": "Diff Syntax:",
+                "diffExample": "```diff\n- Old code\n+ New code\n```",
                 "diffNote": "🟢 Green: Added lines (+) | 🔴 Red: Deleted lines (-)"
             },
             "math": {
                 "title": "Mathematics (LaTeX)",
                 "inlineLabel": "Inline Math:",
-                "displayLabel": "Display Math (Block):"
+                "inlineExample": "$E = mc^2$",
+                "displayLabel": "Display Math (Block):",
+                "displayExample": "$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$"
             },
             "diagrams": {
                 "title": "Diagrams (Mermaid)",
@@ -144,11 +154,14 @@
                 "er": "Database schema",
                 "gantt": "Project timeline",
                 "pie": "Distributions",
-                "exampleLabel": "Example Flowchart:"
+                "exampleLabel": "Example Flowchart:",
+                "flowchartExample": "```mermaid\ngraph TD\n    A[Start] --> B{Condition?}\n    B -->|Yes| C[Process 1]\n    B -->|No| D[Process 2]\n    C --> E[End]\n    D --> E\n```",
+                "sequenceExample": "```mermaid\nsequenceDiagram\n    Client->>Server: Request\n    Server->>Database: Query\n    Database-->>Server: Result\n    Server-->>Client: Response\n```"
             },
             "tables": {
                 "title": "Tables",
                 "exampleLabel": "Example:",
+                "tableExample": "| Feature | Supported | Description |\n|---------|-----------|-------------|\n| Syntax Highlighting | ✅ | 100+ languages |\n| Diagrams | ✅ | Mermaid |\n| Math | ✅ | LaTeX/KaTeX |",
                 "featuresLabel": "Features:",
                 "featuresText": "Automatic borders, responsive design, horizontal scroll for wide tables"
             },
@@ -166,7 +179,8 @@
                 "orderedLabel": "Ordered Lists:"
             },
             "blockquotes": {
-                "title": "Blockquotes"
+                "title": "Blockquotes",
+                "example": "> This is an important note.\n> It can span multiple lines."
             },
             "bestPractices": {
                 "title": "Best Practices",
@@ -204,7 +218,7 @@
                 "blockquoteUse": "Important notes",
                 "blockquoteEx": "Warnings, citations"
             },
-            "footer": "Made with ❤️ for A2A Agent Developers"
+            "footer": "Diligently created this for A2A agent developers - syngha.han"
         }
     },
     "createAgent": {
