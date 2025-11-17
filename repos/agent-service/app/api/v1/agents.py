@@ -441,12 +441,17 @@ async def update_agent(
             detail="Not authorized to update this agent"
         )
 
-    # Validate A2A endpoint if it's being updated
+    # Validate A2A endpoint if it's being updated (ADK only)
     update_data = request.dict(exclude_unset=True)
     if "a2a_endpoint" in update_data and update_data["a2a_endpoint"]:
-        logger.info(f"[Update Agent] Validating new endpoint: {update_data['a2a_endpoint']}")
-        agent_card = await validate_agent_endpoint(update_data["a2a_endpoint"])
-        logger.info(f"[Update Agent] Endpoint validation successful for agent {agent_id}")
+        # Only validate for ADK framework (requires .well-known/agent.json)
+        # Agno framework doesn't provide agent card, so skip validation
+        if agent.framework == AgentFramework.ADK:
+            logger.info(f"[Update Agent] Validating new ADK endpoint: {update_data['a2a_endpoint']}")
+            agent_card = await validate_agent_endpoint(update_data["a2a_endpoint"])
+            logger.info(f"[Update Agent] Endpoint validation successful for agent {agent_id}")
+        else:
+            logger.info(f"[Update Agent] Skipping validation for {agent.framework} framework - endpoint will be saved directly")
 
     # Update fields
     for field, value in update_data.items():

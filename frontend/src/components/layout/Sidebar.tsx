@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 
@@ -18,6 +18,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navItems: NavItem[] = [
     { to: '/workbench', icon: 'code_blocks', label: t('sidebar.workbench'), mode: 'workbench' },
@@ -107,7 +108,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }
       >
         {/* Logo & Platform Name */}
         <div className="flex items-center justify-between h-16 border-b border-border-light dark:border-border-dark px-6">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/hub')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="size-6 text-primary">
               <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                 <g clipPath="url(#clip0_6_535)">
@@ -128,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }
             <h2 className="text-text-light-primary dark:text-text-dark-primary text-lg font-bold">
               A2A Platform
             </h2>
-          </div>
+          </button>
           {/* Mobile close button */}
           <button
             onClick={onMobileClose}

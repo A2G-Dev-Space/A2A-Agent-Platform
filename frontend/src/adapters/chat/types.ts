@@ -30,6 +30,15 @@ export interface ChatResponse {
 }
 
 /**
+ * System event from agent (tool calls, agent transfers, etc.)
+ */
+export interface SystemEvent {
+  event: string;
+  data: any;
+  timestamp: Date;
+}
+
+/**
  * Configuration for chat adapter
  */
 export interface ChatAdapterConfig {
@@ -38,6 +47,8 @@ export interface ChatAdapterConfig {
   apiBaseUrl: string;
   accessToken: string;
   sessionId?: string; // Optional for workbench mode
+  selectedResource?: string; // Optional team/agent ID for Agno framework
+  selectedResourceType?: 'team' | 'agent'; // Resource type for Agno framework
 }
 
 /**
@@ -47,6 +58,7 @@ export interface ChatAdapterCallbacks {
   onChunk?: (chunk: ChatResponseChunk) => void;
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
+  onSystemEvent?: (event: SystemEvent) => void;
 }
 
 /**

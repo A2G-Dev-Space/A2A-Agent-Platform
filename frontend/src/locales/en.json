@@ -92,13 +92,72 @@
             "waitingForEvents": "Waiting for trace events...",
             "noTraceId": "No trace ID"
         },
+        "systemEvents": "System Events",
+        "events": {
+            "RunStarted": "Agent Started",
+            "RunContent": "Agent Processing",
+            "RunCompleted": "Agent Completed",
+            "RunContentCompleted": "Processing Complete",
+            "TeamRunStarted": "Team Started",
+            "TeamRunContent": "Team Processing",
+            "TeamRunCompleted": "Team Completed",
+            "TeamRunContentCompleted": "Team Processing Complete",
+            "TeamToolCallStarted": "Team Tool Started",
+            "TeamToolCallCompleted": "Team Tool Completed",
+            "ToolCallStarted": "Tool Started",
+            "ToolCallCompleted": "Tool Completed",
+            "TeamRunError": "Team Error",
+            "RunError": "Agent Error"
+        },
+        "workflow": {
+            "title": "Workbench User Guide",
+            "downloadExamples": "Download Example Code",
+            "dontShowAgain": "Don't show again",
+            "adk": {
+                "step1Title": "1. Create Agent",
+                "step1Desc": "Create an agent to develop in the Workbench.",
+                "step2Title": "2. Check Endpoint",
+                "step2Desc": "Click the created agent to see Chat and Trace windows, with the LLM Proxy endpoint available in Configuration.",
+                "step3Title": "3. Develop Agent",
+                "step3Desc": "Develop your ADK agent using the provided endpoint and API key from Settings. Agents communicate via A2A JSON-RPC protocol.",
+                "step4Title": "4. Connection Test",
+                "step4Desc": "Enter your agent's host address in Chat Playground Config and perform a Connection Test.",
+                "step5Title": "5. Chat Testing",
+                "step5Desc": "Test conversations with your developed agent in the Chat Playground.",
+                "step6Title": "6. Real-time Tracing",
+                "step6Desc": "View 5 types of event information in real-time in the Trace window using the trace_id provided by LLM Proxy (expandable/collapsible).",
+                "step7Title": "7. Session History",
+                "step7Desc": "Workbench provides conversation history for a single session."
+            },
+            "agno": {
+                "step1Title": "1. Create Agent",
+                "step1Desc": "Create an agent to develop in the Workbench.",
+                "step2Title": "2. Check Endpoint",
+                "step2Desc": "Click the created agent to see Chat and Trace windows, with the LLM Proxy endpoint available in Configuration.",
+                "step3Title": "3. Develop Agent",
+                "step3Desc": "Develop your Agno agent using the provided endpoint and API key from Settings. Agents communicate via REST API /run endpoint.",
+                "step4Title": "4. Connect & Select Resource",
+                "step4Desc": "Enter your agent's host address in Chat Playground Config and perform a Connection Test. After successful connection, select an Agent or Team to chat with.",
+                "step5Title": "5. Chat Testing",
+                "step5Desc": "Test conversations with your developed agent in the Chat Playground.",
+                "step6Title": "6. Real-time Tracing",
+                "step6Desc": "View 5 types of event information in real-time in the Trace window using the trace_id provided by LLM Proxy (expandable/collapsible).",
+                "step7Title": "7. Session History",
+                "step7Desc": "Workbench provides conversation history for a single session."
+            }
+        },
         "guide": {
             "title": "What Playground Can Show",
             "intro": "The A2A Chat Playground supports rich markdown rendering with advanced features. This guide shows you what you can display and how to format your agent responses for the best user experience.",
             "textFormatting": {
                 "title": "Text Formatting",
                 "basicLabel": "Basic Formatting:",
-                "taskListsLabel": "Task Lists:"
+                "taskListsLabel": "Task Lists:",
+                "boldExample": "**Bold text**",
+                "italicExample": "*Italic text*",
+                "strikeExample": "~~Strikethrough~~",
+                "codeExample": "`Inline code`",
+                "taskExample": "- [x] Completed task\n- [ ] Incomplete task"
             },
             "codeBlocks": {
                 "title": "Code Blocks",
@@ -109,13 +168,18 @@
                 "feature4": "Collapsible for long code (10+ lines)",
                 "feature5": "Language badge",
                 "exampleLabel": "Example:",
+                "pythonExample": "```python\ndef greet(name):\n    return f\"Hello, {name}!\"\n\nprint(greet(\"World\"))\n```",
+                "jsExample": "```javascript\nconst greet = (name) => {\n  return `Hello, ${name}!`;\n};\n\nconsole.log(greet('World'));\n```",
                 "diffLabel": "Diff Syntax:",
+                "diffExample": "```diff\n- Old code\n+ New code\n```",
                 "diffNote": "🟢 Green: Added lines (+) | 🔴 Red: Deleted lines (-)"
             },
             "math": {
                 "title": "Mathematics (LaTeX)",
                 "inlineLabel": "Inline Math:",
-                "displayLabel": "Display Math (Block):"
+                "inlineExample": "$E = mc^2$",
+                "displayLabel": "Display Math (Block):",
+                "displayExample": "$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$"
             },
             "diagrams": {
                 "title": "Diagrams (Mermaid)",
@@ -127,11 +191,14 @@
                 "er": "Database schema",
                 "gantt": "Project timeline",
                 "pie": "Distributions",
-                "exampleLabel": "Example Flowchart:"
+                "exampleLabel": "Example Flowchart:",
+                "flowchartExample": "```mermaid\ngraph TD\n    A[Start] --> B{Condition?}\n    B -->|Yes| C[Process 1]\n    B -->|No| D[Process 2]\n    C --> E[End]\n    D --> E\n```",
+                "sequenceExample": "```mermaid\nsequenceDiagram\n    Client->>Server: Request\n    Server->>Database: Query\n    Database-->>Server: Result\n    Server-->>Client: Response\n```"
             },
             "tables": {
                 "title": "Tables",
                 "exampleLabel": "Example:",
+                "tableExample": "| Feature | Supported | Description |\n|---------|-----------|-------------|\n| Syntax Highlighting | ✅ | 100+ languages |\n| Diagrams | ✅ | Mermaid |\n| Math | ✅ | LaTeX/KaTeX |",
                 "featuresLabel": "Features:",
                 "featuresText": "Automatic borders, responsive design, horizontal scroll for wide tables"
             },
@@ -149,7 +216,8 @@
                 "orderedLabel": "Ordered Lists:"
             },
             "blockquotes": {
-                "title": "Blockquotes"
+                "title": "Blockquotes",
+                "example": "> This is an important note.\n> It can span multiple lines."
             },
             "bestPractices": {
                 "title": "Best Practices",
@@ -187,7 +255,7 @@
                 "blockquoteUse": "Important notes",
                 "blockquoteEx": "Warnings, citations"
             },
-            "footer": "Made with ❤️ for A2A Agent Developers"
+            "footer": "Diligently created this for A2A agent developers - syngha.han"
         }
     },
     "createAgent": {
@@ -207,6 +275,7 @@
     },
     "common": {
         "cancel": "Cancel",
+        "close": "Close",
         "creating": "Creating...",
         "save": "Save",
         "pageNotFound": "Page not found",
@@ -218,13 +287,8 @@
         "logout": "Logout"
     },
     "flow": {
-        "title": "Flow Dashboard",
-        "subtitle": "Select agents and start a conversation.",
-        "newChat": "New Chat",
-        "allAgents": "All Agents",
-        "welcomeTitle": "Welcome to Flow Chat",
-        "welcomeSubtitle": "Select one or more agents from the dropdown above to start your conversation. If no agent is selected, you'll be interacting with all available agents.",
-        "messagePlaceholder": "Type your message here..."
+        "title": "Flow",
+        "underDevelopment": "Multi Agent Orchestration feature is under development..!"
     },
     "settings": {
         "title": "Settings",
