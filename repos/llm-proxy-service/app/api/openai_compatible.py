@@ -130,49 +130,50 @@ async def get_model_from_admin_db(model_name: str) -> Optional[Dict[str, Any]]:
     Query Admin Service database for model configuration
     Returns model config if found and active, None otherwise
 
-    Handles hosted_vllm/ prefix: tries exact match first, then strips prefix
+    Matching strategy:
+    1. Strip "hosted_vllm/" prefix if present
+    2. Extract last segment after final "/" (e.g., "gpt-oss-20b" from "openai/gpt-oss-20b")
+    3. Find admin-registered model whose name ends with this segment
+    4. Return admin's registered name for statistics
     """
     try:
         async with admin_db_session_maker() as session:
+            # Step 1: Strip hosted_vllm/ prefix if present
+            clean_model_name = model_name
+            if model_name.startswith("hosted_vllm/"):
+                clean_model_name = model_name.replace("hosted_vllm/", "", 1)
+                logger.info(f"[Provider Config] Stripped prefix: {model_name} → {clean_model_name}")
+
+            # Step 2: Extract last segment (e.g., "gpt-oss-20b" from "openai/gpt-oss-20b")
+            last_segment = clean_model_name.split("/")[-1]
+            logger.info(f"[Provider Config] Matching by last segment: '{last_segment}' from '{clean_model_name}'")
+
+            # Step 3: Find model in DB whose name ends with this segment
             query = text("""
                 SELECT name, provider, endpoint, api_key_encrypted, is_active
                 FROM llm_models
-                WHERE name = :model_name AND is_active = true
+                WHERE is_active = true
+                ORDER BY name
             """)
 
-            # Try exact match first
-            result = await session.execute(query, {"model_name": model_name})
-            row = result.fetchone()
+            result = await session.execute(query)
+            rows = result.fetchall()
 
-            if row:
-                logger.info(f"[Provider Config] Found model '{model_name}' in Admin DB: provider={row[1]}")
-                return {
-                    "name": row[0],
-                    "provider": row[1],
-                    "endpoint": row[2],
-                    "api_key": row[3],
-                    "is_active": row[4]
-                }
+            for row in rows:
+                admin_model_name = row[0]
+                admin_last_segment = admin_model_name.split("/")[-1]
 
-            # If not found and has hosted_vllm/ prefix, try without prefix
-            if model_name.startswith("hosted_vllm/"):
-                base_model_name = model_name.replace("hosted_vllm/", "")
-                logger.info(f"[Provider Config] Exact match failed, trying with base model name: {base_model_name}")
-
-                result = await session.execute(query, {"model_name": base_model_name})
-                row = result.fetchone()
-
-                if row:
-                    logger.info(f"[Provider Config] Found model '{base_model_name}' in Admin DB: provider={row[1]}")
+                if admin_last_segment == last_segment:
+                    logger.info(f"[Provider Config] ✅ Matched '{model_name}' → admin model '{admin_model_name}' (segment: {last_segment})")
                     return {
-                        "name": row[0],
+                        "name": row[0],  # Return admin's registered name for statistics
                         "provider": row[1],
                         "endpoint": row[2],
                         "api_key": row[3],
                         "is_active": row[4]
                     }
 
-            logger.debug(f"[Provider Config] Model '{model_name}' not found in Admin DB")
+            logger.warning(f"[Provider Config] ❌ No model found with last segment '{last_segment}' (from {model_name})")
             return None
     except Exception as e:
         logger.error(f"[Provider Config] Error querying Admin DB for model '{model_name}': {e}")
@@ -183,16 +184,23 @@ async def get_provider_config(model: str) -> Dict[str, str]:
     """
     Get provider configuration based on model name
     First tries Admin Service database, then falls back to hardcoded env vars
-    Returns: {provider: 'openai'|'gemini'|'anthropic', api_key: '...', base_url: '...'}
+    Returns: {
+        provider: 'openai'|'gemini'|'anthropic',
+        api_key: '...',
+        base_url: '...',
+        admin_model_name: '...'  # Admin's registered model name for statistics
+    }
     """
     # First, try to get model configuration from Admin Service database
     model_config = await get_model_from_admin_db(model)
     if model_config and model_config.get("api_key"):
-        logger.info(f"[Provider Config] Using Admin DB config for model '{model}'")
+        admin_model_name = model_config["name"]
+        logger.info(f"[Provider Config] Using Admin DB config: '{model}' → admin model '{admin_model_name}'")
         return {
             "provider": model_config["provider"],
             "api_key": model_config["api_key"],
-            "base_url": model_config["endpoint"]
+            "base_url": model_config["endpoint"],
+            "admin_model_name": admin_model_name  # Return admin's registered name
         }
 
     logger.info(f"[Provider Config] Falling back to hardcoded config for model '{model}'")
@@ -203,7 +211,8 @@ async def get_provider_config(model: str) -> Dict[str, str]:
         return {
             "provider": "openai",
             "api_key": os.getenv("OPENAI_API_KEY", ""),
-            "base_url": "https://api.openai.com/v1"
+            "base_url": "https://api.openai.com/v1",
+            "admin_model_name": model  # Use request model as-is for fallback
         }
 
     # Gemini models
@@ -211,7 +220,8 @@ async def get_provider_config(model: str) -> Dict[str, str]:
         return {
             "provider": "gemini",
             "api_key": os.getenv("GOOGLE_API_KEY", ""),
-            "base_url": f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
+            "base_url": f"https://generativelanguage.googleapis.com/v1beta/models/{model}",
+            "admin_model_name": model  # Use request model as-is for fallback
         }
 
     # Anthropic models
@@ -219,7 +229,8 @@ async def get_provider_config(model: str) -> Dict[str, str]:
         return {
             "provider": "anthropic",
             "api_key": os.getenv("ANTHROPIC_API_KEY", ""),
-            "base_url": "https://api.anthropic.com/v1"
+            "base_url": "https://api.anthropic.com/v1",
+            "admin_model_name": model  # Use request model as-is for fallback
         }
 
     # OpenAI-compatible endpoints (custom models)
@@ -227,7 +238,8 @@ async def get_provider_config(model: str) -> Dict[str, str]:
         return {
             "provider": "openai-compatible",
             "api_key": os.getenv("CUSTOM_API_KEY", ""),
-            "base_url": os.getenv("CUSTOM_BASE_URL", "http://localhost:8000/v1")
+            "base_url": os.getenv("CUSTOM_BASE_URL", "http://localhost:8000/v1"),
+            "admin_model_name": model  # Use request model as-is for fallback
         }
 
 
@@ -528,8 +540,10 @@ async def create_chat_completion(
     provider = config["provider"]
     api_key = config["api_key"]
     base_url = config["base_url"]
+    admin_model_name = config.get("admin_model_name", request.model)  # Use admin's registered name
 
     logger.info(f"[LLM Proxy] Using provider={provider}, base_url={base_url}")
+    logger.info(f"[LLM Proxy] Model mapping: '{request.model}' → '{admin_model_name}' (admin registered)")
 
     if not api_key:
         logger.error(f"[LLM Proxy] No API key configured for provider={provider}")
@@ -575,7 +589,8 @@ async def create_chat_completion(
                 base_url=base_url,
                 request=request,
                 provider=provider,
-                trace_id=trace_id
+                trace_id=trace_id,
+                admin_model_name=admin_model_name
             )
 
         elif provider == "gemini":
@@ -687,8 +702,10 @@ async def create_chat_completion_with_trace(
     provider = config["provider"]
     api_key = config["api_key"]
     base_url = config["base_url"]
+    admin_model_name = config.get("admin_model_name", request.model)  # Use admin's registered name
 
     logger.info(f"[LLM Proxy] Using provider={provider}, base_url={base_url}")
+    logger.info(f"[LLM Proxy] Model mapping: '{request.model}' → '{admin_model_name}' (admin registered)")
 
     if not api_key:
         logger.error(f"[LLM Proxy] No API key configured for provider={provider}")
@@ -833,8 +850,10 @@ async def create_chat_completion_with_session(
     provider = config["provider"]
     api_key = config["api_key"]
     base_url = config["base_url"]
+    admin_model_name = config.get("admin_model_name", request.model)  # Use admin's registered name
 
     logger.info(f"[LLM Proxy] Using provider={provider}, base_url={base_url}")
+    logger.info(f"[LLM Proxy] Model mapping: '{request.model}' → '{admin_model_name}' (admin registered)")
 
     if not api_key:
         logger.error(f"[LLM Proxy] No API key configured for provider={provider}")
@@ -881,7 +900,8 @@ async def create_chat_completion_with_session(
                 base_url=base_url,
                 request=request,
                 provider=provider,
-                trace_id=trace_id
+                trace_id=trace_id,
+                admin_model_name=admin_model_name
             )
 
         elif provider == "gemini":
@@ -988,11 +1008,15 @@ async def proxy_openai_compatible(
     request: ChatCompletionRequest,
     provider: str,
     trace_id: Optional[str] = None,
-    user_id: Optional[int] = None
+    user_id: Optional[int] = None,
+    admin_model_name: Optional[str] = None
 ):
     """
     Proxy request to OpenAI or OpenAI-compatible endpoint
     Returns OpenAI-compatible response
+
+    Args:
+        admin_model_name: Admin's registered model name for LLM calls and statistics
     """
     # Strip trailing slash from base_url to avoid double slashes
     base_url = base_url.rstrip('/')
@@ -1032,8 +1056,12 @@ async def proxy_openai_compatible(
         processed_messages.append(msg_dict)
 
     # Only include non-None values to avoid sending null to providers that don't accept it
+    # Use admin_model_name (admin's registered name) for LLM calls
+    model_to_use = admin_model_name if admin_model_name else request.model
+    logger.info(f"[OpenAI Proxy] Using model for LLM call: '{model_to_use}' (admin registered)")
+
     payload = {
-        "model": request.model,
+        "model": model_to_use,  # Use admin's registered model name
         "messages": processed_messages
     }
 
@@ -1069,7 +1097,7 @@ async def proxy_openai_compatible(
         # Streaming response - client must be created inside the stream function
         # to avoid "client has been closed" error
         logger.info(f"[OpenAI Proxy] Starting streaming request to {base_url}/chat/completions")
-        logger.info(f"[OpenAI Proxy] Streaming payload model={request.model}, messages_count={len(request.messages)}")
+        logger.info(f"[OpenAI Proxy] Streaming payload model={model_to_use}, messages_count={len(request.messages)}")
         return StreamingResponse(
             stream_openai_response(
                 agent_id=agent_id,
@@ -1077,7 +1105,7 @@ async def proxy_openai_compatible(
                 url=f"{base_url}/chat/completions",
                 headers=headers,
                 payload=payload,
-                model=request.model,
+                model=model_to_use,  # Use admin's registered model name
                 trace_id=trace_id
             ),
             media_type="text/event-stream"
@@ -1163,13 +1191,13 @@ async def proxy_openai_compatible(
         # Calculate latency
         latency_ms = int((time.time() - start_time) * 1000)
 
-        # Save to database
+        # Save to database - use admin's registered model name for statistics
         await save_llm_call_to_db(
             agent_id=agent_id,
             user_id=user_id,
             trace_id=trace_id,
             provider=provider,
-            model=request.model,
+            model=model_to_use,  # Use admin's registered model name
             request=request,
             response_data=data,
             latency_ms=latency_ms,

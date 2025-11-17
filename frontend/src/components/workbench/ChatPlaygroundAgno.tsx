@@ -190,8 +190,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     try {
       const adapter = ChatAdapterFactory.createAdapter(agent.framework);
 
-      // For Agno, pass selectedResource if available
+      // For Agno, pass selectedResource and its type if available
       const resourceId = selectedResource || undefined;
+      const resourceType = resourceId
+        ? agnoResources.find((r) => r.id === resourceId)?.type
+        : undefined;
 
       adapter.initialize({
         agentId: agent.id,
@@ -200,12 +203,14 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         accessToken: accessToken,
         sessionId: undefined, // Workbench mode
         selectedResource: resourceId,
+        selectedResourceType: resourceType,
       });
 
       chatAdapterRef.current = adapter;
       console.log('[ChatPlaygroundAgno] Chat adapter initialized:', {
         sessionId: agentSessionId,
         selectedResource: resourceId,
+        selectedResourceType: resourceType,
         framework: agent.framework,
       });
     } catch (error) {
@@ -219,7 +224,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL, selectedResource]);
+  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL, selectedResource, agnoResources]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -310,7 +315,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           },
           onSystemEvent: (event) => {
             if (systemEventsMessageId) {
-              console.log('[ChatPlaygroundAgno] System event:', event.event, event.type);
+              console.log('[ChatPlaygroundAgno] System event:', event.event, event.data);
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === systemEventsMessageId
@@ -928,39 +933,48 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                     {isExpanded && message.systemEvents.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2 justify-center">
                         {message.systemEvents.map((event, idx) => {
+                          // Determine event type from event name
+                          const eventName = event.event;
+                          let eventType = 'unknown';
+
+                          if (eventName.includes('ToolCall')) {
+                            eventType = 'tool';
+                          } else if (eventName.includes('Started') || eventName.includes('Completed')) {
+                            eventType = 'control';
+                          } else if (eventName.includes('Content')) {
+                            eventType = 'model';
+                          } else if (eventName.includes('Error')) {
+                            eventType = 'error';
+                          }
+
                           let badgeColor = '';
-                          if (event.type === 'tool') {
+                          if (eventType === 'tool') {
                             badgeColor = isDark ? 'rgba(22, 163, 74, 0.2)' : '#dcfce7';
-                          } else if (event.type === 'control') {
+                          } else if (eventType === 'control') {
                             badgeColor = isDark ? 'rgba(53, 158, 255, 0.2)' : '#dbeafe';
-                          } else if (event.type === 'model') {
+                          } else if (eventType === 'model') {
                             badgeColor = isDark ? 'rgba(147, 51, 234, 0.2)' : '#ede9fe';
-                          } else if (event.type === 'reasoning') {
-                            badgeColor = isDark ? 'rgba(251, 146, 60, 0.2)' : '#fed7aa';
-                          } else if (event.type === 'memory') {
-                            badgeColor = isDark ? 'rgba(20, 184, 166, 0.2)' : '#ccfbf1';
-                          } else if (event.type === 'hook') {
-                            badgeColor = isDark ? 'rgba(236, 72, 153, 0.2)' : '#fce7f3';
+                          } else if (eventType === 'error') {
+                            badgeColor = isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2';
                           } else {
                             badgeColor = isDark ? 'rgba(75, 85, 99, 0.3)' : '#f3f4f6';
                           }
 
                           let textColor = '';
-                          if (event.type === 'tool') {
+                          if (eventType === 'tool') {
                             textColor = isDark ? '#86efac' : '#16a34a';
-                          } else if (event.type === 'control') {
+                          } else if (eventType === 'control') {
                             textColor = isDark ? '#93c5fd' : '#2563eb';
-                          } else if (event.type === 'model') {
+                          } else if (eventType === 'model') {
                             textColor = isDark ? '#c4b5fd' : '#9333ea';
-                          } else if (event.type === 'reasoning') {
-                            textColor = isDark ? '#fdba74' : '#ea580c';
-                          } else if (event.type === 'memory') {
-                            textColor = isDark ? '#5eead4' : '#0d9488';
-                          } else if (event.type === 'hook') {
-                            textColor = isDark ? '#f9a8d4' : '#ec4899';
+                          } else if (eventType === 'error') {
+                            textColor = isDark ? '#fca5a5' : '#dc2626';
                           } else {
                             textColor = isDark ? '#d1d5db' : '#4b5563';
                           }
+
+                          // Get translated event name
+                          const translatedEvent = t(`workbench.events.${eventName}`, { defaultValue: eventName });
 
                           return (
                             <span
@@ -971,7 +985,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                                 color: textColor,
                               }}
                             >
-                              {event.event}
+                              {translatedEvent}
                             </span>
                           );
                         })}

@@ -85,22 +85,22 @@ export class AgnoChatAdapter implements ChatAdapter {
       throw new Error('Invalid adapter state');
     }
 
-    const { agentEndpoint, selectedResource } = this.config;
+    const { agentEndpoint, selectedResource, selectedResourceType } = this.config;
 
     if (!selectedResource) {
       throw new Error('No team or agent selected');
     }
 
     // Construct Agno endpoint based on selected resource type
-    // selectedResource format: "team-name" or "agent-name"
-    // We need to determine if it's a team or agent
-    // For now, we'll try teams first (most common case)
-    const endpoint = `${agentEndpoint}/teams/${selectedResource}/runs`;
+    // Default to 'team' if not specified (backward compatibility)
+    const resourceType = selectedResourceType || 'team';
+    const endpoint = `${agentEndpoint}/${resourceType}s/${selectedResource}/runs`;
 
     console.log('[AgnoChatAdapter] Sending message:', {
       endpoint,
       messageLength: message.content.length,
       selectedResource,
+      selectedResourceType: resourceType,
     });
 
     // Use FormData for Agno's multipart/form-data API
@@ -158,13 +158,13 @@ export class AgnoChatAdapter implements ChatAdapter {
     console.log('[AgnoChatAdapter] SSE event:', data.event);
 
     switch (data.event) {
+      // === Team-level events → Chat messages (final output) ===
       case 'TeamRunStarted':
-      case 'RunStarted':
-        console.log('[AgnoChatAdapter] Run started:', data.event);
+        console.log('[AgnoChatAdapter] Team run started');
         break;
 
       case 'TeamRunContent':
-      case 'RunContent':
+        // Team-level content → Display in chat
         if (data.content) {
           this.streamingMessageBuffer += data.content;
           callbacks.onChunk?.({
@@ -175,8 +175,7 @@ export class AgnoChatAdapter implements ChatAdapter {
         break;
 
       case 'TeamRunCompleted':
-      case 'RunCompleted':
-        console.log('[AgnoChatAdapter] Run completed, total length:', this.streamingMessageBuffer.length);
+        console.log('[AgnoChatAdapter] Team run completed, total length:', this.streamingMessageBuffer.length);
         callbacks.onComplete?.({
           content: this.streamingMessageBuffer,
           timestamp: new Date(),
@@ -184,14 +183,33 @@ export class AgnoChatAdapter implements ChatAdapter {
         this.streamingMessageBuffer = '';
         break;
 
+      // === Agent-level events → System events (internal process) ===
+      case 'RunStarted':
+      case 'RunContent':
+      case 'RunCompleted':
+      case 'RunContentCompleted':
+        // Agent-level events - show in system events panel, not in chat
+        console.log('[AgnoChatAdapter] Agent-level event:', data.event);
+        callbacks.onSystemEvent?.({
+          event: data.event,
+          data: data,
+          timestamp: new Date(),
+        });
+        break;
+
+      // === Tool call events → System events ===
       case 'TeamToolCallStarted':
       case 'ToolCallStarted':
       case 'TeamToolCallCompleted':
       case 'ToolCallCompleted':
       case 'TeamRunContentCompleted':
-      case 'RunContentCompleted':
-        // System events - can be used for system events display in the future
+        // Tool and system events
         console.log('[AgnoChatAdapter] System event:', data.event);
+        callbacks.onSystemEvent?.({
+          event: data.event,
+          data: data,
+          timestamp: new Date(),
+        });
         break;
 
       case 'TeamRunError':

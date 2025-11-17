@@ -13,4 +13,5 @@ export type {
   ChatResponse,
   ChatResponseChunk,
   ConversationMessage,
+  SystemEvent,
 } from './types';

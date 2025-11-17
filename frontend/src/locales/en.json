@@ -92,6 +92,23 @@
             "waitingForEvents": "Waiting for trace events...",
             "noTraceId": "No trace ID"
         },
+        "systemEvents": "System Events",
+        "events": {
+            "RunStarted": "Agent Started",
+            "RunContent": "Agent Processing",
+            "RunCompleted": "Agent Completed",
+            "RunContentCompleted": "Processing Complete",
+            "TeamRunStarted": "Team Started",
+            "TeamRunContent": "Team Processing",
+            "TeamRunCompleted": "Team Completed",
+            "TeamRunContentCompleted": "Team Processing Complete",
+            "TeamToolCallStarted": "Team Tool Started",
+            "TeamToolCallCompleted": "Team Tool Completed",
+            "ToolCallStarted": "Tool Started",
+            "ToolCallCompleted": "Tool Completed",
+            "TeamRunError": "Team Error",
+            "RunError": "Agent Error"
+        },
         "guide": {
             "title": "What Playground Can Show",
             "intro": "The A2A Chat Playground supports rich markdown rendering with advanced features. This guide shows you what you can display and how to format your agent responses for the best user experience.",

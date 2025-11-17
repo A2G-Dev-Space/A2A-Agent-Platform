@@ -92,6 +92,23 @@
             "waitingForEvents": "추적 이벤트 대기 중...",
             "noTraceId": "추적 ID 없음"
         },
+        "systemEvents": "시스템 이벤트",
+        "events": {
+            "RunStarted": "에이전트 시작",
+            "RunContent": "에이전트 처리중",
+            "RunCompleted": "에이전트 완료",
+            "RunContentCompleted": "처리 완료",
+            "TeamRunStarted": "팀 시작",
+            "TeamRunContent": "팀 처리중",
+            "TeamRunCompleted": "팀 완료",
+            "TeamRunContentCompleted": "팀 처리 완료",
+            "TeamToolCallStarted": "팀 도구 시작",
+            "TeamToolCallCompleted": "팀 도구 완료",
+            "ToolCallStarted": "도구 시작",
+            "ToolCallCompleted": "도구 완료",
+            "TeamRunError": "팀 오류",
+            "RunError": "에이전트 오류"
+        },
         "guide": {
             "title": "플레이그라운드에서 표시 가능한 기능",
             "intro": "A2A 채팅 플레이그라운드는 고급 기능을 갖춘 풍부한 마크다운 렌더링을 지원합니다. 이 가이드는 표시할 수 있는 것과 최상의 사용자 경험을 위해 에이전트 응답을 포맷하는 방법을 보여줍니다.",
