@@ -17,6 +17,8 @@ export class AgnoChatAdapter implements ChatAdapter {
   private config: ChatAdapterConfig | null = null;
   private abortController: AbortController | null = null;
   private streamingMessageBuffer = '';
+  private reasoningBuffer = '';
+  private isInThinkingMode = false;
 
   initialize(config: ChatAdapterConfig): void {
     this.config = config;
@@ -36,8 +38,10 @@ export class AgnoChatAdapter implements ChatAdapter {
       throw new Error('AgnoChatAdapter not initialized');
     }
 
-    // Reset streaming buffer
+    // Reset streaming buffers
     this.streamingMessageBuffer = '';
+    this.reasoningBuffer = '';
+    this.isInThinkingMode = false;
 
     // Create abort controller for cancellation
     this.abortController = new AbortController();
@@ -68,6 +72,8 @@ export class AgnoChatAdapter implements ChatAdapter {
     this.cancel();
     this.config = null;
     this.streamingMessageBuffer = '';
+    this.reasoningBuffer = '';
+    this.isInThinkingMode = false;
     console.log('[AgnoChatAdapter] Disposed');
   }
 
@@ -178,11 +184,7 @@ export class AgnoChatAdapter implements ChatAdapter {
       case 'TeamRunContent':
         // Team-level content → Display in chat
         if (data.content) {
-          this.streamingMessageBuffer += data.content;
-          callbacks.onChunk?.({
-            content: this.streamingMessageBuffer,
-            isComplete: false,
-          });
+          this.processContentChunk(data.content, callbacks);
         }
         break;
 
@@ -191,8 +193,11 @@ export class AgnoChatAdapter implements ChatAdapter {
         callbacks.onComplete?.({
           content: this.streamingMessageBuffer,
           timestamp: new Date(),
+          reasoningContent: this.reasoningBuffer || undefined,
         });
         this.streamingMessageBuffer = '';
+        this.reasoningBuffer = '';
+        this.isInThinkingMode = false;
         break;
 
       // === Agent-level events → System events (internal process) ===
@@ -234,5 +239,57 @@ export class AgnoChatAdapter implements ChatAdapter {
       default:
         console.warn('[AgnoChatAdapter] Unknown event type:', data.event);
     }
+  }
+
+  /**
+   * Process content chunk and separate thinking/reasoning content from actual response
+   */
+  private processContentChunk(chunk: string, callbacks: ChatAdapterCallbacks): void {
+    let remainingChunk = chunk;
+
+    while (remainingChunk.length > 0) {
+      if (this.isInThinkingMode) {
+        // Look for closing </think> tag
+        const thinkEndIndex = remainingChunk.indexOf('</think>');
+
+        if (thinkEndIndex !== -1) {
+          // Found closing tag - add content to reasoning buffer
+          this.reasoningBuffer += remainingChunk.substring(0, thinkEndIndex);
+          this.isInThinkingMode = false;
+
+          // Continue processing after </think> tag
+          remainingChunk = remainingChunk.substring(thinkEndIndex + 8); // 8 = length of '</think>'
+        } else {
+          // No closing tag yet - add entire chunk to reasoning buffer
+          this.reasoningBuffer += remainingChunk;
+          remainingChunk = '';
+        }
+      } else {
+        // Look for opening <think> tag
+        const thinkStartIndex = remainingChunk.indexOf('<think>');
+
+        if (thinkStartIndex !== -1) {
+          // Found opening tag - add content before tag to message buffer
+          if (thinkStartIndex > 0) {
+            this.streamingMessageBuffer += remainingChunk.substring(0, thinkStartIndex);
+          }
+          this.isInThinkingMode = true;
+
+          // Continue processing after <think> tag
+          remainingChunk = remainingChunk.substring(thinkStartIndex + 7); // 7 = length of '<think>'
+        } else {
+          // No thinking tag - add entire chunk to message buffer
+          this.streamingMessageBuffer += remainingChunk;
+          remainingChunk = '';
+        }
+      }
+    }
+
+    // Send update to UI
+    callbacks.onChunk?.({
+      content: this.streamingMessageBuffer,
+      isComplete: false,
+      reasoningContent: this.reasoningBuffer || undefined,
+    });
   }
 }

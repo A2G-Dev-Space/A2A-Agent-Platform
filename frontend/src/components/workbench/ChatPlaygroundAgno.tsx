@@ -17,6 +17,7 @@ interface Message {
   content: string;
   timestamp: Date;
   systemEvents?: SystemEvent[];
+  reasoningContent?: string; // Optional reasoning/thinking content from <think> tags
 }
 
 interface ChatPlaygroundAgnoProps {
@@ -46,9 +47,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [expandedSystemMessages, setExpandedSystemMessages] = useState<Set<string>>(new Set());
   const [expandedEventDetails, setExpandedEventDetails] = useState<Set<string>>(new Set());
+  const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -344,11 +347,14 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         { content: userMessageContent },
         {
           onChunk: (chunk) => {
-            console.log('[ChatPlaygroundAgno] Received chunk, length:', chunk.content.length);
+            console.log('[ChatPlaygroundAgno] Received chunk, content:', chunk.content.length, 'reasoning:', chunk.reasoningContent?.length || 0);
             setStreamingMessage(chunk.content);
+            if (chunk.reasoningContent) {
+              setStreamingReasoning(chunk.reasoningContent);
+            }
           },
           onComplete: (response) => {
-            console.log('[ChatPlaygroundAgno] Message complete, length:', response.content.length);
+            console.log('[ChatPlaygroundAgno] Message complete, content:', response.content.length, 'reasoning:', response.reasoningContent?.length || 0);
 
             setMessages((prev) => [
               ...prev,
@@ -357,10 +363,12 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 role: 'assistant',
                 content: response.content,
                 timestamp: response.timestamp,
+                reasoningContent: response.reasoningContent,
               },
             ]);
 
             setStreamingMessage('');
+            setStreamingReasoning('');
             setIsStreaming(false);
           },
           onError: (error) => {
@@ -1551,6 +1559,58 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                           : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
                       }}
                     >
+                      {/* Thinking section - only for assistant messages with reasoning */}
+                      {message.role === 'assistant' && message.reasoningContent && (
+                        <div className="mb-3">
+                          <button
+                            onClick={() => {
+                              setExpandedThinking((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(message.id)) {
+                                  next.delete(message.id);
+                                } else {
+                                  next.add(message.id);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                            style={{
+                              backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? 'rgba(147, 51, 234, 0.2)'
+                                : 'rgba(147, 51, 234, 0.1)',
+                              color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? '#c4b5fd'
+                                : '#7c3aed',
+                            }}
+                          >
+                            {expandedThinking.has(message.id) ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronUp className="h-3 w-3" />
+                            )}
+                            <span>Thinking...</span>
+                          </button>
+
+                          {expandedThinking.has(message.id) && (
+                            <div
+                              className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
+                              style={{
+                                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? 'rgba(147, 51, 234, 0.1)'
+                                  : 'rgba(147, 51, 234, 0.05)',
+                                borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
+                                color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? '#e5e7eb'
+                                  : '#374151',
+                              }}
+                            >
+                              {message.reasoningContent}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <MessageContent content={message.content} contentType="markdown" />
                     </div>
                     <div className="flex items-center gap-2">
@@ -1581,7 +1641,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             })}
 
             {/* Streaming message */}
-            {isStreaming && streamingMessage && (
+            {isStreaming && (streamingMessage || streamingReasoning) && (
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300">
                   <Bot className="h-4 w-4" />
@@ -1600,8 +1660,34 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                         : '#EA2831'
                     }}
                   >
-                    <MessageContent content={streamingMessage} contentType="markdown" />
-                    <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
+                    {/* Streaming thinking section */}
+                    {streamingReasoning && (
+                      <div className="mb-3">
+                        <div
+                          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md"
+                          style={{
+                            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                              ? 'rgba(147, 51, 234, 0.2)'
+                              : 'rgba(147, 51, 234, 0.1)',
+                            color: document.documentElement.getAttribute('data-theme') === 'dark'
+                              ? '#c4b5fd'
+                              : '#7c3aed',
+                          }}
+                        >
+                          <span>Thinking...</span>
+                          <span className="inline-block h-3 w-1 animate-pulse bg-purple-500" />
+                        </div>
+                      </div>
+                    )}
+
+                    {streamingMessage ? (
+                      <>
+                        <MessageContent content={streamingMessage} contentType="markdown" />
+                        <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
+                      </>
+                    ) : (
+                      <span className="inline-block h-4 w-1 animate-pulse bg-primary" />
+                    )}
                   </div>
                 </div>
               </div>
