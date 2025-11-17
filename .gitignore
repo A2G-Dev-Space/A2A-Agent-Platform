@@ -88,6 +88,11 @@ dist
 .cache/
 public
 
+# Exception: Allow frontend/public/examples folder for example code downloads
+!frontend/public/
+!frontend/public/examples/
+!frontend/public/examples/*.zip
+
 # Vuepress build output
 .vuepress/dist
 
@@ -443,6 +448,7 @@ local/
 
 # Archive files
 *.zip
+!frontend/public/examples/*.zip
 *.tar.gz
 *.rar
 *.7z
