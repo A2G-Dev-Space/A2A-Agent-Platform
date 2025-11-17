@@ -164,20 +164,20 @@ async def _check_llm_health_async():
 
 
 @celery_app.task
-def collect_hourly_snapshot():
-    """Collect hourly statistics snapshot for trend tracking"""
+def collect_daily_snapshot():
+    """Collect daily statistics snapshot for trend tracking"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_collect_hourly_snapshot_async())
+        return loop.run_until_complete(_collect_daily_snapshot_async())
     finally:
         loop.close()
 
-async def _collect_hourly_snapshot_async():
-    """Async implementation of hourly snapshot collection"""
+async def _collect_daily_snapshot_async():
+    """Async implementation of daily snapshot collection"""
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-    logger.info("Starting hourly statistics snapshot collection...")
+    logger.info("Starting daily statistics snapshot collection...")
 
     try:
         # Create a new async engine for this task's event loop
@@ -300,7 +300,7 @@ async def _collect_hourly_snapshot_async():
         }
 
     except Exception as e:
-        logger.error(f"Error collecting hourly snapshot: {e}", exc_info=True)
+        logger.error(f"Error collecting daily snapshot: {e}", exc_info=True)
         return {"error": str(e)}
 
 
@@ -352,9 +352,9 @@ async def _cleanup_old_snapshots_async():
 # Keep the existing placeholder tasks for compatibility
 @celery_app.task
 def aggregate_statistics():
-    """Aggregate platform statistics (deprecated - use collect_hourly_snapshot)"""
-    logger.info("aggregate_statistics called - redirecting to collect_hourly_snapshot")
-    return collect_hourly_snapshot()
+    """Aggregate platform statistics (deprecated - use collect_daily_snapshot)"""
+    logger.info("aggregate_statistics called - redirecting to collect_daily_snapshot")
+    return collect_daily_snapshot()
 
 @celery_app.task
 def check_agent_health():

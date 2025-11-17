@@ -31,9 +31,12 @@ SERVICE_ROUTES = {
     # Admin - User Management (User Service) - Must be before /api/admin
     '/api/admin/users': os.getenv('USER_SERVICE_URL', 'http://user-service:8001'),
 
+    # Statistics (Worker Service)
+    '/api/statistics': os.getenv('WORKER_SERVICE_URL', 'http://worker-api:8010'),
+
     # Admin - LLM & Statistics (Admin Service)
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
-    '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+    '/api/admin/statistics': os.getenv('WORKER_SERVICE_URL', 'http://worker-api:8010'),  # Proxy to worker service
     '/api/admin': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
 
     # LLM Proxy Service (OpenAI Compatible Endpoint)
