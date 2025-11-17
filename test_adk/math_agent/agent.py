@@ -200,7 +200,7 @@ square_root_tool = FunctionTool(square_root)
 
 
 # ======================== Create LLM Model Instance ========================
-def create_platform_llm(model_name: str = "hosted_vllm/qwen/qwen3-32b") -> LiteLlm:
+def create_platform_llm(model_name: str = "hosted_vllm/openai/gpt-oss-20b") -> LiteLlm:
     """
     Platform LLM Proxy를 사용하는 LiteLLM 인스턴스를 생성합니다.
     
