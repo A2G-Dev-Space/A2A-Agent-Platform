@@ -212,15 +212,25 @@ async def save_workbench_messages(
     session = result.scalar_one_or_none()
 
     # Convert messages to dict format for storage
-    message_dicts = [
-        {
+    message_dicts = []
+    for i, msg in enumerate(messages):
+        msg_dict = {
             "id": msg.id or f"msg-{int(time.time() * 1000)}-{i}",
             "role": msg.role,
             "content": msg.content,
             "timestamp": msg.timestamp or datetime.utcnow().isoformat()
         }
-        for i, msg in enumerate(messages)
-    ]
+        # Include systemEvents if present
+        if msg.systemEvents:
+            msg_dict["systemEvents"] = [
+                {
+                    "event": event.event,
+                    "data": event.data,
+                    "timestamp": event.timestamp
+                }
+                for event in msg.systemEvents
+            ]
+        message_dicts.append(msg_dict)
 
     if session:
         # Update existing session
