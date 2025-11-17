@@ -590,6 +590,7 @@ async def create_chat_completion(
                 request=request,
                 provider=provider,
                 trace_id=trace_id,
+                user_id=user_info.get('user_id'),
                 admin_model_name=admin_model_name
             )
 
@@ -901,6 +902,7 @@ async def create_chat_completion_with_session(
                 request=request,
                 provider=provider,
                 trace_id=trace_id,
+                user_id=user_info.get('user_id'),
                 admin_model_name=admin_model_name
             )
 
@@ -1070,6 +1072,9 @@ async def proxy_openai_compatible(
         payload["temperature"] = request.temperature
     if request.stream is not None:
         payload["stream"] = request.stream
+        # Enable usage tracking in streaming mode
+        if request.stream:
+            payload["stream_options"] = {"include_usage": True}
     if request.max_tokens:
         payload["max_tokens"] = request.max_tokens
     if request.top_p:
@@ -1106,7 +1111,10 @@ async def proxy_openai_compatible(
                 headers=headers,
                 payload=payload,
                 model=model_to_use,  # Use admin's registered model name
-                trace_id=trace_id
+                trace_id=trace_id,
+                user_id=user_id,
+                provider=provider,
+                request=request
             ),
             media_type="text/event-stream"
         )
@@ -1214,7 +1222,10 @@ async def stream_openai_response(
     headers: Dict,
     payload: Dict,
     model: str,
-    trace_id: Optional[str] = None
+    trace_id: Optional[str] = None,
+    user_id: Optional[int] = None,
+    provider: str = "openai",
+    request: Optional[ChatCompletionRequest] = None
 ):
     """Stream OpenAI response and emit trace events"""
     logger.info(f"[OpenAI Proxy] ===== STREAMING FLOW START =====")
@@ -1223,10 +1234,19 @@ async def stream_openai_response(
     logger.info(f"[OpenAI Proxy] Stream Trace ID: {trace_id}")
     logger.info(f"[OpenAI Proxy] Stream Payload: {json.dumps(payload)[:300]}")
 
+    # Track request start time for latency
+    start_time = time.time()
+
     accumulated_content = ""
     chunk_count = 0
     # Accumulate tool calls from streaming chunks
     accumulated_tool_calls: Dict[int, Dict] = {}  # index -> tool_call data
+    # Accumulate usage information from streaming chunks
+    accumulated_usage: Dict[str, int] = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+    }
 
     # Create client if not provided (needed for streaming to avoid "client closed" error)
     if client is None:
@@ -1276,6 +1296,42 @@ async def stream_openai_response(
                         if accumulated_tool_calls:
                             tool_calls_list = list(accumulated_tool_calls.values())
                             await process_tool_calls(agent_id, tool_calls_list, trace_id)
+
+                        # Calculate latency
+                        latency_ms = int((time.time() - start_time) * 1000)
+
+                        # Construct response_data for database save
+                        response_data = {
+                            "choices": [{
+                                "message": {
+                                    "role": "assistant",
+                                    "content": accumulated_content
+                                },
+                                "finish_reason": "stop"
+                            }],
+                            "usage": accumulated_usage,
+                            "model": model
+                        }
+
+                        # Add tool_calls to response if present
+                        if accumulated_tool_calls:
+                            response_data["choices"][0]["message"]["tool_calls"] = list(accumulated_tool_calls.values())
+
+                        # Save to database
+                        if request:
+                            await save_llm_call_to_db(
+                                agent_id=agent_id,
+                                user_id=user_id,
+                                trace_id=trace_id,
+                                provider=provider,
+                                model=model,
+                                request=request,
+                                response_data=response_data,
+                                latency_ms=latency_ms,
+                                success=True
+                            )
+                        else:
+                            logger.warning(f"[OpenAI Proxy] Cannot save streaming LLM call to DB: request object not provided")
 
                         yield f"data: [DONE]\n\n"
                         return
@@ -1332,6 +1388,14 @@ async def stream_openai_response(
                                         accumulated_tool_calls[idx]["function"]["name"] = func_chunk["name"]
                                     if "arguments" in func_chunk:
                                         accumulated_tool_calls[idx]["function"]["arguments"] += func_chunk["arguments"]
+
+                        # Accumulate usage information if present in chunk
+                        if "usage" in chunk_data and chunk_data["usage"]:
+                            usage = chunk_data["usage"]
+                            accumulated_usage["prompt_tokens"] = usage.get("prompt_tokens", accumulated_usage["prompt_tokens"])
+                            accumulated_usage["completion_tokens"] = usage.get("completion_tokens", accumulated_usage["completion_tokens"])
+                            accumulated_usage["total_tokens"] = usage.get("total_tokens", accumulated_usage["total_tokens"])
+                            logger.info(f"[OpenAI Proxy] Stream usage updated: {accumulated_usage}")
 
                         # IMPORTANT: If chunk has tool_calls but no content, add empty content
                         # This ensures compatibility with OpenAI API spec
