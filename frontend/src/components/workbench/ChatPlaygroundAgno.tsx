@@ -1663,8 +1663,19 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                     {/* Streaming thinking section */}
                     {streamingReasoning && (
                       <div className="mb-3">
-                        <div
-                          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md"
+                        <button
+                          onClick={() => {
+                            setExpandedThinking((prev) => {
+                              const next = new Set(prev);
+                              if (next.has('streaming')) {
+                                next.delete('streaming');
+                              } else {
+                                next.add('streaming');
+                              }
+                              return next;
+                            });
+                          }}
+                          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
                           style={{
                             backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
                               ? 'rgba(147, 51, 234, 0.2)'
@@ -1674,9 +1685,32 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                               : '#7c3aed',
                           }}
                         >
+                          {expandedThinking.has('streaming') ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronUp className="h-3 w-3" />
+                          )}
                           <span>Thinking...</span>
                           <span className="inline-block h-3 w-1 animate-pulse bg-purple-500" />
-                        </div>
+                        </button>
+
+                        {expandedThinking.has('streaming') && (
+                          <div
+                            className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
+                            style={{
+                              backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'rgba(147, 51, 234, 0.05)',
+                              borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
+                              color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? '#e5e7eb'
+                                : '#374151',
+                            }}
+                          >
+                            {streamingReasoning}
+                            <span className="inline-block h-3 w-1 animate-pulse bg-purple-500 ml-1" />
+                          </div>
+                        )}
                       </div>
                     )}
 
