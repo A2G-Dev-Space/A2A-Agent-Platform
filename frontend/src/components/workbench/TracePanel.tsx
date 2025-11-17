@@ -89,7 +89,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
 
   // Auto-scroll to bottom
   useEffect(() => {
-    eventsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    eventsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }, [events]);
 
   // WebSocket connection

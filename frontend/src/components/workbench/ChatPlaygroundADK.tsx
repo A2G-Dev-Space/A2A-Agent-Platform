@@ -237,7 +237,7 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
 
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }, [messages, streamingMessage]);
 
   // Send trace_id to parent
