@@ -41,10 +41,10 @@ async def _check_llm_health_async():
     logger.info("Starting LLM health check...")
 
     try:
-        # Get all LLMs from admin service (using public endpoint - no auth required)
+        # Get all LLMs from admin service (using internal endpoint - includes API keys)
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                response = await client.get(f"{ADMIN_SERVICE_URL}/api/admin/public/llm-models/")
+                response = await client.get(f"{ADMIN_SERVICE_URL}/api/admin/internal/llm-models/")
                 if response.status_code != 200:
                     logger.error(f"Failed to get LLMs: {response.status_code}")
                     return {"error": "Failed to fetch LLMs"}
@@ -61,7 +61,7 @@ async def _check_llm_health_async():
                     llm_id = llm["id"]
                     endpoint = llm.get("endpoint", "")
                     provider = llm.get("provider", "")
-                    model = llm.get("model", "")
+                    model_name = llm.get("name", "")
 
                     # Perform health check (simple HTTP check)
                     is_healthy = False
@@ -73,23 +73,47 @@ async def _check_llm_health_async():
 
                         # Health check: Try to reach the LLM endpoint
                         if endpoint:
-                            # For OpenAI-compatible APIs, check /models endpoint
-                            if "openai" in provider.lower() or "v1" in endpoint:
-                                check_url = endpoint.rstrip("/chat/completions") + "/models"
-                            else:
-                                check_url = endpoint
-
-                            check_response = await client.get(
-                                check_url,
-                                headers={
+                            # For OpenAI-compatible APIs, send a minimal chat completion request
+                            if provider == 'openai_compatible' or provider == 'openai':
+                                headers = {
                                     "Authorization": f"Bearer {llm.get('api_key', '')}",
-                                    "Accept": "application/json"
-                                },
-                                timeout=5.0
-                            )
+                                    "Content-Type": "application/json"
+                                }
+
+                                # Adjust model name for Gemini API
+                                model_for_request = model_name
+                                if 'gemini' in model_name.lower():
+                                    model_for_request = f"models/{model_name}"
+
+                                data = {
+                                    "model": model_for_request,
+                                    "messages": [{"role": "user", "content": "test"}],
+                                    "max_tokens": 1
+                                }
+
+                                # Ensure endpoint ends with /chat/completions for OpenAI compatibility
+                                check_url = endpoint
+                                if not check_url.endswith('/chat/completions'):
+                                    if check_url.endswith('/'):
+                                        check_url += 'chat/completions'
+                                    else:
+                                        check_url += '/chat/completions'
+
+                                check_response = await client.post(
+                                    check_url,
+                                    headers=headers,
+                                    json=data,
+                                    timeout=10.0
+                                )
+                            else:
+                                # For other providers, try a simple GET request
+                                check_response = await client.get(
+                                    endpoint,
+                                    timeout=10.0
+                                )
 
                             response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-                            is_healthy = check_response.status_code in [200, 404]  # 404 might be OK for some endpoints
+                            is_healthy = check_response.status_code in [200, 201]
 
                             if not is_healthy:
                                 error_msg = f"HTTP {check_response.status_code}"
@@ -122,7 +146,7 @@ async def _check_llm_health_async():
                     health_status = LLMHealthStatus(
                         llm_id=llm_id,
                         provider=provider,
-                        model=model,
+                        model=model_name,
                         endpoint_url=endpoint,
                         is_healthy=is_healthy,
                         response_time_ms=response_time,
@@ -136,24 +160,24 @@ async def _check_llm_health_async():
 
                     # Update LLM health status in admin service
                     try:
-                        update_data = {
+                        update_payload = {
                             "health_status": "healthy" if is_healthy else "unhealthy",
                             "last_health_check": datetime.utcnow().isoformat()
                         }
 
                         # Mark as inactive after 3 consecutive failures
                         if consecutive_failures >= 3:
-                            update_data["is_active"] = False
-                            logger.warning(f"Marked LLM {llm_id} ({model}) as inactive after {consecutive_failures} failures")
+                            update_payload["is_active"] = False
+                            logger.warning(f"Marked LLM {llm_id} ({model_name}) as inactive after {consecutive_failures} failures")
 
-                        await client.patch(
-                            f"{ADMIN_SERVICE_URL}/api/v1/llm-models/{llm_id}/",
-                            json=update_data
+                        await client.put(
+                            f"{ADMIN_SERVICE_URL}/api/admin/internal/llm-models/{llm_id}/health/",
+                            json=update_payload
                         )
                     except Exception as e:
                         logger.error(f"Failed to update LLM status in admin service: {e}")
 
-                    health_results[f"{provider}-{model}"] = {
+                    health_results[f"{provider}-{model_name}"] = {
                         "healthy": is_healthy,
                         "response_time_ms": response_time,
                         "consecutive_failures": consecutive_failures,

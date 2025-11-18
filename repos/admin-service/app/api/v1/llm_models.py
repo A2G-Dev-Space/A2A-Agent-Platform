@@ -369,3 +369,107 @@ async def list_available_llm_models(
         )
         for model in models
     ]
+
+# Internal endpoint for worker-service health checks
+class LLMModelInternalResponse(BaseModel):
+    id: int
+    name: str
+    provider: str
+    endpoint: str
+    api_key: str  # Include API key for internal use
+    is_active: bool
+    health_status: str
+    last_health_check: Optional[datetime]
+    configuration: Optional[Dict[str, Any]]
+    created_at: datetime
+
+@router.get("/internal/llm-models/", response_model=List[LLMModelInternalResponse])
+async def list_all_llm_models_internal(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List all LLM models for internal services (INTERNAL - no auth required)
+    Returns all models including inactive and unhealthy ones with API keys
+    This endpoint is used by worker-service for health checks
+    """
+    query = select(LLMModel).order_by(LLMModel.created_at.desc())
+
+    result = await db.execute(query)
+    models = result.scalars().all()
+
+    return [
+        LLMModelInternalResponse(
+            id=model.id,
+            name=model.name,
+            provider=model.provider,
+            endpoint=model.endpoint,
+            api_key=model.api_key_encrypted,  # Include API key for health checks
+            is_active=model.is_active,
+            health_status=model.health_status.value,
+            last_health_check=model.last_health_check,
+            configuration=model.model_config,
+            created_at=model.created_at
+        )
+        for model in models
+    ]
+
+class LLMHealthUpdateRequest(BaseModel):
+    health_status: str
+    is_active: Optional[bool] = None
+    last_health_check: Optional[str] = None
+
+@router.put("/internal/llm-models/{model_id}/health/")
+async def update_llm_health_internal(
+    model_id: int,
+    request: LLMHealthUpdateRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update LLM model health status (INTERNAL - no auth required)
+    This endpoint is used by worker-service to update health check results
+    """
+    health_status = request.health_status
+    is_active = request.is_active
+    last_health_check = request.last_health_check
+    result = await db.execute(select(LLMModel).where(LLMModel.id == model_id))
+    model = result.scalar_one_or_none()
+
+    if not model:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"LLM model with id {model_id} not found"
+        )
+
+    # Update health status
+    try:
+        model.health_status = HealthStatus(health_status.lower())
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid health status: {health_status}"
+        )
+
+    # Update is_active if provided
+    if is_active is not None:
+        model.is_active = is_active
+
+    # Update last_health_check if provided
+    if last_health_check:
+        try:
+            model.last_health_check = datetime.fromisoformat(last_health_check)
+        except ValueError:
+            model.last_health_check = datetime.utcnow()
+    else:
+        model.last_health_check = datetime.utcnow()
+
+    model.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(model)
+
+    return {
+        "id": model.id,
+        "health_status": model.health_status.value,
+        "is_active": model.is_active,
+        "last_health_check": model.last_health_check
+    }
