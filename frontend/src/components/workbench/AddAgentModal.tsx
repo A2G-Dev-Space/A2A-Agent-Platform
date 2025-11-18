@@ -288,7 +288,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent })
                 return (
                   <label
                     key={fw}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
                       watch('framework') === fw
                         ? 'border-primary bg-primary/5'
                         : 'border-border-light dark:border-gray-700 hover:border-primary/50'
@@ -303,7 +303,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent })
                     {frameworkIcons[fw] && (
                       <img src={frameworkIcons[fw]} alt={fw} className="w-8 h-8 rounded flex-shrink-0" />
                     )}
-                    <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary break-words">{fw}</span>
+                    <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary break-words min-w-0 flex-1">{fw}</span>
                   </label>
                 );
               })}
