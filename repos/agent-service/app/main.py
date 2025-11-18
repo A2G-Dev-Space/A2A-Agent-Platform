@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1 import agents, registry, admin, internal, a2a_proxy
+from app.api.v1 import agents, registry, admin, internal, a2a_router
 from app.core.security import get_current_user
 
 # Configure logging
@@ -62,8 +62,8 @@ app.include_router(agents.router, prefix="/api/agents", tags=["agents-legacy"])
 # This will match only if agents.router doesn't match first
 app.include_router(registry.router, prefix="/api", tags=["registry"])
 
-# A2A Proxy endpoints (Universal A2A Protocol proxy for all frameworks)
-app.include_router(a2a_proxy.router, prefix="/api", tags=["a2a-proxy"])
+# A2A Router (Public agent endpoints via A2A Protocol)
+app.include_router(a2a_router.router, prefix="/api/v1", tags=["a2a-router"])
 
 # Admin endpoints
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])

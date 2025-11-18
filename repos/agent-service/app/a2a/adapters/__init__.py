@@ -27,6 +27,16 @@ class FrameworkAdapter(ABC):
     2. Transforming framework responses back to A2A formats
     """
 
+    def get_endpoint_path(self) -> str:
+        """
+        Get the endpoint path to append to base URL
+
+        Returns:
+            URL path to append (e.g., "/tasks/send" for ADK)
+            Empty string if no path needed
+        """
+        return ""
+
     @abstractmethod
     def transform_request(
         self,
