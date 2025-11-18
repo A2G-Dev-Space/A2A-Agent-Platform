@@ -78,21 +78,17 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
         )}
 
         {/* Stats */}
-        <div className="flex items-center gap-4 mb-4 text-xs text-text-light-secondary dark:text-text-dark-secondary">
+        <div className="flex flex-col gap-1 mb-4 text-xs">
           {agent.status && (
-            <div className="flex items-center gap-1">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  agent.status === AgentStatus.PRODUCTION || agent.status === AgentStatus.DEPLOYED_ALL ? 'bg-green-500' : 'bg-gray-400'
-                }`}
-              />
-              <span className="capitalize">{agent.status}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-text-light-primary dark:text-text-dark-primary">Status:</span>
+              <span className="text-text-light-secondary dark:text-text-dark-secondary">{agent.status}</span>
             </div>
           )}
           {agent.framework && (
-            <div className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">category</span>
-              <span>{agent.framework}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-text-light-primary dark:text-text-dark-primary">Framework:</span>
+              <span className="text-text-light-secondary dark:text-text-dark-secondary">{agent.framework}</span>
             </div>
           )}
         </div>

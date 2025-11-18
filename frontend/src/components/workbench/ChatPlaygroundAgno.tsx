@@ -1264,10 +1264,10 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
               )}
             </div>
 
-            {/* Agent A2A Endpoint */}
+            {/* Agno OS Endpoint */}
             <div className="border rounded-lg border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
               <h4 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2">
-                Agent A2A Endpoint
+                Agno OS Endpoint
               </h4>
 
               <div className="mb-3">
