@@ -88,6 +88,9 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false);
 
+  // Available LLMs (healthy & active)
+  const [availableLlms, setAvailableLlms] = useState<Array<{ id: number; name: string; provider: string }>>([]);
+
   // Chat adapter
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
@@ -307,6 +310,38 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
       }
     }
   }, [agnoResources, selectedResource, agent.id]);
+
+  // Fetch available LLMs (healthy & active)
+  useEffect(() => {
+    const fetchAvailableLlms = async () => {
+      if (!accessToken) return;
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/admin/public/llm-models/`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const llms = await response.json();
+          setAvailableLlms(llms.map((llm: any) => ({
+            id: llm.id,
+            name: llm.name,
+            provider: llm.provider,
+          })));
+          console.log('[ChatPlaygroundAgno] Loaded available LLMs:', llms.length);
+        }
+      } catch (error) {
+        console.error('[ChatPlaygroundAgno] Failed to fetch LLMs:', error);
+      }
+    };
+
+    fetchAvailableLlms();
+  }, [accessToken, API_BASE_URL]);
 
   // Send trace_id to parent
   useEffect(() => {
@@ -1159,6 +1194,33 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 {agent.framework}
               </span>
             </div>
+
+            {/* Available LLM Models */}
+            {availableLlms.length > 0 && (
+              <div className="border rounded-lg border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
+                <h4 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2">
+                  Available LLM Models
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableLlms.map((llm) => (
+                    <span
+                      key={llm.id}
+                      className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                      style={{
+                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#86efac' : '#16a34a',
+                        border: `1px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#16a34a' : '#86efac'}`
+                      }}
+                    >
+                      {llm.name}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-400 mt-2">
+                  These models are currently healthy and available for use via Platform LLM Proxy.
+                </p>
+              </div>
+            )}
 
             {/* Platform LLM Proxy Endpoints */}
             <div className="border rounded-lg border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3">

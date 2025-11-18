@@ -33,7 +33,7 @@ celery_app.conf.update(
     beat_schedule={
         "check-llm-health": {
             "task": "app.tasks.check_llm_health",
-            "schedule": crontab(minute="*/5"),  # Every 5 minutes
+            "schedule": crontab(minute="*/1"),  # Every 1 minute
         },
         "collect-daily-snapshot": {
             "task": "app.tasks.collect_daily_snapshot",

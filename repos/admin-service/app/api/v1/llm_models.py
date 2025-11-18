@@ -28,6 +28,8 @@ class LLMModelUpdate(BaseModel):
     api_key: Optional[str] = None
     configuration: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
+    health_status: Optional[str] = None
+    last_health_check: Optional[datetime] = None
 
 class LLMModelResponse(BaseModel):
     id: int
@@ -50,12 +52,25 @@ class HealthCheckResponse(BaseModel):
 @router.get("/llm-models/", response_model=List[LLMModelResponse])
 async def list_llm_models(
     admin_user: dict = Depends(require_admin),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    active_only: bool = False,
+    healthy_only: bool = False
 ):
     """
     List all LLM models (ADMIN only)
+    Optional filters:
+    - active_only: Only return active models
+    - healthy_only: Only return healthy models
     """
-    result = await db.execute(select(LLMModel).order_by(LLMModel.created_at.desc()))
+    query = select(LLMModel).order_by(LLMModel.created_at.desc())
+
+    if active_only:
+        query = query.where(LLMModel.is_active == True)
+
+    if healthy_only:
+        query = query.where(LLMModel.health_status == HealthStatus.HEALTHY)
+
+    result = await db.execute(query)
     models = result.scalars().all()
 
     return [
@@ -181,6 +196,15 @@ async def update_llm_model(
         model.model_config = request.configuration
     if request.is_active is not None:
         model.is_active = request.is_active
+    if request.health_status is not None:
+        # Convert string to HealthStatus enum
+        try:
+            model.health_status = HealthStatus(request.health_status.lower())
+        except ValueError:
+            # If invalid status, keep current
+            pass
+    if request.last_health_check is not None:
+        model.last_health_check = request.last_health_check
 
     model.updated_at = datetime.utcnow()
 
@@ -313,3 +337,35 @@ async def health_check_llm_model(
         checked_at=model.last_health_check,
         error_message=error_message
     )
+
+# Public endpoint - no admin required
+@router.get("/public/llm-models/", response_model=List[LLMModelResponse])
+async def list_available_llm_models(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List available LLM models (PUBLIC - no admin required)
+    Returns only healthy and active models
+    """
+    query = select(LLMModel).where(
+        LLMModel.is_active == True,
+        LLMModel.health_status == HealthStatus.HEALTHY
+    ).order_by(LLMModel.created_at.desc())
+
+    result = await db.execute(query)
+    models = result.scalars().all()
+
+    return [
+        LLMModelResponse(
+            id=model.id,
+            name=model.name,
+            provider=model.provider,
+            endpoint=model.endpoint,
+            is_active=model.is_active,
+            health_status=model.health_status.value,
+            last_health_check=model.last_health_check,
+            configuration=model.model_config,
+            created_at=model.created_at
+        )
+        for model in models
+    ]

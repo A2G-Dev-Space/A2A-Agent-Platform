@@ -134,17 +134,24 @@ async def _check_llm_health_async():
                     )
                     session.add(health_status)
 
-                    # Update LLM status in admin service if health changed
-                    if consecutive_failures >= 3 and llm.get("active", True):
-                        # Mark LLM as inactive in admin service
-                        try:
-                            await client.patch(
-                                f"{ADMIN_SERVICE_URL}/api/llm/{llm_id}",
-                                json={"active": False}
-                            )
+                    # Update LLM health status in admin service
+                    try:
+                        update_data = {
+                            "health_status": "healthy" if is_healthy else "unhealthy",
+                            "last_health_check": datetime.utcnow().isoformat()
+                        }
+
+                        # Mark as inactive after 3 consecutive failures
+                        if consecutive_failures >= 3:
+                            update_data["is_active"] = False
                             logger.warning(f"Marked LLM {llm_id} ({model}) as inactive after {consecutive_failures} failures")
-                        except Exception as e:
-                            logger.error(f"Failed to update LLM status: {e}")
+
+                        await client.patch(
+                            f"{ADMIN_SERVICE_URL}/api/v1/llm-models/{llm_id}/",
+                            json=update_data
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to update LLM status in admin service: {e}")
 
                     health_results[f"{provider}-{model}"] = {
                         "healthy": is_healthy,

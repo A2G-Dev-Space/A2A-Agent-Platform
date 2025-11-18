@@ -39,6 +39,7 @@ SERVICE_ROUTES = {
 
     # Admin - LLM & Statistics (Admin Service)
     '/api/admin/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
+    '/api/admin/public/llm-models': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),  # Public LLM list (no admin required)
     '/api/admin/statistics': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),  # Comprehensive and other admin stats
     '/api/admin': os.getenv('ADMIN_SERVICE_URL', 'http://admin-service:8005'),
 
