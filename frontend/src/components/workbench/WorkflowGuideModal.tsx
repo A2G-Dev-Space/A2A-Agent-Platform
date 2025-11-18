@@ -21,7 +21,8 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
   if (!isOpen) return null;
 
   const isAdk = framework === AgentFramework.ADK;
-  const workflowKey = isAdk ? 'adk' : 'agno';
+  const isLangchain = framework === AgentFramework.LANGCHAIN;
+  const workflowKey = isAdk ? 'adk' : isLangchain ? 'langchain' : 'agno';
 
   const steps = [
     { title: t(`workbench.workflow.${workflowKey}.step1Title`), desc: t(`workbench.workflow.${workflowKey}.step1Desc`) },
@@ -86,6 +87,8 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 <p className="text-sm text-blue-800 dark:text-blue-400 mb-3">
                   {isAdk
                     ? 'ADK 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'
+                    : isLangchain
+                    ? 'Langchain 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'
                     : 'Agno 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'}
                 </p>
                 <button

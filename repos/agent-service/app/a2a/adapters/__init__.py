@@ -15,8 +15,7 @@ class AgentFramework(str, Enum):
     """Supported agent frameworks"""
     AGNO = "Agno"
     ADK = "ADK"
-    LANGCHAIN = "Langchain"
-    CUSTOM = "Custom"
+    LANGCHAIN = "Langchain(custom)"
 
 
 class FrameworkAdapter(ABC):
@@ -99,13 +98,11 @@ def get_framework_adapter(framework: str) -> FrameworkAdapter:
     from .agno_adapter import AgnoAdapter
     from .adk_adapter import ADKAdapter
     from .langchain_adapter import LangchainAdapter
-    from .custom_adapter import CustomAdapter
 
     adapters = {
         "Agno": AgnoAdapter(),
         "ADK": ADKAdapter(),
-        "Langchain": LangchainAdapter(),
-        "Custom": CustomAdapter()
+        "Langchain(custom)": LangchainAdapter()
     }
 
     adapter = adapters.get(framework)
