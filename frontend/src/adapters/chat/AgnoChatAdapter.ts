@@ -175,6 +175,8 @@ export class AgnoChatAdapter implements ChatAdapter {
   ): void {
     console.log('[AgnoChatAdapter] SSE event:', data.event);
 
+    const resourceType = this.config?.selectedResourceType || 'team';
+
     switch (data.event) {
       // === Team-level events → Chat messages (final output) ===
       case 'TeamRunStarted':
@@ -200,13 +202,59 @@ export class AgnoChatAdapter implements ChatAdapter {
         this.isInThinkingMode = false;
         break;
 
-      // === Agent-level events → System events (internal process) ===
+      // === Agent-level events ===
       case 'RunStarted':
+        console.log('[AgnoChatAdapter] Agent run started');
+        // If agent mode, this is the start of chat - don't show as system event
+        if (resourceType !== 'agent') {
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunContent':
+        // If agent mode → Display in chat (like TeamRunContent)
+        // If team mode → Show as system event (internal agent processing)
+        if (resourceType === 'agent') {
+          if (data.content) {
+            this.processContentChunk(data.content, callbacks);
+          }
+        } else {
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunCompleted':
+        if (resourceType === 'agent') {
+          // Agent mode: This is the final completion
+          console.log('[AgnoChatAdapter] Agent run completed, total length:', this.streamingMessageBuffer.length);
+          callbacks.onComplete?.({
+            content: this.streamingMessageBuffer,
+            timestamp: new Date(),
+            reasoningContent: this.reasoningBuffer || undefined,
+          });
+          this.streamingMessageBuffer = '';
+          this.reasoningBuffer = '';
+          this.isInThinkingMode = false;
+        } else {
+          // Team mode: Show as system event
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunContentCompleted':
-        // Agent-level events - show in system events panel, not in chat
-        console.log('[AgnoChatAdapter] Agent-level event:', data.event);
+        // Show as system event in both modes
         callbacks.onSystemEvent?.({
           event: data.event,
           data: data,
