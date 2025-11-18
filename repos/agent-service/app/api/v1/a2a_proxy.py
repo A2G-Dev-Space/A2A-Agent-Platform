@@ -116,6 +116,11 @@ async def get_agent_card(
 
     **Public Endpoint**: No authentication required for agent discovery.
 
+    **Strategy**:
+    1. ADK agents (A2A native): Fetch agent card from original endpoint
+    2. Other agents with agent_card_json: Use stored agent card
+    3. Agents without agent_card_json: Generate default card from DB info
+
     **URL Format**:
     ```
     GET http://localhost:9050/api/a2a/proxy/{agent_id}/.well-known/agent-card.json
@@ -128,12 +133,14 @@ async def get_agent_card(
       "description": "Agent description",
       "url": "http://localhost:9050/api/a2a/proxy/123",
       "version": "1.0.0",
-      "protocol_version": "1.0",
-      "capabilities": {
-        "streaming": true,
-        "tools": true
-      },
-      "skills": [...]
+      "protocolVersion": "0.3.0",
+      "capabilities": {...},
+      "preferredTransport": "JSONRPC",
+      "framework": "ADK",
+      "logo_url": null,
+      "card_color": "#FFFFFF",
+      "metadata": {...},
+      "provider": {...}
     }
     ```
 
@@ -154,13 +161,54 @@ async def get_agent_card(
             detail=f"Agent {agent_id} not found"
         )
 
-    # Return Agent Card with proxy URL
-    agent_card = agent.agent_card.copy()
+    agent_card = None
 
-    # Override URL to point to proxy
+    # Strategy 1: ADK agents - fetch from original endpoint
+    if agent.framework.value == "ADK" and agent.original_endpoint:
+        try:
+            adk_card_url = f"{agent.original_endpoint}/.well-known/agent-card.json"
+            logger.info(f"Fetching ADK agent card from: {adk_card_url}")
+
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(adk_card_url)
+                if response.status_code == 200:
+                    agent_card = response.json()
+                    logger.info(f"✅ Successfully fetched ADK agent card for agent_id={agent_id}")
+                else:
+                    logger.warning(f"⚠️  ADK agent card fetch failed with status {response.status_code}")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to fetch ADK agent card: {e}, falling back to default")
+
+    # Strategy 2: Use stored agent_card_json if available
+    if not agent_card and agent.agent_card_json:
+        agent_card = agent.agent_card_json.copy()
+        logger.info(f"Using stored agent_card_json for agent_id={agent_id}")
+
+    # Strategy 3: Generate default agent card from DB info
+    if not agent_card:
+        logger.info(f"Generating default agent card for agent_id={agent_id}")
+        agent_card = {
+            "name": agent.name,
+            "description": agent.description or "",
+            "version": "1.0.0",
+            "protocolVersion": "0.3.0",
+            "capabilities": agent.capabilities or {},
+            "preferredTransport": "JSONRPC",  # Fixed as JSONRPC
+            "framework": agent.framework.value,
+            "logo_url": agent.logo_url,
+            "card_color": agent.card_color,
+            "metadata": {
+                "owner_id": agent.owner_id,
+                "department": agent.department,
+                "visibility": agent.visibility,
+                "created_at": agent.created_at.isoformat() if agent.created_at else None
+            }
+        }
+
+    # Always override URL to point to proxy
     agent_card["url"] = f"http://localhost:9050/api/a2a/proxy/{agent_id}"
 
-    # Add provider info
+    # Add provider info if not present
     if "provider" not in agent_card:
         agent_card["provider"] = {
             "organization": "A2G Platform",
