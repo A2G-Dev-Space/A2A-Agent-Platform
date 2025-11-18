@@ -144,6 +144,22 @@
                 "step6Desc": "View 5 types of event information in real-time in the Trace window using the trace_id provided by LLM Proxy (expandable/collapsible).",
                 "step7Title": "7. Session History",
                 "step7Desc": "Workbench provides conversation history for a single session."
+            },
+            "langchain": {
+                "step1Title": "1. Create Agent",
+                "step1Desc": "Create a Langchain agent to develop in the Workbench.",
+                "step2Title": "2. Check Endpoint & trace_id",
+                "step2Desc": "Click the created agent to see Chat and Trace windows, with the LLM Proxy endpoint (including trace_id) available in Configuration.",
+                "step3Title": "3. Develop Langchain Agent",
+                "step3Desc": "Develop your Langchain agent using the provided endpoint and API key from Settings. Create custom endpoints with FastAPI and connect to the Platform LLM Proxy using langchain-openai. Instruct the system prompt to use <think> tags, and thinking processes will be tracked separately.",
+                "step4Title": "4. Configure Endpoint & Schema",
+                "step4Desc": "In Chat Playground Agent Configuration, enter your agent's complete endpoint URL (e.g., http://localhost:8765/invoke/stream), request schema (e.g., {\"input\": \"{{message}}\"}), select response format (SSE Streaming or JSON Blocking), and perform Connection Test.",
+                "step5Title": "5. Chat Testing",
+                "step5Desc": "Test conversations with your developed Langchain agent in the Chat Playground. Thinking processes wrapped in <think> tags are displayed in separate collapsible sections.",
+                "step6Title": "6. Real-time Tracing",
+                "step6Desc": "View LLM request/response events in real-time in the Trace window using the trace_id provided by Platform LLM Proxy (expandable/collapsible).",
+                "step7Title": "7. Session History",
+                "step7Desc": "Workbench provides conversation history for a single session, including all <think> tag content."
             }
         },
         "guide": {

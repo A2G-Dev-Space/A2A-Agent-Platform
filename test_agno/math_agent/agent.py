@@ -25,8 +25,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 # ======================== Platform Configuration ========================
-PLATFORM_LLM_ENDPOINT = os.getenv("PLATFORM_LLM_ENDPOINT", "http://localhost:8006/v1")
-PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "test-user-api-key")
+# Use trace-specific endpoint for proper agent tracking
+# Format: http://localhost:9050/api/llm/trace/{trace_id}/v1
+# This enables:
+# - Agent identification via trace_id lookup
+# - Token usage tracking by agent
+# - Trace events in Workbench UI
+PLATFORM_LLM_ENDPOINT = "http://localhost:9050/api/llm/trace/c285a23a-88fc-4bfc-9741-714f8ac0aade/v1"
+PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490")
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration (Agno)")
@@ -191,7 +197,7 @@ def square_root(number: float) -> dict:
 
 
 # ======================== Create LLM Model Instance ========================
-def create_platform_llm(model_name: str = "openai/gpt-oss-20b") -> OpenAILike:
+def create_platform_llm(model_name: str = "qwen/qwen3-14b") -> OpenAILike:
     """
     Platform LLM Proxy를 사용하는 OpenAILike 인스턴스를 생성합니다.
 

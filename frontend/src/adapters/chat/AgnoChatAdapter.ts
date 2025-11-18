@@ -17,6 +17,8 @@ export class AgnoChatAdapter implements ChatAdapter {
   private config: ChatAdapterConfig | null = null;
   private abortController: AbortController | null = null;
   private streamingMessageBuffer = '';
+  private reasoningBuffer = '';
+  private isInThinkingMode = false;
 
   initialize(config: ChatAdapterConfig): void {
     this.config = config;
@@ -30,22 +32,22 @@ export class AgnoChatAdapter implements ChatAdapter {
   async sendMessage(
     message: ChatMessage,
     callbacks: ChatAdapterCallbacks,
-    _conversationHistory?: import('./types').ConversationMessage[]
+    conversationHistory?: import('./types').ConversationMessage[]
   ): Promise<void> {
     if (!this.config) {
       throw new Error('AgnoChatAdapter not initialized');
     }
 
-    // TODO: Implement conversation history support for Agno (streaming supported)
-
-    // Reset streaming buffer
+    // Reset streaming buffers
     this.streamingMessageBuffer = '';
+    this.reasoningBuffer = '';
+    this.isInThinkingMode = false;
 
     // Create abort controller for cancellation
     this.abortController = new AbortController();
 
     try {
-      await this.handleSSEStream(message, callbacks);
+      await this.handleSSEStream(message, callbacks, conversationHistory);
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('[AgnoChatAdapter] Stream aborted');
@@ -70,6 +72,8 @@ export class AgnoChatAdapter implements ChatAdapter {
     this.cancel();
     this.config = null;
     this.streamingMessageBuffer = '';
+    this.reasoningBuffer = '';
+    this.isInThinkingMode = false;
     console.log('[AgnoChatAdapter] Disposed');
   }
 
@@ -79,7 +83,8 @@ export class AgnoChatAdapter implements ChatAdapter {
 
   private async handleSSEStream(
     message: ChatMessage,
-    callbacks: ChatAdapterCallbacks
+    callbacks: ChatAdapterCallbacks,
+    conversationHistory?: import('./types').ConversationMessage[]
   ): Promise<void> {
     if (!this.config || !this.abortController) {
       throw new Error('Invalid adapter state');
@@ -96,16 +101,29 @@ export class AgnoChatAdapter implements ChatAdapter {
     const resourceType = selectedResourceType || 'team';
     const endpoint = `${agentEndpoint}/${resourceType}s/${selectedResource}/runs`;
 
+    // Build message content with conversation history
+    let messageContent = message.content;
+
+    // Add conversation history as text prefix if provided
+    if (conversationHistory && conversationHistory.length > 0) {
+      const historyText = conversationHistory
+        .map(msg => `${msg.role}: ${msg.content}`)
+        .join('\n');
+      messageContent = `history:\n${historyText}\n\n${message.content}`;
+    }
+
     console.log('[AgnoChatAdapter] Sending message:', {
       endpoint,
-      messageLength: message.content.length,
+      messageLength: messageContent.length,
+      hasHistory: conversationHistory && conversationHistory.length > 0,
+      historyLength: conversationHistory?.length || 0,
       selectedResource,
       selectedResourceType: resourceType,
     });
 
     // Use FormData for Agno's multipart/form-data API
     const formData = new FormData();
-    formData.append('message', message.content);
+    formData.append('message', messageContent);
     formData.append('stream', 'true');
     formData.append('user_id', 'workbench_user');
 
@@ -157,6 +175,8 @@ export class AgnoChatAdapter implements ChatAdapter {
   ): void {
     console.log('[AgnoChatAdapter] SSE event:', data.event);
 
+    const resourceType = this.config?.selectedResourceType || 'team';
+
     switch (data.event) {
       // === Team-level events → Chat messages (final output) ===
       case 'TeamRunStarted':
@@ -166,11 +186,7 @@ export class AgnoChatAdapter implements ChatAdapter {
       case 'TeamRunContent':
         // Team-level content → Display in chat
         if (data.content) {
-          this.streamingMessageBuffer += data.content;
-          callbacks.onChunk?.({
-            content: this.streamingMessageBuffer,
-            isComplete: false,
-          });
+          this.processContentChunk(data.content, callbacks);
         }
         break;
 
@@ -179,17 +195,66 @@ export class AgnoChatAdapter implements ChatAdapter {
         callbacks.onComplete?.({
           content: this.streamingMessageBuffer,
           timestamp: new Date(),
+          reasoningContent: this.reasoningBuffer || undefined,
         });
         this.streamingMessageBuffer = '';
+        this.reasoningBuffer = '';
+        this.isInThinkingMode = false;
         break;
 
-      // === Agent-level events → System events (internal process) ===
+      // === Agent-level events ===
       case 'RunStarted':
+        console.log('[AgnoChatAdapter] Agent run started');
+        // If agent mode, this is the start of chat - don't show as system event
+        if (resourceType !== 'agent') {
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunContent':
+        // If agent mode → Display in chat (like TeamRunContent)
+        // If team mode → Show as system event (internal agent processing)
+        if (resourceType === 'agent') {
+          if (data.content) {
+            this.processContentChunk(data.content, callbacks);
+          }
+        } else {
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunCompleted':
+        if (resourceType === 'agent') {
+          // Agent mode: This is the final completion
+          console.log('[AgnoChatAdapter] Agent run completed, total length:', this.streamingMessageBuffer.length);
+          callbacks.onComplete?.({
+            content: this.streamingMessageBuffer,
+            timestamp: new Date(),
+            reasoningContent: this.reasoningBuffer || undefined,
+          });
+          this.streamingMessageBuffer = '';
+          this.reasoningBuffer = '';
+          this.isInThinkingMode = false;
+        } else {
+          // Team mode: Show as system event
+          callbacks.onSystemEvent?.({
+            event: data.event,
+            data: data,
+            timestamp: new Date(),
+          });
+        }
+        break;
+
       case 'RunContentCompleted':
-        // Agent-level events - show in system events panel, not in chat
-        console.log('[AgnoChatAdapter] Agent-level event:', data.event);
+        // Show as system event in both modes
         callbacks.onSystemEvent?.({
           event: data.event,
           data: data,
@@ -222,5 +287,57 @@ export class AgnoChatAdapter implements ChatAdapter {
       default:
         console.warn('[AgnoChatAdapter] Unknown event type:', data.event);
     }
+  }
+
+  /**
+   * Process content chunk and separate thinking/reasoning content from actual response
+   */
+  private processContentChunk(chunk: string, callbacks: ChatAdapterCallbacks): void {
+    let remainingChunk = chunk;
+
+    while (remainingChunk.length > 0) {
+      if (this.isInThinkingMode) {
+        // Look for closing </think> tag
+        const thinkEndIndex = remainingChunk.indexOf('</think>');
+
+        if (thinkEndIndex !== -1) {
+          // Found closing tag - add content to reasoning buffer
+          this.reasoningBuffer += remainingChunk.substring(0, thinkEndIndex);
+          this.isInThinkingMode = false;
+
+          // Continue processing after </think> tag
+          remainingChunk = remainingChunk.substring(thinkEndIndex + 8); // 8 = length of '</think>'
+        } else {
+          // No closing tag yet - add entire chunk to reasoning buffer
+          this.reasoningBuffer += remainingChunk;
+          remainingChunk = '';
+        }
+      } else {
+        // Look for opening <think> tag
+        const thinkStartIndex = remainingChunk.indexOf('<think>');
+
+        if (thinkStartIndex !== -1) {
+          // Found opening tag - add content before tag to message buffer
+          if (thinkStartIndex > 0) {
+            this.streamingMessageBuffer += remainingChunk.substring(0, thinkStartIndex);
+          }
+          this.isInThinkingMode = true;
+
+          // Continue processing after <think> tag
+          remainingChunk = remainingChunk.substring(thinkStartIndex + 7); // 7 = length of '<think>'
+        } else {
+          // No thinking tag - add entire chunk to message buffer
+          this.streamingMessageBuffer += remainingChunk;
+          remainingChunk = '';
+        }
+      }
+    }
+
+    // Send update to UI
+    callbacks.onChunk?.({
+      content: this.streamingMessageBuffer,
+      isComplete: false,
+      reasoningContent: this.reasoningBuffer || undefined,
+    });
   }
 }

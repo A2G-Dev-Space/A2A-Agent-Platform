@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentFramework, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 import { getPlatformLlmEndpointUrl } from '@/utils/trace';
-import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
+import type { ChatAdapter } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { WorkflowGuideModal } from './WorkflowGuideModal';
@@ -13,21 +13,20 @@ import { downloadExampleCode } from '@/utils/downloadExamples';
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  systemEvents?: SystemEvent[];
   reasoningContent?: string; // Optional reasoning/thinking content from <think> tags
 }
 
-interface ChatPlaygroundAgnoProps {
+interface ChatPlaygroundLangchainProps {
   sessionId?: string;
   agentName?: string;
   agent: Agent;
   onTraceIdReceived?: (traceId: string) => void;
 }
 
-export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentName, agent, onTraceIdReceived }) => {
+export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = ({ agentName, agent, onTraceIdReceived }) => {
   const displayName = agentName || agent.name;
   const { t } = useTranslation();
   const { accessToken: storeAccessToken } = useAuthStore();
@@ -49,8 +48,6 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [streamingMessage, setStreamingMessage] = useState('');
   const [streamingReasoning, setStreamingReasoning] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [expandedSystemMessages, setExpandedSystemMessages] = useState<Set<string>>(new Set());
-  const [expandedEventDetails, setExpandedEventDetails] = useState<Set<string>>(new Set());
   const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -66,27 +63,21 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
-
-  // Agno-specific state
-  const [selectedResource, setSelectedResource] = useState(() => {
-    // Load from localStorage on mount
-    const stored = localStorage.getItem(`agno_selected_resource_${agent.id}`);
-    return stored || '';
-  });
-  const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>(() => {
-    // Load from localStorage on mount
-    const stored = localStorage.getItem(`agno_resources_${agent.id}`);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (error) {
-        console.warn('[ChatPlaygroundAgno] Failed to parse stored agnoResources:', error);
-      }
-    }
-    return [];
-  });
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false);
+
+  // Langchain-specific configuration
+  const [requestSchema, setRequestSchema] = useState(() => {
+    const stored = localStorage.getItem(`langchain_request_schema_${agent.id}`);
+    return stored || '{"input": "{{message}}"}';
+  });
+  const [responseFormat, setResponseFormat] = useState<'sse' | 'json'>(() => {
+    const stored = localStorage.getItem(`langchain_response_format_${agent.id}`);
+    return (stored as 'sse' | 'json') || 'sse';
+  });
+  const [messagePathInResponse, setMessagePathInResponse] = useState(() => {
+    const stored = localStorage.getItem(`langchain_message_path_${agent.id}`);
+    return stored || 'output';
+  });
 
   // Available LLMs (healthy & active)
   const [availableLlms, setAvailableLlms] = useState<Array<{ id: number; name: string; provider: string }>>([]);
@@ -107,9 +98,9 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     if (!storedSessionId) {
       storedSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       localStorage.setItem(storageKey, storedSessionId);
-      console.log('[ChatPlaygroundAgno] Created new agent sessionId:', storedSessionId);
+      console.log('[ChatPlaygroundLangchain] Created new agent sessionId:', storedSessionId);
     } else {
-      console.log('[ChatPlaygroundAgno] Using existing agent sessionId:', storedSessionId);
+      console.log('[ChatPlaygroundLangchain] Using existing agent sessionId:', storedSessionId);
     }
 
     setAgentSessionId(storedSessionId);
@@ -139,16 +130,29 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     }
   };
 
+  // Save Langchain configuration to localStorage
+  useEffect(() => {
+    localStorage.setItem(`langchain_request_schema_${agent.id}`, requestSchema);
+  }, [requestSchema, agent.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`langchain_response_format_${agent.id}`, responseFormat);
+  }, [responseFormat, agent.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`langchain_message_path_${agent.id}`, messagePathInResponse);
+  }, [messagePathInResponse, agent.id]);
+
   // Load messages from backend
   useEffect(() => {
     const loadMessages = async () => {
       if (!accessToken) {
-        console.log('[ChatPlaygroundAgno] No access token available, skipping message load');
+        console.log('[ChatPlaygroundLangchain] No access token available, skipping message load');
         setIsMessagesLoaded(true);
         return;
       }
 
-      console.log('[ChatPlaygroundAgno] Loading messages from backend');
+      console.log('[ChatPlaygroundLangchain] Loading messages from backend');
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
@@ -165,21 +169,20 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
               role: msg.role,
               content: msg.content,
               timestamp: new Date(msg.timestamp),
-              systemEvents: msg.systemEvents,
             }));
-            console.log(`[ChatPlaygroundAgno] Loaded ${loadedMessages.length} messages from backend`);
+            console.log(`[ChatPlaygroundLangchain] Loaded ${loadedMessages.length} messages from backend`);
             setMessages(loadedMessages);
             setIsMessagesLoaded(true);
           } else {
-            console.log('[ChatPlaygroundAgno] No messages found in backend response');
+            console.log('[ChatPlaygroundLangchain] No messages found in backend response');
             setIsMessagesLoaded(true);
           }
         } else {
-          console.error('[ChatPlaygroundAgno] Failed to load messages:', response.status, response.statusText);
+          console.error('[ChatPlaygroundLangchain] Failed to load messages:', response.status, response.statusText);
           setIsMessagesLoaded(true);
         }
       } catch (error) {
-        console.error('[ChatPlaygroundAgno] Failed to load messages from backend:', error);
+        console.error('[ChatPlaygroundLangchain] Failed to load messages from backend:', error);
         setIsMessagesLoaded(true);
       }
     };
@@ -190,17 +193,17 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   // Save messages to backend
   useEffect(() => {
     if (!isMessagesLoaded) {
-      console.log('[ChatPlaygroundAgno] Skipping save - initial load not complete');
+      console.log('[ChatPlaygroundLangchain] Skipping save - initial load not complete');
       return;
     }
 
     const saveMessages = async () => {
       if (!accessToken) {
-        console.log('[ChatPlaygroundAgno] No access token available, skipping message save');
+        console.log('[ChatPlaygroundLangchain] No access token available, skipping message save');
         return;
       }
 
-      console.log(`[ChatPlaygroundAgno] Saving ${messages.length} messages to backend`);
+      console.log(`[ChatPlaygroundLangchain] Saving ${messages.length} messages to backend`);
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/workbench/messages/${agent.id}`, {
@@ -214,12 +217,12 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
         if (response.ok) {
           const data = await response.json();
-          console.log('[ChatPlaygroundAgno] Messages saved successfully:', data);
+          console.log('[ChatPlaygroundLangchain] Messages saved successfully:', data);
         } else {
-          console.error('[ChatPlaygroundAgno] Failed to save messages:', response.status, response.statusText);
+          console.error('[ChatPlaygroundLangchain] Failed to save messages:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error('[ChatPlaygroundAgno] Failed to save messages to backend:', error);
+        console.error('[ChatPlaygroundLangchain] Failed to save messages to backend:', error);
       }
     };
 
@@ -230,88 +233,64 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   // Initialize chat adapter
   useEffect(() => {
     if (!accessToken || !agentSessionId) {
-      console.log('[ChatPlaygroundAgno] No access token or sessionId, skipping adapter initialization');
+      console.log('[ChatPlaygroundLangchain] No access token or sessionId, skipping adapter initialization');
       return;
     }
 
-    console.log('[ChatPlaygroundAgno] Initializing chat adapter for Agno framework');
+    if (!agentEndpoint) {
+      console.log('[ChatPlaygroundLangchain] No agent endpoint configured, skipping adapter initialization');
+      return;
+    }
+
+    console.log('[ChatPlaygroundLangchain] Initializing chat adapter for Langchain framework');
 
     try {
       const adapter = ChatAdapterFactory.createAdapter(agent.framework);
 
-      // For Agno, pass selectedResource and its type if available
-      const resourceId = selectedResource || undefined;
-      const resourceType = resourceId
-        ? agnoResources.find((r) => r.id === resourceId)?.type
-        : undefined;
-
       adapter.initialize({
         agentId: agent.id,
-        agentEndpoint: agent.a2a_endpoint || '',
+        agentEndpoint: agentEndpoint, // Use state variable, not agent.a2a_endpoint
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
         sessionId: undefined, // Workbench mode
-        selectedResource: resourceId,
-        selectedResourceType: resourceType,
-      });
+        requestSchema,
+        responseFormat,
+        messagePathInResponse,
+      } as any);
 
       chatAdapterRef.current = adapter;
-      console.log('[ChatPlaygroundAgno] Chat adapter initialized:', {
+      console.log('[ChatPlaygroundLangchain] Chat adapter initialized:', {
         sessionId: agentSessionId,
-        selectedResource: resourceId,
-        selectedResourceType: resourceType,
         framework: agent.framework,
+        agentEndpoint: agentEndpoint,
       });
     } catch (error) {
-      console.error('[ChatPlaygroundAgno] Failed to create chat adapter:', error);
+      console.error('[ChatPlaygroundLangchain] Failed to create chat adapter:', error);
     }
 
     return () => {
       if (chatAdapterRef.current) {
-        console.log('[ChatPlaygroundAgno] Disposing chat adapter');
+        console.log('[ChatPlaygroundLangchain] Disposing chat adapter');
         chatAdapterRef.current.dispose();
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, agentSessionId, API_BASE_URL, selectedResource, agnoResources]);
+  }, [agent.id, agent.framework, accessToken, agentSessionId, agentEndpoint, API_BASE_URL, requestSchema, responseFormat, messagePathInResponse]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
   }, [messages, streamingMessage]);
 
-  // Save selectedResource to localStorage whenever it changes
+  // Send trace_id to parent
   useEffect(() => {
-    if (selectedResource) {
-      localStorage.setItem(`agno_selected_resource_${agent.id}`, selectedResource);
-      console.log('[ChatPlaygroundAgno] Saved selected resource to localStorage:', selectedResource);
+    if (traceId && onTraceIdReceived) {
+      onTraceIdReceived(traceId);
     }
-  }, [selectedResource, agent.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Save agnoResources to localStorage whenever they change
-  useEffect(() => {
-    if (agnoResources.length > 0) {
-      localStorage.setItem(`agno_resources_${agent.id}`, JSON.stringify(agnoResources));
-      console.log('[ChatPlaygroundAgno] Saved agno resources to localStorage:', agnoResources.length, 'resources');
-    }
-  }, [agnoResources, agent.id]);
-
-  // Validate selectedResource when agnoResources are loaded
-  useEffect(() => {
-    if (agnoResources.length > 0 && selectedResource) {
-      // Check if the stored resource still exists
-      const exists = agnoResources.some((r) => r.id === selectedResource);
-      if (!exists) {
-        console.log('[ChatPlaygroundAgno] Stored resource no longer exists, clearing selection');
-        setSelectedResource('');
-        localStorage.removeItem(`agno_selected_resource_${agent.id}`);
-      } else {
-        console.log('[ChatPlaygroundAgno] Restored selected resource from localStorage:', selectedResource);
-      }
-    }
-  }, [agnoResources, selectedResource, agent.id]);
-
-  // Fetch available LLMs (healthy & active)
+  // Fetch available LLMs
   useEffect(() => {
     const fetchAvailableLlms = async () => {
       if (!accessToken) return;
@@ -333,23 +312,15 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             name: llm.name,
             provider: llm.provider,
           })));
-          console.log('[ChatPlaygroundAgno] Loaded available LLMs:', llms.length);
+          console.log('[ChatPlaygroundLangchain] Loaded available LLMs:', llms.length);
         }
       } catch (error) {
-        console.error('[ChatPlaygroundAgno] Failed to fetch LLMs:', error);
+        console.error('[ChatPlaygroundLangchain] Failed to fetch LLMs:', error);
       }
     };
 
     fetchAvailableLlms();
   }, [accessToken, API_BASE_URL]);
-
-  // Send trace_id to parent
-  useEffect(() => {
-    if (traceId && onTraceIdReceived) {
-      onTraceIdReceived(traceId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isStreaming || !chatAdapterRef.current) return;
@@ -373,42 +344,24 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     setIsStreaming(true);
     setStreamingMessage('');
 
-    // Create system events container message for Agno
-    let systemEventsMessageId: string | null = null;
-    if (chatAdapterRef.current?.supportsStreaming()) {
-      systemEventsMessageId = `system-${Date.now()}`;
-      const systemEventsMessage: Message = {
-        id: systemEventsMessageId,
-        role: 'system',
-        content: 'System Events',
-        timestamp: new Date(),
-        systemEvents: [],
-      };
-
-      setMessages((prev) => [...prev, systemEventsMessage]);
-      setExpandedSystemMessages((prev) => new Set(prev).add(systemEventsMessageId));
-    }
-
     try {
-      const conversationHistory = messages
-        .filter((msg) => msg.role !== 'system')
-        .map((msg) => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        }));
+      const conversationHistory = messages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
 
       await chatAdapterRef.current.sendMessage(
         { content: userMessageContent },
         {
           onChunk: (chunk) => {
-            console.log('[ChatPlaygroundAgno] Received chunk, content:', chunk.content.length, 'reasoning:', chunk.reasoningContent?.length || 0);
+            console.log('[ChatPlaygroundLangchain] Received chunk, content:', chunk.content.length, 'reasoning:', chunk.reasoningContent?.length || 0);
             setStreamingMessage(chunk.content);
             if (chunk.reasoningContent) {
               setStreamingReasoning(chunk.reasoningContent);
             }
           },
           onComplete: (response) => {
-            console.log('[ChatPlaygroundAgno] Message complete, content:', response.content.length, 'reasoning:', response.reasoningContent?.length || 0);
+            console.log('[ChatPlaygroundLangchain] Message complete, content:', response.content.length, 'reasoning:', response.reasoningContent?.length || 0);
 
             setMessages((prev) => [
               ...prev,
@@ -426,56 +379,15 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             setIsStreaming(false);
           },
           onError: (error) => {
-            console.error('[ChatPlaygroundAgno] Chat error:', error);
+            console.error('[ChatPlaygroundLangchain] Chat error:', error);
             setIsStreaming(false);
             alert(`Chat error: ${error.message}`);
-          },
-          onSystemEvent: (event) => {
-            if (systemEventsMessageId) {
-              console.log('[ChatPlaygroundAgno] System event:', event.event, event.data);
-
-              // Events that should be merged when they repeat
-              const mergeableEvents = ['RunContent', 'TeamRunContent'];
-              const isMergeable = mergeableEvents.includes(event.event);
-
-              setMessages((prev) =>
-                prev.map((msg) => {
-                  if (msg.id !== systemEventsMessageId) return msg;
-
-                  const existingEvents = msg.systemEvents || [];
-
-                  if (isMergeable) {
-                    // Find existing event of same type
-                    const existingIndex = existingEvents.findIndex((e) => e.event === event.event);
-
-                    if (existingIndex >= 0) {
-                      // Update existing event (merge occurrences)
-                      const updated = [...existingEvents];
-                      const existing = updated[existingIndex];
-                      updated[existingIndex] = {
-                        ...existing,
-                        data: {
-                          ...existing.data,
-                          count: (existing.data.count || 1) + 1, // Track occurrence count
-                          lastUpdate: event.timestamp,
-                        },
-                        timestamp: event.timestamp, // Update to latest timestamp
-                      };
-                      return { ...msg, systemEvents: updated };
-                    }
-                  }
-
-                  // Add new event
-                  return { ...msg, systemEvents: [...existingEvents, event] };
-                })
-              );
-            }
           },
         },
         conversationHistory
       );
     } catch (error) {
-      console.error('[ChatPlaygroundAgno] Failed to send message:', error);
+      console.error('[ChatPlaygroundLangchain] Failed to send message:', error);
       setIsStreaming(false);
     }
   };
@@ -501,7 +413,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     localStorage.setItem(storageKey, newSessionId);
     setAgentSessionId(newSessionId);
-    console.log('[ChatPlaygroundAgno] Created new agent sessionId after clear:', newSessionId);
+    console.log('[ChatPlaygroundLangchain] Created new agent sessionId after clear:', newSessionId);
 
     if (accessToken) {
       try {
@@ -513,9 +425,9 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           },
           body: JSON.stringify([]),
         });
-        console.log('[ChatPlaygroundAgno] Session cleared from backend');
+        console.log('[ChatPlaygroundLangchain] Session cleared from backend');
       } catch (error) {
-        console.error('[ChatPlaygroundAgno] Failed to clear session from backend:', error);
+        console.error('[ChatPlaygroundLangchain] Failed to clear session from backend:', error);
       }
     }
   };
@@ -561,7 +473,6 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     }
   };
 
-  // Agno-specific: Test connection and fetch teams/agents
   const handleTestAgentEndpoint = async () => {
     if (!agentEndpoint.trim()) {
       setAgentEndpointStatus('error');
@@ -584,59 +495,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[ChatPlaygroundAgno] Endpoint validation successful:', data);
-
-        // For Agno, fetch teams and agents
-        const resources: Array<{ id: string; name: string; type: 'team' | 'agent' }> = [];
-
-        // Try to fetch teams
-        try {
-          const teamsRes = await fetch(`${agentEndpoint}/teams`);
-          if (teamsRes.ok) {
-            const teamsData = await teamsRes.json();
-            const teams = teamsData.map((team: any) => ({
-              id: team.id,
-              name: team.name || team.id,
-              type: 'team' as const,
-            }));
-            resources.push(...teams);
-            console.log('[ChatPlaygroundAgno] Loaded teams:', teams);
-          }
-        } catch (error) {
-          console.warn('[ChatPlaygroundAgno] Failed to load teams:', error);
-        }
-
-        // Try to fetch agents
-        try {
-          const agentsRes = await fetch(`${agentEndpoint}/agents`);
-          if (agentsRes.ok) {
-            const agentsData = await agentsRes.json();
-            const agents = agentsData.map((agentItem: any) => ({
-              id: agentItem.id,
-              name: agentItem.name || agentItem.id,
-              type: 'agent' as const,
-            }));
-            resources.push(...agents);
-            console.log('[ChatPlaygroundAgno] Loaded agents:', agents);
-          }
-        } catch (error) {
-          console.warn('[ChatPlaygroundAgno] Failed to load agents:', error);
-        }
-
-        setAgnoResources(resources);
-        console.log('[ChatPlaygroundAgno] Combined resources:', resources);
-
+        console.log('[ChatPlaygroundLangchain] Endpoint validation successful:', data);
         setAgentEndpointStatus('success');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       } else {
         const errorData = await response.json();
-        console.error('[ChatPlaygroundAgno] Endpoint validation failed:', errorData);
+        console.error('[ChatPlaygroundLangchain] Endpoint validation failed:', errorData);
         alert(`Connection failed: ${errorData.detail || 'Please check the endpoint and ensure the agent is running.'}`);
         setAgentEndpointStatus('error');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       }
     } catch (error) {
-      console.error('[ChatPlaygroundAgno] Error testing agent endpoint:', error);
+      console.error('[ChatPlaygroundLangchain] Error testing agent endpoint:', error);
       alert(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAgentEndpointStatus('error');
       setTimeout(() => setAgentEndpointStatus('idle'), 3000);
@@ -781,7 +651,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         </div>
       </div>
 
-      {/* Guide Panel - omitted for brevity, same as ADK version */}
+      {/* Guide Panel - Same as ADK */}
       {showGuide && (
         <div className="border-b border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark/50 px-4 py-3 max-h-[70vh] overflow-y-auto">
           <div className="flex flex-col gap-4">
@@ -812,13 +682,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   <strong>{t('workbench.guide.textFormatting.basicLabel')}</strong>
                 </p>
-                {/* Source code */}
                 <div className="mb-2">
                   <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
                     <code>{`${t('workbench.guide.textFormatting.boldExample')}\n${t('workbench.guide.textFormatting.italicExample')}\n${t('workbench.guide.textFormatting.strikeExample')}\n${t('workbench.guide.textFormatting.codeExample')}`}</code>
                   </pre>
                 </div>
-                {/* Preview */}
                 <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
                   <MessageContent content={`${t('workbench.guide.textFormatting.boldExample')}\n\n${t('workbench.guide.textFormatting.italicExample')}\n\n${t('workbench.guide.textFormatting.strikeExample')}\n\n${t('workbench.guide.textFormatting.codeExample')}`} />
                 </div>
@@ -1171,7 +1039,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         </div>
       )}
 
-      {/* Configuration Panel - Agno-specific (includes team/agent selector) */}
+      {/* Configuration Panel - Langchain-specific */}
       {showConfig && (
         <div className="border-b border-border-light dark:border-border-dark bg-panel-light dark:bg-panel-dark/50 px-4 py-3 max-h-[60vh] overflow-y-auto">
           <div className="flex flex-col gap-2">
@@ -1207,9 +1075,16 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                       key={llm.id}
                       className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
                       style={{
-                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#86efac' : '#16a34a',
-                        border: `1px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#16a34a' : '#86efac'}`
+                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                          ? 'rgba(34, 197, 94, 0.15)'
+                          : 'rgba(34, 197, 94, 0.1)',
+                        color: document.documentElement.getAttribute('data-theme') === 'dark'
+                          ? '#4ade80'
+                          : '#16a34a',
+                        border: '1px solid',
+                        borderColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                          ? 'rgba(34, 197, 94, 0.3)'
+                          : 'rgba(34, 197, 94, 0.2)'
                       }}
                     >
                       {llm.name}
@@ -1265,30 +1140,144 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
               )}
             </div>
 
-            {/* Agent A2A Endpoint */}
-            <div className="border rounded-lg border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
-              <h4 className="text-sm font-semibold text-green-900 dark:text-green-300 mb-2">
-                Agent A2A Endpoint
+            {/* Agent Configuration */}
+            <div className="border rounded-lg border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 p-3">
+              <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-3">
+                Agent Configuration
               </h4>
 
+              {/* Agent Endpoint URL */}
               <div className="mb-3">
+                <label className="block text-xs font-medium text-purple-800 dark:text-purple-300 mb-1">
+                  Agent Endpoint (Triggering Point)
+                </label>
                 <input
                   type="url"
                   value={agentEndpoint}
                   onChange={(e) => setAgentEndpoint(e.target.value)}
-                  placeholder="http://localhost:8011"
-                  className="w-full rounded-lg border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                  placeholder="http://localhost:8765/invoke/stream"
+                  className="w-full rounded-lg border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
                   style={{
                     backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1f2937' : '#ffffff',
                     borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#4b5563' : '#d1d5db',
                     color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e5e7eb' : '#1f2937'
                   }}
                 />
-                <p className="text-xs text-green-700 dark:text-green-400 mt-1">
-                  Enter your agent's hosted A2A endpoint (e.g., http://localhost:8011)
+                <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
+                  Enter the exact endpoint URL for your Langchain agent (e.g., http://localhost:8765/invoke/stream)
                 </p>
               </div>
 
+              {/* Request Schema */}
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-purple-800 dark:text-purple-300 mb-1">
+                  Request Schema (JSON Template)
+                </label>
+                <textarea
+                  value={requestSchema}
+                  onChange={(e) => setRequestSchema(e.target.value)}
+                  placeholder='{"input": "{{message}}"}'
+                  rows={3}
+                  className="w-full rounded border p-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  style={{
+                    backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1f2937' : '#ffffff',
+                    borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#4b5563' : '#d1d5db',
+                    color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e5e7eb' : '#1f2937'
+                  }}
+                />
+                <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
+                  Use <code className="px-1 py-0.5 bg-purple-200 dark:bg-purple-800 rounded">{'{{message}}'}</code> as placeholder for user message
+                </p>
+              </div>
+
+              {/* Response Format */}
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-purple-800 dark:text-purple-300 mb-1">
+                  Response Format
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="sse"
+                      checked={responseFormat === 'sse'}
+                      onChange={(e) => setResponseFormat(e.target.value as 'sse')}
+                      className="text-purple-600"
+                    />
+                    <span className="text-xs text-gray-900 dark:text-gray-100">SSE Streaming</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      value="json"
+                      checked={responseFormat === 'json'}
+                      onChange={(e) => setResponseFormat(e.target.value as 'json')}
+                      className="text-purple-600"
+                    />
+                    <span className="text-xs text-gray-900 dark:text-gray-100">JSON Blocking</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Message Path in Response (for JSON format) */}
+              {responseFormat === 'json' && (
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-purple-800 dark:text-purple-300 mb-1">
+                    Message Path in Response
+                  </label>
+                  <input
+                    type="text"
+                    value={messagePathInResponse}
+                    onChange={(e) => setMessagePathInResponse(e.target.value)}
+                    placeholder="output"
+                    className="w-full rounded border p-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    style={{
+                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1f2937' : '#ffffff',
+                      borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#4b5563' : '#d1d5db',
+                      color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e5e7eb' : '#1f2937'
+                    }}
+                  />
+                  <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
+                    Path to extract message from JSON response (e.g., "output" or "result.content")
+                  </p>
+                </div>
+              )}
+
+              {/* CORS Warning */}
+              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
+                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
+                    <button
+                      onClick={() => setShowCorsExample(!showCorsExample)}
+                      className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
+                    >
+                      {showCorsExample ? 'Hide' : 'Show'} example
+                    </button>
+                  </div>
+                  {showCorsExample && (
+                    <>
+                      <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
+                        For localhost testing, enable CORS in your Langchain agent:
+                      </p>
+                      <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
+                        {`# Add to your FastAPI Langchain agent:
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["http://localhost:9060"],
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"]
+)`}
+                      </code>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Save Endpoint Button */}
               <button
                 onClick={handleSaveEndpoint}
                 disabled={!agentEndpoint.trim() || isSavingEndpoint}
@@ -1324,31 +1313,6 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 )}
                 <span>{isSavingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
               </button>
-
-              {/* CORS Warning */}
-              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
-                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
-                    <button
-                      onClick={() => setShowCorsExample(!showCorsExample)}
-                      className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
-                    >
-                      {showCorsExample ? 'Hide' : 'Show'} example
-                    </button>
-                  </div>
-                  {showCorsExample && (
-                    <>
-                      <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
-                        For localhost testing, enable CORS in your agent server:
-                      </p>
-                      <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
-                        {`# Add CORS middleware to your Agno agent`}
-                      </code>
-                    </>
-                  )}
-                </div>
-              )}
 
               {/* Test Connection Button */}
               <button
@@ -1402,38 +1366,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 </span>
               </button>
             </div>
-
-            {/* Agno Team/Agent Selector */}
-            {agent.a2a_endpoint && agnoResources.length > 0 && (
-              <div className="flex flex-col gap-3 border-t border-border-light dark:border-border-dark pt-3">
-                <h4 className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">
-                  Agno Configuration
-                </h4>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Select Team or Agent
-                  </label>
-                  <select
-                    value={selectedResource}
-                    onChange={(e) => setSelectedResource(e.target.value)}
-                    className="form-select w-full rounded-lg border-border-light bg-background-light p-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-border-dark dark:bg-background-dark dark:text-white dark:focus:border-primary"
-                  >
-                    <option value="">-- Select a team or agent --</option>
-                    {agnoResources.map((resource) => (
-                      <option key={`${resource.type}-${resource.id}`} value={resource.id}>
-                        {resource.name} ({resource.type})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* Messages - includes system events handling */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
         {messages.length === 0 && !isStreaming ? (
           <div className="flex h-full items-center justify-center">
@@ -1444,282 +1381,125 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           </div>
         ) : (
           <div className="flex flex-col gap-4 sm:gap-6">
-            {messages.map((message) => {
-              // System events section - collapsible
-              if (message.role === 'system' && message.systemEvents !== undefined) {
-                const isExpanded = expandedSystemMessages.has(message.id);
-                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex items-start gap-3 sm:gap-4 ${
+                  message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'
+                }`}
+              >
+                <div
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                    message.role === 'user'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300'
+                  }`}
+                >
+                  {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                </div>
 
-                const toggleExpanded = () => {
-                  setExpandedSystemMessages((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(message.id)) {
-                      next.delete(message.id);
-                    } else {
-                      next.add(message.id);
-                    }
-                    return next;
-                  });
-                };
-
-                return (
-                  <div key={message.id} className="my-2">
-                    <button
-                      onClick={toggleExpanded}
-                      className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors w-full"
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4" />
-                      )}
-                      <span>
-                        {t('workbench.systemEvents')} ({message.systemEvents.length})
-                      </span>
-                    </button>
-
-                    {isExpanded && message.systemEvents.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2 justify-center">
-                        {message.systemEvents.map((event, idx) => {
-                          // Determine event type from event name
-                          const eventName = event.event;
-                          let eventType = 'unknown';
-
-                          if (eventName.includes('ToolCall')) {
-                            eventType = 'tool';
-                          } else if (eventName.includes('Started') || eventName.includes('Completed')) {
-                            eventType = 'control';
-                          } else if (eventName.includes('Content')) {
-                            eventType = 'model';
-                          } else if (eventName.includes('Error')) {
-                            eventType = 'error';
-                          }
-
-                          let badgeColor = '';
-                          if (eventType === 'tool') {
-                            badgeColor = isDark ? 'rgba(22, 163, 74, 0.2)' : '#dcfce7';
-                          } else if (eventType === 'control') {
-                            badgeColor = isDark ? 'rgba(53, 158, 255, 0.2)' : '#dbeafe';
-                          } else if (eventType === 'model') {
-                            badgeColor = isDark ? 'rgba(147, 51, 234, 0.2)' : '#ede9fe';
-                          } else if (eventType === 'error') {
-                            badgeColor = isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2';
-                          } else {
-                            badgeColor = isDark ? 'rgba(75, 85, 99, 0.3)' : '#f3f4f6';
-                          }
-
-                          let textColor = '';
-                          if (eventType === 'tool') {
-                            textColor = isDark ? '#86efac' : '#16a34a';
-                          } else if (eventType === 'control') {
-                            textColor = isDark ? '#93c5fd' : '#2563eb';
-                          } else if (eventType === 'model') {
-                            textColor = isDark ? '#c4b5fd' : '#9333ea';
-                          } else if (eventType === 'error') {
-                            textColor = isDark ? '#fca5a5' : '#dc2626';
-                          } else {
-                            textColor = isDark ? '#d1d5db' : '#4b5563';
-                          }
-
-                          // Get translated event name
-                          const translatedEvent = t(`workbench.events.${eventName}`, { defaultValue: eventName });
-
-                          // Count display for merged events
-                          const count = event.data?.count;
-                          const hasCount = count && count > 1;
-
-                          // Tooltip content
-                          const tooltipText = `${eventName}${hasCount ? ` (${count}회)` : ''}\n${new Date(event.timestamp).toLocaleTimeString()}`;
-
-                          // Event detail key for expansion
-                          const eventKey = `${message.id}-event-${idx}`;
-                          const isDetailExpanded = expandedEventDetails.has(eventKey);
-
-                          const toggleEventDetail = () => {
-                            setExpandedEventDetails((prev) => {
+                <div
+                  className={`flex max-w-[85%] sm:max-w-[75%] flex-col gap-1 ${
+                    message.role === 'assistant' ? 'items-start' : 'items-end'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {message.role === 'user' ? t('workbench.you') : displayName}
+                  </p>
+                  <div
+                    className={`rounded-lg p-3 text-sm leading-relaxed border-2 ${
+                      message.role === 'user'
+                        ? 'rounded-tr-none'
+                        : 'rounded-tl-none'
+                    }`}
+                    style={{
+                      backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                        ? '#1f2937'
+                        : '#ffffff',
+                      borderColor: message.role === 'user'
+                        ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#EA2831' : 'rgba(234, 40, 49, 0.4)')
+                        : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
+                    }}
+                  >
+                    {/* Thinking section - only for assistant messages with reasoning */}
+                    {message.role === 'assistant' && message.reasoningContent && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => {
+                            setExpandedThinking((prev) => {
                               const next = new Set(prev);
-                              if (next.has(eventKey)) {
-                                next.delete(eventKey);
+                              if (next.has(message.id)) {
+                                next.delete(message.id);
                               } else {
-                                next.add(eventKey);
+                                next.add(message.id);
                               }
                               return next;
                             });
-                          };
+                          }}
+                          className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                          style={{
+                            backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                              ? 'rgba(147, 51, 234, 0.2)'
+                              : 'rgba(147, 51, 234, 0.1)',
+                            color: document.documentElement.getAttribute('data-theme') === 'dark'
+                              ? '#c4b5fd'
+                              : '#7c3aed',
+                          }}
+                        >
+                          {expandedThinking.has(message.id) ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronUp className="h-3 w-3" />
+                          )}
+                          <span>Thinking...</span>
+                        </button>
 
-                          return (
-                            <div key={eventKey} className="flex flex-col gap-1">
-                              <button
-                                onClick={toggleEventDetail}
-                                className="px-3 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-all hover:scale-105"
-                                style={{
-                                  backgroundColor: badgeColor,
-                                  color: textColor,
-                                }}
-                                title={tooltipText}
-                              >
-                                {translatedEvent}
-                                {hasCount && (
-                                  <span className="ml-1 opacity-75">×{count}</span>
-                                )}
-                              </button>
-
-                              {/* Expanded detail view */}
-                              {isDetailExpanded && (
-                                <div
-                                  className="text-[10px] px-3 py-2 rounded-md mt-1"
-                                  style={{
-                                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.8)',
-                                    border: `1px solid ${badgeColor}`,
-                                    color: isDark ? '#d1d5db' : '#374151',
-                                  }}
-                                >
-                                  <div className="font-semibold mb-1">{eventName}</div>
-                                  <div className="opacity-75 mb-1">
-                                    {new Date(event.timestamp).toLocaleString()}
-                                  </div>
-                                  {hasCount && (
-                                    <div className="opacity-75 mb-1">
-                                      Occurrences: {count}
-                                    </div>
-                                  )}
-                                  <div className="mt-2 max-h-32 overflow-auto">
-                                    <pre className="whitespace-pre-wrap break-all">
-                                      {JSON.stringify(event.data, null, 2)}
-                                    </pre>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // User and Assistant messages
-              return (
-                <div
-                  key={message.id}
-                  className={`flex items-start gap-3 sm:gap-4 ${
-                    message.role === 'assistant' ? 'flex-row' : 'flex-row-reverse'
-                  }`}
-                >
-                  <div
-                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                      message.role === 'user'
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300'
-                    }`}
-                  >
-                    {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                  </div>
-
-                  <div
-                    className={`flex max-w-[85%] sm:max-w-[75%] flex-col gap-1 ${
-                      message.role === 'assistant' ? 'items-start' : 'items-end'
-                    }`}
-                  >
-                    <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                      {message.role === 'user' ? t('workbench.you') : displayName}
-                    </p>
-                    <div
-                      className={`rounded-lg p-3 text-sm leading-relaxed border-2 ${
-                        message.role === 'user'
-                          ? 'rounded-tr-none'
-                          : 'rounded-tl-none'
-                      }`}
-                      style={{
-                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
-                          ? '#1f2937'
-                          : '#ffffff',
-                        borderColor: message.role === 'user'
-                          ? (document.documentElement.getAttribute('data-theme') === 'dark' ? '#EA2831' : 'rgba(234, 40, 49, 0.4)')
-                          : (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 40, 49, 0.6)' : '#EA2831')
-                      }}
-                    >
-                      {/* Thinking section - only for assistant messages with reasoning */}
-                      {message.role === 'assistant' && message.reasoningContent && (
-                        <div className="mb-3">
-                          <button
-                            onClick={() => {
-                              setExpandedThinking((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(message.id)) {
-                                  next.delete(message.id);
-                                } else {
-                                  next.add(message.id);
-                                }
-                                return next;
-                              });
-                            }}
-                            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                        {expandedThinking.has(message.id) && (
+                          <div
+                            className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
                             style={{
                               backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
-                                ? 'rgba(147, 51, 234, 0.2)'
-                                : 'rgba(147, 51, 234, 0.1)',
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'rgba(147, 51, 234, 0.05)',
+                              borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
                               color: document.documentElement.getAttribute('data-theme') === 'dark'
-                                ? '#c4b5fd'
-                                : '#7c3aed',
+                                ? '#e5e7eb'
+                                : '#374151',
                             }}
                           >
-                            {expandedThinking.has(message.id) ? (
-                              <ChevronDown className="h-3 w-3" />
-                            ) : (
-                              <ChevronUp className="h-3 w-3" />
-                            )}
-                            <span>Thinking...</span>
-                          </button>
-
-                          {expandedThinking.has(message.id) && (
-                            <div
-                              className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
-                              style={{
-                                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
-                                  ? 'rgba(147, 51, 234, 0.1)'
-                                  : 'rgba(147, 51, 234, 0.05)',
-                                borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
-                                color: document.documentElement.getAttribute('data-theme') === 'dark'
-                                  ? '#e5e7eb'
-                                  : '#374151',
-                              }}
-                            >
-                              {message.reasoningContent}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <MessageContent content={message.content} contentType="markdown" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        {message.timestamp.toLocaleTimeString()}
-                      </span>
-                      <button
-                        onClick={() => handleCopyMessage(message.id, message.content)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                        title="Copy message"
-                      >
-                        {copiedMessageId === message.id ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy</span>
-                          </>
+                            {message.reasoningContent}
+                          </div>
                         )}
-                      </button>
-                    </div>
+                      </div>
+                    )}
+
+                    <MessageContent content={message.content} contentType="markdown" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                    <button
+                      onClick={() => handleCopyMessage(message.id, message.content)}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                      title="Copy message"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
 
             {/* Streaming message */}
             {isStreaming && (streamingMessage || streamingReasoning) && (

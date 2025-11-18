@@ -23,8 +23,7 @@ export interface User {
 export enum AgentFramework {
   AGNO = 'Agno',
   ADK = 'ADK',
-  LANGCHAIN = 'Langchain',
-  CUSTOM = 'Custom',
+  LANGCHAIN = 'Langchain(custom)',
 }
 
 export enum AgentStatus {

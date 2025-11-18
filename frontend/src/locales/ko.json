@@ -144,6 +144,22 @@
                 "step6Desc": "LLM Proxy가 제공하는 trace_id를 통해 Trace 창에서 5가지 이벤트 정보를 실시간으로 확인할 수 있습니다 (확장/축소 가능).",
                 "step7Title": "7. 세션 히스토리",
                 "step7Desc": "워크벤치는 하나의 세션에 대한 대화 히스토리를 제공합니다."
+            },
+            "langchain": {
+                "step1Title": "1. 에이전트 생성",
+                "step1Desc": "워크벤치에서 개발할 Langchain 에이전트를 생성합니다.",
+                "step2Title": "2. 엔드포인트 및 trace_id 확인",
+                "step2Desc": "생성된 에이전트를 클릭하면 Chat과 Trace 창이 나오고, Configuration 안에 사용할 수 있는 LLM Proxy 엔드포인트(trace_id 포함)가 표시됩니다.",
+                "step3Title": "3. Langchain 에이전트 개발",
+                "step3Desc": "제공된 엔드포인트와 Settings에서 발급받은 API 키로 Langchain 에이전트를 개발합니다. FastAPI로 커스텀 엔드포인트를 만들고, langchain-openai를 사용해 Platform LLM Proxy에 연결합니다. 시스템 프롬프트에 <think> 태그 사용을 안내하면 사고 과정이 별도로 추적됩니다.",
+                "step4Title": "4. 엔드포인트 및 스키마 설정",
+                "step4Desc": "Chat Playground의 Agent Configuration에서 개발한 에이전트의 완전한 엔드포인트 URL(예: http://localhost:8765/invoke/stream)과 요청 스키마(예: {\"input\": \"{{message}}\"})를 입력하고, 응답 형식(SSE Streaming 또는 JSON Blocking)을 선택한 후 Connection Test를 수행합니다.",
+                "step5Title": "5. 채팅 테스트",
+                "step5Desc": "Chat Playground에서 개발한 Langchain 에이전트와 대화를 테스트할 수 있습니다. <think> 태그로 감싸진 사고 과정은 별도의 접을 수 있는 섹션으로 표시됩니다.",
+                "step6Title": "6. 실시간 추적",
+                "step6Desc": "Platform LLM Proxy가 제공하는 trace_id를 통해 Trace 창에서 LLM 요청/응답 이벤트를 실시간으로 확인할 수 있습니다 (확장/축소 가능).",
+                "step7Title": "7. 세션 히스토리",
+                "step7Desc": "워크벤치는 하나의 세션에 대한 대화 히스토리를 제공하며, 모든 <think> 태그 내용도 함께 저장됩니다."
             }
         },
         "guide": {

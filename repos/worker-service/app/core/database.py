@@ -41,8 +41,11 @@ class StatisticsSnapshot(Base):
     deployed_agents = Column(Integer, nullable=False)
     development_agents = Column(Integer, nullable=False)
 
-    # Token usage by agent (JSON format: {agent_id: {tokens, calls, name}})
+    # Token usage by agent - all models combined (JSON format: {agent_id: {tokens, calls, name}})
     agent_token_usage = Column(JSON, nullable=True)
+
+    # Token usage by agent and model (JSON format: {agent_id: {model: {tokens, calls}, ...}})
+    agent_token_usage_by_model = Column(JSON, nullable=True)
 
     # Model usage statistics (JSON format)
     model_usage_stats = Column(JSON, nullable=True)

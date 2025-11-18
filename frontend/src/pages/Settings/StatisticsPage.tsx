@@ -34,6 +34,7 @@ interface ComprehensiveStatistics {
   }>;
   agent_token_usage: Array<{
     trace_id: string;
+    agent_id: string;
     agent_name: string;
     owner_id: string;
     agent_display_name: string;
@@ -112,7 +113,8 @@ const StatisticsPage: React.FC = () => {
   const [agentGrowthFilter, setAgentGrowthFilter] = useState<'all' | 'deployed'>('all');
   const [searchUserId] = useState<string>('');
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
-  const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
+  const [selectedTopK, setSelectedTopK] = useState<number | null>(10); // For top-k agents in token usage (default: Top 10)
+  const [selectedModelForTrend, setSelectedModelForTrend] = useState<string>('all'); // For model filter in trend
 
   // Parse period value and auto-determine group_by based on period length
   const getPeriodParams = () => {
@@ -228,6 +230,7 @@ const StatisticsPage: React.FC = () => {
         const queryParams = new URLSearchParams({
           period: periodValue,
           agent_id: selectedAgentForToken,
+          model: selectedModelForTrend,
           ...(selectedAgentForToken === 'all' && selectedTopK ? { top_k: selectedTopK.toString() } : {})
         });
 
@@ -247,7 +250,7 @@ const StatisticsPage: React.FC = () => {
     };
 
     fetchHistoricalTrends();
-  }, [periodValue, selectedTopK, selectedAgentForToken]);
+  }, [periodValue, selectedTopK, selectedAgentForToken, selectedModelForTrend]);
 
   // Token usage is already included in historical trends
   // No separate fetch needed
@@ -279,6 +282,79 @@ const StatisticsPage: React.FC = () => {
     return () => clearTimeout(debounce);
   }, [searchUserId]);
 
+  // Get unique agents for dropdown (grouped by trace_id)
+  const uniqueAgentsForDropdown = React.useMemo(() => {
+    if (!stats?.agent_token_usage) return [];
+
+    // Aggregate by trace_id to get unique agents
+    const uniqueAgents = new Map<string, {
+      trace_id: string;
+      agent_display_name: string;
+    }>();
+
+    stats.agent_token_usage.forEach(item => {
+      if (!uniqueAgents.has(item.trace_id)) {
+        uniqueAgents.set(item.trace_id, {
+          trace_id: item.trace_id,
+          agent_display_name: item.agent_display_name
+        });
+      }
+    });
+
+    return Array.from(uniqueAgents.values());
+  }, [stats?.agent_token_usage]);
+
+  // Filter and aggregate agent token usage by selected model
+  // IMPORTANT: This must be before any conditional returns to maintain hook order
+  const filteredAgentUsage = React.useMemo(() => {
+    if (!stats?.agent_token_usage) return [];
+
+    if (selectedModel === 'all') {
+      // Aggregate by trace_id across all models
+      const aggregated = new Map<string, {
+        trace_id: string;
+        agent_id: string;
+        agent_name: string;
+        owner_id: string;
+        agent_display_name: string;
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+        call_count: number;
+      }>();
+
+      stats.agent_token_usage.forEach(item => {
+        const existing = aggregated.get(item.trace_id);
+        if (existing) {
+          existing.prompt_tokens += item.prompt_tokens;
+          existing.completion_tokens += item.completion_tokens;
+          existing.total_tokens += item.total_tokens;
+          existing.call_count += item.call_count;
+        } else {
+          aggregated.set(item.trace_id, {
+            trace_id: item.trace_id,
+            agent_id: item.agent_id,
+            agent_name: item.agent_name,
+            owner_id: item.owner_id,
+            agent_display_name: item.agent_display_name,
+            prompt_tokens: item.prompt_tokens,
+            completion_tokens: item.completion_tokens,
+            total_tokens: item.total_tokens,
+            call_count: item.call_count
+          });
+        }
+      });
+
+      // Sort by total_tokens descending
+      return Array.from(aggregated.values()).sort((a, b) => b.total_tokens - a.total_tokens);
+    } else {
+      // Filter by specific model
+      return stats.agent_token_usage
+        .filter(item => item.model === selectedModel)
+        .sort((a, b) => b.total_tokens - a.total_tokens);
+    }
+  }, [stats?.agent_token_usage, selectedModel]);
+
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -296,11 +372,6 @@ const StatisticsPage: React.FC = () => {
   }
 
   if (!stats) return null;
-
-  // Filter agent token usage by selected model
-  const filteredAgentUsage = selectedModel === 'all'
-    ? stats.agent_token_usage
-    : stats.agent_token_usage.filter(item => item.model === selectedModel);
 
   // Filter agent growth data based on selected filter
   const agentGrowthData = historicalTrends?.agent_trend?.map(item => ({
@@ -425,46 +496,111 @@ const StatisticsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Model Usage Stats Table */}
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-            Model Usage Statistics
-          </h3>
-          {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Model</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-slate-600 dark:text-slate-400">Provider</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">Total Tokens</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium text-slate-600 dark:text-slate-400">LLM Calls</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.model_usage_stats.map((model, idx) => (
-                    <tr
-                      key={`${model.model}-${model.provider}`}
-                      className={idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800' : ''}
-                    >
-                      <td className="px-4 py-2 text-sm text-slate-800 dark:text-slate-100">{model.model}</td>
-                      <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">{model.provider}</td>
-                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                        {model.total_tokens.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm text-slate-800 dark:text-slate-100">
-                        {model.call_count.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="mt-4 py-8 text-center text-slate-500">
-              Loading model usage statistics...
-            </div>
-          )}
+        {/* Model Usage Stats - Bar Charts */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Total Tokens by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Total Tokens by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="total_tokens"
+                      fill="#359EFF"
+                      name="Total Tokens"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
+
+          {/* LLM Calls by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              LLM Calls by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="call_count"
+                      fill="#16a34a"
+                      name="LLM Calls"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -607,7 +743,22 @@ const StatisticsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
             LLM Token Usage Trend
           </h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <span>Model:</span>
+              <select
+                value={selectedModelForTrend}
+                onChange={(e) => setSelectedModelForTrend(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
+              >
+                <option value="all">All Models</option>
+                {stats.model_usage_stats.map((model) => (
+                  <option key={`${model.model}-${model.provider}`} value={model.model}>
+                    {model.model} ({model.provider})
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
               <span>Agent:</span>
               <select
@@ -616,12 +767,14 @@ const StatisticsPage: React.FC = () => {
                   setSelectedAgentForToken(e.target.value);
                   if (e.target.value !== 'all') {
                     setSelectedTopK(null);
+                  } else {
+                    setSelectedTopK(10);
                   }
                 }}
                 className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
               >
                 <option value="all">All Agents</option>
-                {stats.agent_token_usage.map((agent) => (
+                {uniqueAgentsForDropdown.map((agent) => (
                   <option key={agent.trace_id} value={agent.trace_id}>
                     {agent.agent_display_name}
                   </option>
@@ -632,11 +785,10 @@ const StatisticsPage: React.FC = () => {
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                 <span>Top:</span>
                 <select
-                  value={selectedTopK || ''}
-                  onChange={(e) => setSelectedTopK(e.target.value ? Number(e.target.value) : null)}
+                  value={selectedTopK || 10}
+                  onChange={(e) => setSelectedTopK(Number(e.target.value))}
                   className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
                 >
-                  <option value="">All</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                     <option key={n} value={n}>Top {n}</option>
                   ))}
@@ -648,77 +800,137 @@ const StatisticsPage: React.FC = () => {
         {historicalTrends?.token_usage_trend ? (
           <div className="mt-4" style={{ width: '100%', height: '320px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              {selectedAgentForToken === 'all' && selectedTopK ? (
-              // Multiple lines for top-k agents
-              (() => {
-                // Restructure data for multi-line chart
-                const agents = Object.entries(historicalTrends.token_usage_trend);
-                if (agents.length === 0) return <LineChart data={[]} />;
+              {(() => {
+                const entries = Object.entries(historicalTrends.token_usage_trend);
+                if (entries.length === 0) return <LineChart data={[]} />;
 
-                // Get all unique dates
-                const allDates = new Set<string>();
-                agents.forEach(([_, agentData]) => {
-                  agentData.data.forEach(d => allDates.add(d.date));
-                });
+                // Check if we have a specific agent selected with model breakdown
+                const hasModelBreakdown = selectedAgentForToken !== 'all' &&
+                  selectedModelForTrend === 'all' &&
+                  entries.length > 1;
 
-                // Create combined data array
-                const combinedData = Array.from(allDates).sort().map(date => {
-                  const point: any = { date };
-                  agents.forEach(([agent_id, agentData]) => {
-                    const dataPoint = agentData.data.find(d => d.date === date);
-                    point[`${agent_id}_tokens`] = dataPoint?.total_tokens || 0;
+                // Multiple lines for top-k agents
+                if (selectedAgentForToken === 'all' && selectedTopK) {
+                  // Get all unique dates
+                  const allDates = new Set<string>();
+                  entries.forEach(([_, agentData]) => {
+                    agentData.data.forEach(d => allDates.add(d.date));
                   });
-                  return point;
-                });
 
-                const colors = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399', '#f87171', '#60a5fa', '#fb923c', '#c084fc', '#86efac', '#fca5a5'];
+                  // Create combined data array
+                  const combinedData = Array.from(allDates).sort().map(date => {
+                    const point: any = { date };
+                    entries.forEach(([agent_id, agentData]) => {
+                      const dataPoint = agentData.data.find(d => d.date === date);
+                      point[`${agent_id}_tokens`] = dataPoint?.total_tokens || 0;
+                    });
+                    return point;
+                  });
 
-                return (
-                  <LineChart data={combinedData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#94a3b8"
-                      tick={{ fill: '#94a3b8' }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      tick={{ fill: '#94a3b8' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #475569',
-                        borderRadius: '8px'
-                      }}
-                      labelStyle={{ color: '#f1f5f9' }}
-                    />
-                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
-                    {agents.map(([agent_id, agentData], index) => {
-                      const color = colors[index % colors.length];
-                      return (
-                        <Line
-                          key={agent_id}
-                          type="monotone"
-                          dataKey={`${agent_id}_tokens`}
-                          stroke={color}
-                          strokeWidth={2}
-                          name={agentData.agent_name}
-                          dot={{ fill: color, r: 2 }}
-                        />
-                      );
-                    })}
-                  </LineChart>
-                );
-              })()
-            ) : (
-              // Single agent or all agents aggregated (from historical data)
-              (() => {
-                const agents = Object.entries(historicalTrends.token_usage_trend);
-                if (agents.length === 0) return <LineChart data={[]} />;
+                  const colors = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399', '#f87171', '#60a5fa', '#fb923c', '#c084fc', '#86efac', '#fca5a5'];
 
+                  return (
+                    <LineChart data={combinedData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <YAxis
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #475569',
+                          borderRadius: '8px'
+                        }}
+                        labelStyle={{ color: '#f1f5f9' }}
+                      />
+                      <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                      {entries.map(([agent_id, agentData], index) => {
+                        const color = colors[index % colors.length];
+                        return (
+                          <Line
+                            key={agent_id}
+                            type="monotone"
+                            dataKey={`${agent_id}_tokens`}
+                            stroke={color}
+                            strokeWidth={2}
+                            name={agentData.agent_name}
+                            dot={{ fill: color, r: 2 }}
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  );
+                }
+
+                // Multiple lines for model breakdown when specific agent is selected
+                if (hasModelBreakdown) {
+                  // Get all unique dates
+                  const allDates = new Set<string>();
+                  entries.forEach(([_, modelData]) => {
+                    modelData.data.forEach(d => allDates.add(d.date));
+                  });
+
+                  // Create combined data array
+                  const combinedData = Array.from(allDates).sort().map(date => {
+                    const point: any = { date };
+                    entries.forEach(([model_id, modelData]) => {
+                      const dataPoint = modelData.data.find(d => d.date === date);
+                      point[`${model_id}_tokens`] = dataPoint?.total_tokens || 0;
+                    });
+                    return point;
+                  });
+
+                  const colors = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399', '#f87171', '#60a5fa', '#fb923c', '#c084fc', '#86efac', '#fca5a5'];
+
+                  return (
+                    <LineChart data={combinedData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <YAxis
+                        stroke="#94a3b8"
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #475569',
+                          borderRadius: '8px'
+                        }}
+                        labelStyle={{ color: '#f1f5f9' }}
+                      />
+                      <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                      {entries.map(([model_id, modelData]: [string, any], index: number) => {
+                        const color = colors[index % colors.length];
+                        const displayName = modelData.model_display_name || modelData.model || model_id;
+                        return (
+                          <Line
+                            key={model_id}
+                            type="monotone"
+                            dataKey={`${model_id}_tokens`}
+                            stroke={color}
+                            strokeWidth={2}
+                            name={displayName}
+                            dot={{ fill: color, r: 2 }}
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  );
+                }
+
+                // Single agent or all agents aggregated (from historical data)
                 // Should only have one entry (either specific agent or "all")
-                const [, agentData] = agents[0];
+                const [, agentData] = entries[0];
                 const data = agentData.data || [];
 
                 return (
@@ -768,8 +980,7 @@ const StatisticsPage: React.FC = () => {
                     />
                   </LineChart>
                 );
-              })()
-            )}
+              })()}
             </ResponsiveContainer>
           </div>
         ) : (

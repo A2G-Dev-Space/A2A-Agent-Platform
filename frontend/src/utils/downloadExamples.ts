@@ -5,7 +5,10 @@ import { AgentFramework } from '@/types';
  * Downloads zip file from public/examples folder
  */
 export async function downloadExampleCode(framework: AgentFramework): Promise<void> {
-  const folderName = framework === AgentFramework.ADK ? 'test_adk' : 'test_agno';
+  const folderName =
+    framework === AgentFramework.ADK ? 'test_adk' :
+    framework === AgentFramework.LANGCHAIN ? 'test_langchain' :
+    'test_agno';
   const fileName = `${folderName}.zip`;
 
   // Path to zip file in public folder

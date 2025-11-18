@@ -27,10 +27,9 @@ class Base(DeclarativeBase):
 
 class AgentFramework(str, PyEnum):
     """Agent framework types"""
-    LANGCHAIN = "Langchain"
+    LANGCHAIN = "Langchain(custom)"
     AGNO = "Agno"
     ADK = "ADK"
-    CUSTOM = "Custom"
 
 class AgentStatus(str, PyEnum):
     """Agent status types"""

@@ -19,6 +19,7 @@ export interface ChatMessage {
 export interface ChatResponseChunk {
   content: string;
   isComplete: boolean;
+  reasoningContent?: string; // Optional reasoning/thinking content (e.g., from <think> tags)
 }
 
 /**
@@ -27,6 +28,7 @@ export interface ChatResponseChunk {
 export interface ChatResponse {
   content: string;
   timestamp: Date;
+  reasoningContent?: string; // Optional reasoning/thinking content (e.g., from <think> tags)
 }
 
 /**
