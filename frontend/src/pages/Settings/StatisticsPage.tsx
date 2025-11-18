@@ -299,7 +299,22 @@ const StatisticsPage: React.FC = () => {
 
   // Filter agent token usage by selected model
   const filteredAgentUsage = selectedModel === 'all'
-    ? stats.agent_token_usage
+    ? (() => {
+        // Group by agent_name and aggregate tokens for all models
+        const aggregated = stats.agent_token_usage.reduce((acc, item) => {
+          const existing = acc.find(a => a.agent_name === item.agent_name && a.owner_id === item.owner_id);
+          if (existing) {
+            existing.prompt_tokens += item.prompt_tokens;
+            existing.completion_tokens += item.completion_tokens;
+            existing.total_tokens += item.total_tokens;
+            existing.call_count += item.call_count;
+          } else {
+            acc.push({ ...item });
+          }
+          return acc;
+        }, [] as typeof stats.agent_token_usage);
+        return aggregated;
+      })()
     : stats.agent_token_usage.filter(item => item.model === selectedModel);
 
   // Filter agent growth data based on selected filter
