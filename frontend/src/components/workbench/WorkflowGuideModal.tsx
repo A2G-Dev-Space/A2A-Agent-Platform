@@ -88,7 +88,7 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                   {isAdk
                     ? 'ADK 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'
                     : isLangchain
-                    ? 'Langchain 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'
+                    ? 'LangChain 프레임워크를 사용한 테스트 에이전트 예시 코드를 다운로드하여 시작하세요.'
                     : 'Agno 프레임워크를 사용한 수학 에이전트 예시 코드를 다운로드하여 시작하세요.'}
                 </p>
                 <button

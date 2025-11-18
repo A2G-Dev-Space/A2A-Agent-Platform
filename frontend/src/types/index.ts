@@ -12,6 +12,7 @@ export interface User {
   username_kr: string
   email: string
   role: UserRole
+  department: string  // Language-neutral department code
   department_kr: string
   department_en: string
   created_at: string
@@ -32,7 +33,6 @@ export enum AgentStatus {
   PRODUCTION = 'PRODUCTION',
   DEPLOYED_TEAM = 'DEPLOYED_TEAM',
   DEPLOYED_ALL = 'DEPLOYED_ALL',
-  DEPLOYED_DEPT = 'DEPLOYED_DEPT',
   ARCHIVED = 'ARCHIVED',
 }
 
@@ -49,7 +49,13 @@ export interface Agent {
   description: string
   framework: AgentFramework
   status: AgentStatus
-  a2a_endpoint: string
+  a2a_endpoint: string  // For ADK framework
+  agno_os_endpoint?: string  // For Agno framework
+  langchain_config?: {
+    endpoint?: string
+    request_schema?: string
+    response_format?: string
+  }  // For Langchain framework
   trace_id?: string  // Unique trace ID for LLM tracking
   capabilities: {
     skills?: string[]

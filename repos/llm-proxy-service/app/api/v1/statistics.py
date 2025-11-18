@@ -92,7 +92,13 @@ async def get_agent_token_usage(
     # Build response with agent names
     agent_usage = []
     for row in rows:
-        agent_info = agent_info_map.get(row.agent_id, {"name": "Unknown", "owner_id": "Unknown"})
+        agent_info = agent_info_map.get(row.agent_id)
+
+        # Skip if agent info not found (agent may have been deleted)
+        if not agent_info:
+            logger.debug(f"Skipping agent_id {row.agent_id} - agent not found")
+            continue
+
         agent_display_name = f"{agent_info['name']} ({agent_info['owner_id']})"
 
         agent_usage.append({

@@ -277,21 +277,37 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent })
             <label className="text-base font-medium text-text-light-primary dark:text-text-dark-primary mb-2">
               {t('createAgent.frameworkLabel', 'Framework')}
             </label>
-            <select
-              className={`w-full rounded-lg px-4 py-3 text-base bg-panel-light dark:bg-panel-dark text-text-light-primary dark:text-text-dark-primary placeholder:text-text-light-secondary dark:placeholder:text-text-dark-secondary border transition-colors ${
-                errors.framework
-                  ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/50'
-                  : 'border-border-light dark:border-border-dark focus:border-primary focus:ring-2 focus:ring-primary/50'
-              } focus:outline-none`}
-              {...register('framework')}
-            >
-              <option value="">Select a framework</option>
-              {Object.values(AgentFramework).map((fw) => (
-                <option key={fw} value={fw}>
-                  {fw}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {Object.values(AgentFramework).map((fw) => {
+                const frameworkIcons: Record<string, string> = {
+                  'Agno': '/framework-icons/agno.png',
+                  'ADK': '/framework-icons/adk.png',
+                  'Langchain(custom)': '/framework-icons/langchain.png',
+                };
+
+                return (
+                  <label
+                    key={fw}
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
+                      watch('framework') === fw
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border-light dark:border-gray-700 hover:border-primary/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      value={fw}
+                      {...register('framework')}
+                      className="sr-only"
+                    />
+                    {frameworkIcons[fw] && (
+                      <img src={frameworkIcons[fw]} alt={fw} className="w-8 h-8 rounded flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary break-words min-w-0 flex-1">{fw}</span>
+                  </label>
+                );
+              })}
+            </div>
             {errors.framework && (
               <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">error</span>

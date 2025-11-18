@@ -106,10 +106,21 @@ export class LangchainChatAdapter implements ChatAdapter {
   ): any {
     const requestSchema = this.config?.requestSchema;
 
+    // Build message content with conversation history (like Agno)
+    let messageContent = message;
+
+    // Add conversation history as text prefix if provided
+    if (conversationHistory && conversationHistory.length > 0) {
+      const historyText = conversationHistory
+        .map(msg => `${msg.role}: ${msg.content}`)
+        .join('\n');
+      messageContent = `Previous conversation:\n${historyText}\n\nCurrent message: ${message}`;
+    }
+
     if (!requestSchema) {
       // Default schema for Langchain
       return {
-        input: message,
+        input: messageContent,
         config: {
           metadata: {
             conversation_id: this.config?.sessionId || `session-${Date.now()}`,
@@ -122,22 +133,16 @@ export class LangchainChatAdapter implements ChatAdapter {
       // Parse the schema template
       let schemaObj = JSON.parse(requestSchema);
 
-      // Replace {{message}} placeholder with actual message
+      // Replace {{message}} placeholder with actual message (including history)
       const schemaStr = JSON.stringify(schemaObj);
-      const processedStr = schemaStr.replace(/\{\{message\}\}/g, message);
-
-      // Replace {{history}} placeholder with conversation history if present
-      if (conversationHistory && conversationHistory.length > 0) {
-        const historyStr = JSON.stringify(conversationHistory);
-        return JSON.parse(processedStr.replace(/\{\{history\}\}/g, historyStr));
-      }
+      const processedStr = schemaStr.replace(/\{\{message\}\}/g, messageContent);
 
       return JSON.parse(processedStr);
     } catch (error) {
       console.error('[LangchainChatAdapter] Failed to parse request schema:', error);
       // Fallback to default schema
       return {
-        input: message,
+        input: messageContent,
       };
     }
   }
@@ -162,6 +167,8 @@ export class LangchainChatAdapter implements ChatAdapter {
     console.log('[LangchainChatAdapter] Sending SSE request:', {
       endpoint,
       requestBody,
+      hasHistory: conversationHistory && conversationHistory.length > 0,
+      historyLength: conversationHistory?.length || 0,
     });
 
     const response = await fetch(endpoint, {
@@ -341,6 +348,8 @@ export class LangchainChatAdapter implements ChatAdapter {
     console.log('[LangchainChatAdapter] Sending JSON request:', {
       endpoint,
       requestBody,
+      hasHistory: conversationHistory && conversationHistory.length > 0,
+      historyLength: conversationHistory?.length || 0,
     });
 
     const response = await fetch(endpoint, {

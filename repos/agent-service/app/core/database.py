@@ -3,8 +3,8 @@ Database configuration and models
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON, Enum as SQLAlchemyEnum
-from datetime import datetime
+from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON, Enum as SQLAlchemyEnum, Date, ForeignKey
+from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from enum import Enum as PyEnum
 import uuid
@@ -38,7 +38,6 @@ class AgentStatus(str, PyEnum):
     PRODUCTION = "PRODUCTION"
     DEPLOYED_TEAM = "DEPLOYED_TEAM"
     DEPLOYED_ALL = "DEPLOYED_ALL"
-    DEPLOYED_DEPT = "DEPLOYED_DEPT"
     ARCHIVED = "ARCHIVED"
 
 class HealthStatus(str, PyEnum):
@@ -78,11 +77,79 @@ class Agent(Base):
     deploy_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default={})
     validated_endpoint: Mapped[Optional[str]] = mapped_column(String(500))  # Validated public endpoint for deployed agents
 
+    # A2A Protocol Support
+    agent_card_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # A2A Agent Card
+    workbench_messages: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON)  # Workbench test messages
+
+    # Langchain Configuration (for Langchain(custom) framework)
+    langchain_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # endpoint, request_schema, response_format
+
+    # Agno Configuration (for Agno framework)
+    agno_os_endpoint: Mapped[Optional[str]] = mapped_column(String(500))  # Agno OS endpoint
+
     # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def agent_card(self) -> Dict[str, Any]:
+        """Get agent card (for backward compatibility with a2a_proxy.py)"""
+        return self.agent_card_json or {}
+
+    @property
+    def original_endpoint(self) -> Optional[str]:
+        """
+        Get the original agent endpoint based on framework
+        Returns validated_endpoint if deployed, otherwise framework-specific endpoint
+
+        Framework-specific endpoints:
+        - Agno: agno_os_endpoint
+        - ADK: a2a_endpoint
+        - Langchain: langchain_config['endpoint']
+        """
+        if self.validated_endpoint:
+            return self.validated_endpoint
+
+        # Return framework-specific endpoint
+        if self.framework == AgentFramework.AGNO:
+            return self.agno_os_endpoint
+        elif self.framework == AgentFramework.ADK:
+            return self.a2a_endpoint
+        elif self.framework == AgentFramework.LANGCHAIN:
+            if self.langchain_config:
+                return self.langchain_config.get("endpoint")
+            return None
+        else:
+            return None
+
+class AgentCallStatistics(Base):
+    """Agent call statistics for tracking Hub/Workbench Chat and A2A Router usage"""
+    __tablename__ = "agent_call_statistics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[int] = mapped_column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(String(50), index=True)
+    call_type: Mapped[str] = mapped_column(String(20), index=True)  # 'chat', 'a2a_router'
+    agent_status: Mapped[str] = mapped_column(String(20))  # DEPLOYED, DEVELOPMENT at call time
+    called_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    date: Mapped[date] = mapped_column(Date, default=date.today, index=True)  # For daily aggregation
+
+class DeploymentLog(Base):
+    """Deployment history log"""
+    __tablename__ = "deployment_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[int] = mapped_column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(20))  # 'deploy', 'undeploy'
+    performed_by: Mapped[str] = mapped_column(String(50))
+    visibility: Mapped[Optional[str]] = mapped_column(String(20))  # team, public (for deploy)
+    validated_endpoint: Mapped[Optional[str]] = mapped_column(String(500))
+    previous_status: Mapped[str] = mapped_column(String(20))
+    new_status: Mapped[str] = mapped_column(String(20))
+    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Additional info (renamed from metadata)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 async def init_db():
     """Initialize database"""

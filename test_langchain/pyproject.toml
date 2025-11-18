@@ -1,0 +1,20 @@
+[project]
+name = "test-langchain-agent"
+version = "0.1.0"
+description = "Test LangChain agent for A2A Platform"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+start = "uvicorn main:app --host 0.0.0.0 --port 6040 --reload"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

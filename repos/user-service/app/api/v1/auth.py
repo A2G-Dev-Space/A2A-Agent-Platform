@@ -86,8 +86,9 @@ async def handle_callback(
         username = id_payload.get("loginid")
         username_kr = id_payload.get("username")
         email = id_payload.get("mail")
+        department_code = id_payload.get("deptid")  # Language-neutral department ID from SSO
         department_kr = id_payload.get("deptname")
-        department_en = id_payload.get("deptname")  # Same value for now
+        department_en = id_payload.get("deptname_en", id_payload.get("deptname"))  # Fallback to kr if en not available
         
         if not username:
             raise HTTPException(
@@ -102,7 +103,13 @@ async def handle_callback(
         if not user:
             # New user - issue token with role="NEW" without creating DB entry
             # User will see signup request page
-            access_token = create_access_token(data={"sub": username, "role": "NEW"})
+            access_token = create_access_token(data={
+                "sub": username,
+                "role": "NEW",
+                "department": department_code,
+                "department_kr": department_kr,
+                "department_en": department_en
+            })
 
             return CallbackResponse(
                 access_token=access_token,
@@ -111,18 +118,28 @@ async def handle_callback(
                     "username": username,
                     "username_kr": username_kr,
                     "email": email,
+                    "department": department_code,
                     "department_kr": department_kr,
                     "department_en": department_en,
                     "role": "NEW"
                 }
             )
 
-        # Existing user - update last login
+        # Existing user - update last login and department from SSO
         user.last_login = datetime.utcnow()
+        user.department = department_code  # Update department code from SSO
+        user.department_kr = department_kr
+        user.department_en = department_en
         await db.commit()
 
-        # Create access token with role included
-        access_token = create_access_token(data={"sub": username, "role": user.role})
+        # Create access token with role and all department fields included
+        access_token = create_access_token(data={
+            "sub": username,
+            "role": user.role,
+            "department": user.department,
+            "department_kr": user.department_kr,
+            "department_en": user.department_en
+        })
 
         return CallbackResponse(
             access_token=access_token,
@@ -131,6 +148,7 @@ async def handle_callback(
                 "username": user.username,
                 "username_kr": user.username_kr,
                 "email": user.email,
+                "department": user.department,
                 "department_kr": user.department_kr,
                 "department_en": user.department_en,
                 "role": user.role

@@ -14,9 +14,35 @@ class AgnoAdapter(FrameworkAdapter):
     Adapter for Agno framework
 
     Agno endpoint format:
-    - Request: POST /agent with {"input": "...", "session_id": "...", "stream": false}
-    - Response: {"output": "...", "metadata": {...}}
+    - Team-based: POST /teams/{team_id}/runs
+    - Agent-based: POST /agents/{agent_id}/runs
+    - Request: multipart/form-data with message, stream, monitor, user_id
+    - Response: {"content": "...", "metrics": {...}}
     """
+
+    def get_endpoint_path(self, resource_type: str = None, resource_id: str = None) -> str:
+        """
+        Get the endpoint path for Agno
+
+        Agno uses dynamic endpoints based on team or agent:
+        - /teams/{team_id}/runs
+        - /agents/{agent_id}/runs
+        - /runs (fallback)
+
+        Args:
+            resource_type: "team" or "agent"
+            resource_id: team_id or agent_id
+
+        Returns:
+            Endpoint path
+        """
+        if resource_type == "team" and resource_id:
+            return f"/teams/{resource_id}/runs"
+        elif resource_type == "agent" and resource_id:
+            return f"/agents/{resource_id}/runs"
+        else:
+            # Fallback to base runs endpoint
+            return "/runs"
 
     def transform_request(
         self,
@@ -29,13 +55,12 @@ class AgnoAdapter(FrameworkAdapter):
         A2A format (JSON-RPC 2.0):
         {
           "jsonrpc": "2.0",
-          "method": "sendMessage",
+          "method": "message/send",
           "params": {
             "message": {
               "messageId": "...",
               "role": "user",
-              "parts": [{"kind": "text", "text": "Hello"}],
-              "kind": "message",
+              "parts": [{"type": "text", "text": "Hello"}],
               "contextId": "...",
               "taskId": "..."
             },
@@ -47,42 +72,42 @@ class AgnoAdapter(FrameworkAdapter):
           "id": "request-123"
         }
 
-        Agno format:
+        Agno format (multipart/form-data fields):
         {
-          "input": "Hello",
-          "session_id": "...",
-          "stream": false,
-          "context": {...}
+          "message": "Hello",
+          "stream": "false",
+          "monitor": "false",
+          "user_id": "..."
         }
         """
         params = a2a_request.get("params", {})
         message = params.get("message", {})
         parts = message.get("parts", [])
 
-        # Extract text from parts
-        text_parts = [p.get("text", "") for p in parts if p.get("kind") == "text"]
-        input_text = " ".join(text_parts)
+        # Extract text from parts (support both "kind" and "type" fields)
+        text_parts = [
+            p.get("text", "")
+            for p in parts
+            if p.get("kind") == "text" or p.get("type") == "text"
+        ]
+        message_text = " ".join(text_parts)
 
-        # Determine session ID
-        session_id = message.get("contextId") or message.get("messageId", "default")
+        # Determine session ID (use contextId as user_id)
+        user_id = message.get("contextId") or message.get("messageId", "a2a_user")
 
         # Check if streaming is requested
         configuration = params.get("configuration", {})
         blocking = configuration.get("blocking", True)
-        stream = not blocking  # Agno uses stream flag
+        stream = "false" if blocking else "true"
 
-        # Build Agno request
+        # Build Agno form-data request
+        # NOTE: Agno expects string values for form fields
         agno_request = {
-            "input": input_text,
-            "session_id": session_id,
-            "stream": stream
+            "message": message_text,
+            "stream": stream,
+            "monitor": "false",  # Disable monitoring for A2A
+            "user_id": user_id
         }
-
-        # Add optional context
-        if message.get("taskId"):
-            agno_request["context"] = {
-                "task_id": message.get("taskId")
-            }
 
         return agno_request
 
@@ -96,11 +121,15 @@ class AgnoAdapter(FrameworkAdapter):
 
         Agno format:
         {
-          "output": "Response text",
-          "metadata": {
-            "tokens_used": 100,
-            "execution_time_ms": 500
-          }
+          "run_id": "...",
+          "content": "Response text",
+          "content_type": "str",
+          "metrics": {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "duration": 2.5
+          },
+          "status": "COMPLETED"
         }
 
         A2A format:
@@ -110,14 +139,15 @@ class AgnoAdapter(FrameworkAdapter):
             "kind": "message",
             "messageId": "response-...",
             "role": "agent",
-            "parts": [{"kind": "text", "text": "Response text"}],
+            "parts": [{"type": "text", "text": "Response text"}],
             "metadata": {...}
           },
           "id": "request-123"
         }
         """
-        output = framework_response.get("output", "")
-        metadata = framework_response.get("metadata", {})
+        # Agno uses "content" field, not "output"
+        content = framework_response.get("content", "")
+        metrics = framework_response.get("metrics", {})
         request_id = original_request.get("id", "unknown")
 
         # Generate response message ID
@@ -134,11 +164,15 @@ class AgnoAdapter(FrameworkAdapter):
                 "role": "agent",
                 "parts": [
                     {
-                        "kind": "text",
-                        "text": output
+                        "type": "text",
+                        "text": content
                     }
                 ],
-                "metadata": metadata
+                "metadata": {
+                    "agno_run_id": framework_response.get("run_id"),
+                    "agno_status": framework_response.get("status"),
+                    "metrics": metrics
+                }
             },
             "id": request_id
         }

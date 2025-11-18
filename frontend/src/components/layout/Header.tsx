@@ -11,9 +11,19 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  // Get department based on current language
+  const getDepartmentName = () => {
+    if (!user) return '';
+    const currentLang = i18n.language;
+    if (currentLang === 'ko' || currentLang === 'kr') {
+      return user.department_kr || user.department_en;
+    }
+    return user.department_en || user.department_kr;
+  };
 
   return (
     <header className="flex items-center justify-between h-16 bg-panel-light dark:bg-[#110d1a]/50 backdrop-blur-sm border-b border-border-light dark:border-border-dark px-4 sm:px-6 sticky top-0 z-10">
@@ -72,8 +82,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuClick }) => {
                     {user.email}
                   </p>
                   <div className="flex items-center gap-2 mt-3 text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                    {user.department_kr && <span>{user.department_kr}</span>}
-                    {user.department_kr && user.role && <span>·</span>}
+                    {getDepartmentName() && <span>{getDepartmentName()}</span>}
+                    {getDepartmentName() && user.role && <span>·</span>}
                     {user.role && <span className="capitalize">{user.role.toLowerCase()}</span>}
                   </div>
                 </div>

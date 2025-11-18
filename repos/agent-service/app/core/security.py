@@ -44,7 +44,13 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
 
-    return {"username": username, "role": payload.get("role", "USER")}
+    return {
+        "username": username,
+        "role": payload.get("role", "USER"),
+        "department": payload.get("department"),  # Language-neutral code
+        "department_kr": payload.get("department_kr"),
+        "department_en": payload.get("department_en")
+    }
 
 async def require_admin(
     credentials: HTTPAuthorizationCredentials = Depends(security)

@@ -50,12 +50,13 @@
         "deleteConfirmation": "정말로 \"{{name}}\"을(를) 삭제하시겠습니까?\n\n다음을 포함한 모든 관련 데이터가 영구적으로 제거됩니다:\n- 에이전트 구성\n- 채팅 기록\n- 추적 로그\n\n이 작업은 취소할 수 없습니다.",
         "agentCard": {
             "deployedAll": "전체 배포",
-            "deployedDept": "부서 배포",
+            "deployedTeam": "팀 배포",
             "development": "개발 중",
             "noDescription": "설명 없음",
             "edit": "수정",
             "deploy": "배포",
-            "undeploy": "배포 취소"
+            "undeploy": "배포 취소",
+            "undeployFirst": "먼저 배포를 취소해주세요"
         },
         "deployModal": {
             "deploymentFailed": "배포 실패",

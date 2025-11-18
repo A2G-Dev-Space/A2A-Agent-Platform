@@ -50,12 +50,13 @@
         "deleteConfirmation": "Are you sure you want to delete \"{{name}}\"?\n\nThis will permanently remove the agent and all associated data including:\n- Agent configuration\n- Chat history\n- Trace logs\n\nThis action cannot be undone.",
         "agentCard": {
             "deployedAll": "DEPLOY TO ALL",
-            "deployedDept": "DEPLOY TO DEPARTMENT",
+            "deployedTeam": "DEPLOY TO TEAM",
             "development": "DEVELOPMENT",
             "noDescription": "No description available",
             "edit": "Edit",
             "deploy": "Deploy",
-            "undeploy": "UnDeploy"
+            "undeploy": "UnDeploy",
+            "undeployFirst": "Please undeploy the agent first"
         },
         "deployModal": {
             "deploymentFailed": "Deployment failed",

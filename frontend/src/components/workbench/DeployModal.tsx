@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Globe, Users, AlertCircle, Loader2 } from 'lucide-react';
 import type { Agent } from '@/types';
-import { AgentStatus } from '@/types';
+import { AgentStatus, AgentFramework } from '@/types';
 import { agentService } from '@/services/agentService';
 
 interface DeployModalProps {
@@ -11,6 +11,20 @@ interface DeployModalProps {
   agent: Agent;
   onDeploySuccess: () => void;
 }
+
+// Helper function to get framework-specific endpoint
+const getAgentEndpoint = (agent: Agent): string | undefined => {
+  switch (agent.framework) {
+    case AgentFramework.AGNO:
+      return agent.agno_os_endpoint;
+    case AgentFramework.ADK:
+      return agent.a2a_endpoint;
+    case AgentFramework.LANGCHAIN:
+      return agent.langchain_config?.endpoint;
+    default:
+      return agent.a2a_endpoint;
+  }
+};
 
 export const DeployModal: React.FC<DeployModalProps> = ({
   isOpen,
@@ -23,10 +37,11 @@ export const DeployModal: React.FC<DeployModalProps> = ({
   const [isDeploying, setIsDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const agentEndpoint = getAgentEndpoint(agent);
+
   const isDeployed = [
     AgentStatus.DEPLOYED_TEAM,
     AgentStatus.DEPLOYED_ALL,
-    AgentStatus.DEPLOYED_DEPT,
     AgentStatus.PRODUCTION
   ].includes(agent.status);
 
@@ -57,47 +72,47 @@ export const DeployModal: React.FC<DeployModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+      <div className="relative w-full max-w-lg rounded-lg bg-panel-light dark:bg-panel-dark border border-border-light dark:border-border-dark p-6 shadow-xl">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-text-light-primary dark:text-text-dark-primary">
             {isDeployed ? t('workbench.deployModal.undeployAgent') : t('workbench.deployModal.deployAgent')}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="rounded-lg p-1.5 hover:bg-background-light dark:hover:bg-background-dark"
           >
-            <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <X className="h-5 w-5 text-text-light-secondary dark:text-text-dark-secondary" />
           </button>
         </div>
 
         {/* Agent Info */}
-        <div className="mb-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-900/50">
-          <div className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+        <div className="mb-6 rounded-lg bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark p-4">
+          <div className="mb-2 text-sm font-medium text-text-light-secondary dark:text-text-dark-secondary">
             {t('workbench.deployModal.agentInformation')}
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('workbench.deployModal.name')}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+              <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{t('workbench.deployModal.name')}</span>
+              <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
                 {agent.name}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('workbench.deployModal.framework')}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+              <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{t('workbench.deployModal.framework')}</span>
+              <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
                 {agent.framework}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('workbench.deployModal.endpoint')}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {agent.a2a_endpoint || t('workbench.deployModal.notConfigured')}
+              <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{t('workbench.deployModal.endpoint')}</span>
+              <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+                {agentEndpoint || t('workbench.deployModal.notConfigured')}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('workbench.deployModal.currentStatus')}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
+              <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{t('workbench.deployModal.currentStatus')}</span>
+              <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
                 {agent.status}
               </span>
             </div>
@@ -107,11 +122,11 @@ export const DeployModal: React.FC<DeployModalProps> = ({
         {/* Deploy Scope Selection (only for deployment) */}
         {!isDeployed && (
           <div className="mb-6">
-            <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="mb-2 text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
               {t('workbench.deployModal.deploymentScope')}
             </div>
             <div className="space-y-2">
-              <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-gray-600 p-3 hover:bg-background-light dark:hover:bg-background-dark">
                 <input
                   type="radio"
                   value="team"
@@ -121,14 +136,14 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                 />
                 <Users className="mr-2 h-5 w-5" style={{ color: '#EA2831' }} />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900 dark:text-white">{t('workbench.deployModal.teamOnly')}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="font-medium text-text-light-primary dark:text-text-dark-primary">{t('workbench.deployModal.teamOnly')}</div>
+                  <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                     {t('workbench.deployModal.teamOnlyDesc')}
                   </div>
                 </div>
               </label>
 
-              <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-gray-600 p-3 hover:bg-background-light dark:hover:bg-background-dark">
                 <input
                   type="radio"
                   value="public"
@@ -138,8 +153,8 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                 />
                 <Globe className="mr-2 h-5 w-5" style={{ color: '#359EFF' }} />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900 dark:text-white">{t('workbench.deployModal.public')}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="font-medium text-text-light-primary dark:text-text-dark-primary">{t('workbench.deployModal.public')}</div>
+                  <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                     {t('workbench.deployModal.publicDesc')}
                   </div>
                 </div>
@@ -149,7 +164,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
         )}
 
         {/* Warning/Info Messages */}
-        {!isDeployed && !agent.a2a_endpoint && (
+        {!isDeployed && !agentEndpoint && (
           <div className="mb-4 flex items-start rounded-lg bg-yellow-50 p-3 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
             <AlertCircle className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0" />
             <div className="text-sm">
@@ -187,22 +202,26 @@ export const DeployModal: React.FC<DeployModalProps> = ({
           <button
             onClick={onClose}
             disabled={isDeploying}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded-lg border-2 border-border-light dark:border-gray-500 px-4 py-2 text-sm font-medium text-text-light-primary dark:text-text-dark-primary hover:bg-background-light dark:hover:bg-background-dark disabled:opacity-50"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleDeploy}
-            disabled={isDeploying || (!isDeployed && !agent.a2a_endpoint)}
+            disabled={isDeploying || (!isDeployed && !agentEndpoint)}
             className={`
-              flex items-center rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors
+              flex items-center rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50 transition-colors
               ${isDeployed
-                ? 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600'
-                : 'hover:opacity-90'}
+                ? 'bg-panel-light dark:bg-panel-dark hover:bg-red-50 dark:hover:bg-red-900/20'
+                : 'text-white hover:opacity-90'}
             `}
-            style={!isDeployed ? {
-              backgroundColor: '#EA2831'
-            } : {}}
+            style={isDeployed ? {
+              borderColor: '#EA2831',
+              color: '#EA2831'
+            } : {
+              backgroundColor: '#EA2831',
+              borderColor: '#EA2831'
+            }}
           >
             {isDeploying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isDeployed ? t('workbench.deployModal.undeployAgent') : t('workbench.deployModal.deployAgent')}

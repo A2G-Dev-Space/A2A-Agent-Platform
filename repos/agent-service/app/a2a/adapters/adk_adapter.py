@@ -16,6 +16,19 @@ class ADKAdapter(FrameworkAdapter):
     ADK is natively A2A-compliant, but may use slightly different field names.
     """
 
+    def get_endpoint_path(self, resource_type: str = None, resource_id: str = None) -> str:
+        """
+        Get the endpoint path for ADK
+
+        ADK agent's original_endpoint is already the full URL,
+        so no additional path is needed.
+
+        Args:
+            resource_type: Not used for ADK (for compatibility)
+            resource_id: Not used for ADK (for compatibility)
+        """
+        return ""
+
     def transform_request(
         self,
         a2a_request: Dict[str, Any],

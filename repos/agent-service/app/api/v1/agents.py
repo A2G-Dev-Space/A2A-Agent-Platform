@@ -12,7 +12,7 @@ import logging
 import re
 import os
 
-from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
+from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus, DeploymentLog
 from app.core.security import get_current_user
 from sqlalchemy import select, and_, func
 
@@ -24,7 +24,9 @@ class AgentCreate(BaseModel):
     name: str
     description: Optional[str] = None
     framework: AgentFramework
-    a2a_endpoint: Optional[str] = None
+    a2a_endpoint: Optional[str] = None  # For ADK framework
+    agno_os_endpoint: Optional[str] = None  # For Agno framework
+    langchain_config: Optional[Dict[str, Any]] = None  # For Langchain framework (includes endpoint)
     capabilities: Dict[str, Any] = {}
     is_public: bool = True
     visibility: str = "public"  # public, private, team
@@ -36,7 +38,8 @@ class AgentUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     framework: Optional[AgentFramework] = None
-    a2a_endpoint: Optional[str] = None
+    a2a_endpoint: Optional[str] = None  # For ADK framework
+    agno_os_endpoint: Optional[str] = None  # For Agno framework
     capabilities: Optional[Dict[str, Any]] = None
     is_public: Optional[bool] = None
     status: Optional[AgentStatus] = None  # Status update integrated here
@@ -44,6 +47,7 @@ class AgentUpdate(BaseModel):
     allowed_users: Optional[List[str]] = None
     card_color: Optional[str] = None  # Hex color for agent card
     logo_url: Optional[str] = None  # URL for agent logo
+    langchain_config: Optional[Dict[str, Any]] = None  # Langchain configuration (includes endpoint)
 
 class AgentResponse(BaseModel):
     id: int
@@ -51,7 +55,9 @@ class AgentResponse(BaseModel):
     description: Optional[str]
     framework: AgentFramework
     status: AgentStatus
-    a2a_endpoint: Optional[str]
+    a2a_endpoint: Optional[str]  # For ADK framework
+    agno_os_endpoint: Optional[str]  # For Agno framework
+    langchain_config: Optional[Dict[str, Any]]  # For Langchain framework
     trace_id: Optional[str]
     capabilities: Dict[str, Any]
     owner_id: str
@@ -227,6 +233,8 @@ async def get_agents(
                 framework=agent.framework,
                 status=agent.status,
                 a2a_endpoint=agent.a2a_endpoint,
+                agno_os_endpoint=agent.agno_os_endpoint,
+                langchain_config=agent.langchain_config,
                 trace_id=agent.trace_id,
                 capabilities=agent.capabilities,
                 owner_id=agent.owner_id,
@@ -282,7 +290,9 @@ async def create_agent(
         name=request.name,
         description=request.description,
         framework=request.framework,
-        a2a_endpoint=request.a2a_endpoint,
+        a2a_endpoint=request.a2a_endpoint,  # For ADK
+        agno_os_endpoint=request.agno_os_endpoint,  # For Agno
+        langchain_config=request.langchain_config,  # For Langchain
         trace_id=trace_id,
         capabilities=request.capabilities,
         owner_id=current_user["username"],
@@ -306,6 +316,8 @@ async def create_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -335,11 +347,15 @@ async def get_agent_statistics(
     )
     total_agents = total_result.scalar() or 0
 
-    # Count deployed agents (PRODUCTION)
+    # Count deployed agents (DEPLOYED_ALL, DEPLOYED_TEAM, PRODUCTION)
     from app.core.database import AgentStatus
     deployed_result = await db.execute(
         select(func.count(Agent.id)).where(
-            Agent.status == AgentStatus.PRODUCTION
+            Agent.status.in_([
+                AgentStatus.DEPLOYED_ALL,
+                AgentStatus.DEPLOYED_TEAM,
+                AgentStatus.PRODUCTION
+            ])
         )
     )
     deployed_agents = deployed_result.scalar() or 0
@@ -402,6 +418,8 @@ async def get_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -441,17 +459,31 @@ async def update_agent(
             detail="Not authorized to update this agent"
         )
 
-    # Validate A2A endpoint if it's being updated (ADK only)
+    # Validate endpoints if they're being updated
     update_data = request.dict(exclude_unset=True)
+
+    # Validate ADK a2a_endpoint
     if "a2a_endpoint" in update_data and update_data["a2a_endpoint"]:
-        # Only validate for ADK framework (requires .well-known/agent.json)
-        # Agno framework doesn't provide agent card, so skip validation
         if agent.framework == AgentFramework.ADK:
             logger.info(f"[Update Agent] Validating new ADK endpoint: {update_data['a2a_endpoint']}")
             agent_card = await validate_agent_endpoint(update_data["a2a_endpoint"])
             logger.info(f"[Update Agent] Endpoint validation successful for agent {agent_id}")
         else:
-            logger.info(f"[Update Agent] Skipping validation for {agent.framework} framework - endpoint will be saved directly")
+            logger.info(f"[Update Agent] Skipping validation for {agent.framework} framework - a2a_endpoint not used")
+
+    # Validate Agno agno_os_endpoint (no validation needed, just save)
+    if "agno_os_endpoint" in update_data and update_data["agno_os_endpoint"]:
+        if agent.framework == AgentFramework.AGNO:
+            logger.info(f"[Update Agent] Saving Agno OS endpoint: {update_data['agno_os_endpoint']}")
+        else:
+            logger.info(f"[Update Agent] Skipping agno_os_endpoint for {agent.framework} framework")
+
+    # Langchain config (no validation at update, will be validated at deploy)
+    if "langchain_config" in update_data and update_data["langchain_config"]:
+        if agent.framework == AgentFramework.LANGCHAIN:
+            logger.info(f"[Update Agent] Saving Langchain config for agent {agent_id}")
+        else:
+            logger.info(f"[Update Agent] Skipping langchain_config for {agent.framework} framework")
 
     # Update fields
     for field, value in update_data.items():
@@ -467,6 +499,8 @@ async def update_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -652,47 +686,51 @@ def validate_host_for_deploy(endpoint: str) -> tuple[bool, str]:
 
     hostname = match.group(1)
 
-    # Check for localhost variations
+    # Check for localhost variations only (allow private IPs)
     invalid_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
     if hostname in invalid_hosts:
         return False, f"Cannot deploy with local endpoint '{hostname}'. Please provide a public URL."
 
-    # Check for private IP ranges (optional, more strict validation)
-    private_ip_patterns = [
-        r'^10\.',  # 10.0.0.0 - 10.255.255.255
-        r'^172\.(1[6-9]|2[0-9]|3[0-1])\.',  # 172.16.0.0 - 172.31.255.255
-        r'^192\.168\.',  # 192.168.0.0 - 192.168.255.255
-    ]
-
-    for pattern in private_ip_patterns:
-        if re.match(pattern, hostname):
-            return False, f"Cannot deploy with private IP '{hostname}'. Please provide a public URL."
-
     return True, ""
 
 
-async def test_agent_connection(endpoint: str, timeout: int = 5) -> tuple[bool, str]:
+async def test_agent_connection(endpoint: str, framework: str, agent_card_json: Optional[Dict[str, Any]] = None, timeout: int = 5) -> tuple[bool, str]:
     """
     Test if agent endpoint is reachable
+    Framework-specific health checks:
+    - Agno: GET /health
+    - ADK: GET /.well-known/agent-card.json
+    - Langchain: POST with user-configured schema
+
     Returns (is_reachable, error_message)
     """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            # Test with A2A info request
-            response = await client.post(
-                endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "agent/info",
-                    "params": {},
-                    "id": "deploy-test"
-                }
-            )
+            # Framework-specific health check
+            if framework.lower() == "agno":
+                # Agno: GET /health
+                health_url = endpoint.rstrip('/') + '/health'
+                response = await client.get(health_url)
 
-            if response.status_code == 200:
-                return True, ""
+                if response.status_code == 200:
+                    return True, ""
+                else:
+                    return False, f"Agno health check failed with status {response.status_code}"
+
+            elif framework.lower() == "adk":
+                # ADK: GET /.well-known/agent-card.json
+                card_url = endpoint.rstrip('/') + '/.well-known/agent-card.json'
+                response = await client.get(card_url)
+
+                if response.status_code == 200:
+                    return True, ""
+                else:
+                    return False, f"ADK agent card not found (status {response.status_code})"
+
             else:
-                return False, f"Agent returned status code {response.status_code}"
+                # Langchain and other custom frameworks: Skip validation for now
+                # Will be validated with user-configured schema during actual use
+                return True, ""
 
     except httpx.ConnectTimeout:
         return False, "Connection timeout - endpoint is not reachable"
@@ -736,14 +774,42 @@ async def deploy_agent(
         )
 
     # Check if already deployed
-    if agent.status in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+    if agent.status in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Agent is already deployed with status: {agent.status}"
         )
 
+    # Get endpoint based on framework
+    endpoint = None
+    if agent.framework == AgentFramework.AGNO:
+        endpoint = agent.agno_os_endpoint
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Agno OS endpoint is required for Agno agents"
+            )
+    elif agent.framework == AgentFramework.ADK:
+        endpoint = agent.a2a_endpoint
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A2A endpoint is required for ADK agents"
+            )
+    elif agent.framework == AgentFramework.LANGCHAIN:
+        if not agent.langchain_config or not agent.langchain_config.get("endpoint"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Langchain configuration with endpoint is required for Langchain agents"
+            )
+        endpoint = agent.langchain_config.get("endpoint")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown framework: {agent.framework}"
+        )
+
     # Validate endpoint is not localhost
-    endpoint = agent.a2a_endpoint
     is_valid, error_msg = validate_host_for_deploy(endpoint)
     if not is_valid:
         raise HTTPException(
@@ -752,23 +818,130 @@ async def deploy_agent(
         )
 
     # Test agent connection
-    logger.info(f"[Deploy] Testing connection to {endpoint}")
-    is_reachable, error_msg = await test_agent_connection(endpoint)
+    logger.info(f"[Deploy] Testing connection to {endpoint} (framework: {agent.framework})")
+    is_reachable, error_msg = await test_agent_connection(endpoint, agent.framework.value)
     if not is_reachable:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Agent endpoint validation failed: {error_msg}"
         )
 
+    # For Agno agents, validate that teams or agents exist
+    if agent.framework.value == "Agno":
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                has_resources = False
+
+                # Check for teams
+                try:
+                    teams_resp = await client.get(f"{endpoint}/teams")
+                    if teams_resp.status_code == 200:
+                        teams = teams_resp.json()
+                        if teams and len(teams) > 0:
+                            has_resources = True
+                            logger.info(f"[Deploy] Agno has {len(teams)} teams: {[t.get('id') for t in teams]}")
+                except Exception as e:
+                    logger.warning(f"[Deploy] Failed to fetch Agno teams: {e}")
+
+                # Check for agents
+                try:
+                    agents_resp = await client.get(f"{endpoint}/agents")
+                    if agents_resp.status_code == 200:
+                        agents_list = agents_resp.json()
+                        if agents_list and len(agents_list) > 0:
+                            has_resources = True
+                            logger.info(f"[Deploy] Agno has {len(agents_list)} agents: {[a.get('id') for a in agents_list]}")
+                except Exception as e:
+                    logger.warning(f"[Deploy] Failed to fetch Agno agents: {e}")
+
+                if not has_resources:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Agno endpoint has no teams or agents available"
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[Deploy] Failed to validate Agno resources: {e}")
+
+    # For Langchain agents, validate response schema is {"content": "..."}
+    if agent.framework == AgentFramework.LANGCHAIN:
+        import httpx
+        import json
+        try:
+            langchain_config = agent.langchain_config or {}
+            request_schema = langchain_config.get("request_schema", '{"input": "{{message}}"}')
+            response_format = langchain_config.get("response_format", "sse")
+
+            # Create test request
+            test_request_str = request_schema.replace("{{message}}", "test")
+            test_request = json.loads(test_request_str)
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    endpoint,
+                    json=test_request,
+                    headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+
+                # Check response format
+                if response_format == "sse":
+                    # Read first SSE chunk to validate format
+                    first_chunk = None
+                    async for line in response.aiter_lines():
+                        if not line or line.strip() == "":
+                            continue
+                        data_str = line[6:] if line.startswith("data: ") else line
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            chunk_data = json.loads(data_str)
+                            first_chunk = chunk_data
+                            break
+                        except json.JSONDecodeError:
+                            continue
+
+                    if not first_chunk or "content" not in first_chunk:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Langchain endpoint must return SSE format with {"content": "..."} schema. Please adjust your return schema.'
+                        )
+                    logger.info(f"[Deploy] Langchain SSE response schema validated")
+                else:
+                    # JSON response
+                    resp_json = response.json()
+                    if "content" not in resp_json and "output" not in resp_json:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Langchain endpoint must return {"content": "..."} or {"output": "..."} schema. Please adjust your return schema.'
+                        )
+                    logger.info(f"[Deploy] Langchain JSON response schema validated")
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[Deploy] Failed to validate Langchain response schema: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to validate Langchain response schema: {str(e)}"
+            )
+
     # Update agent status based on deploy scope
     new_status = AgentStatus.DEPLOYED_TEAM if request.deploy_scope == "team" else AgentStatus.DEPLOYED_ALL
 
-    # For team deployment, check department is set
-    if request.deploy_scope == "team" and not agent.department:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Department must be set for team deployment"
-        )
+    # For team deployment, check user has department
+    if request.deploy_scope == "team":
+        user_department = current_user.get("department")
+        if not user_department:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User must belong to a department for team deployment"
+            )
+
+    # Store previous status for logging
+    previous_status = agent.status
 
     # Update agent
     agent.status = new_status
@@ -777,11 +950,26 @@ async def deploy_agent(
     agent.validated_endpoint = endpoint
     agent.deploy_config = request.deploy_config
 
-    # Update visibility based on deploy scope
+    # Update visibility and department based on deploy scope
     if request.deploy_scope == "team":
         agent.visibility = "team"
+        agent.department = current_user.get("department")  # Set agent's department to user's department
     else:
         agent.visibility = "public"
+        agent.department = None  # Clear department for public deployment
+
+    # Create deployment log
+    deploy_log = DeploymentLog(
+        agent_id=agent.id,
+        action="deploy",
+        performed_by=current_user["username"],
+        visibility=agent.visibility,
+        validated_endpoint=endpoint,
+        previous_status=previous_status.value,
+        new_status=new_status.value,
+        extra_data={"deploy_config": request.deploy_config, "deploy_scope": request.deploy_scope}
+    )
+    db.add(deploy_log)
 
     await db.commit()
     await db.refresh(agent)
@@ -829,11 +1017,15 @@ async def undeploy_agent(
         )
 
     # Check if deployed
-    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Agent is not deployed. Current status: {agent.status}"
         )
+
+    # Store previous status for logging
+    previous_status = agent.status
+    previous_endpoint = agent.validated_endpoint
 
     # Update agent status back to DEVELOPMENT
     agent.status = AgentStatus.DEVELOPMENT
@@ -842,6 +1034,19 @@ async def undeploy_agent(
     agent.validated_endpoint = None
     agent.deploy_config = {}
     agent.visibility = "private"  # Reset to private
+
+    # Create deployment log
+    undeploy_log = DeploymentLog(
+        agent_id=agent.id,
+        action="undeploy",
+        performed_by=current_user["username"],
+        visibility="private",
+        validated_endpoint=previous_endpoint,
+        previous_status=previous_status.value,
+        new_status=AgentStatus.DEVELOPMENT.value,
+        extra_data={}
+    )
+    db.add(undeploy_log)
 
     await db.commit()
     await db.refresh(agent)
@@ -852,4 +1057,91 @@ async def undeploy_agent(
         "agent_id": agent.id,
         "status": agent.status,
         "message": "Agent undeployed successfully"
+    }
+# Langchain Configuration API
+class LangchainConfigRequest(BaseModel):
+    endpoint: str
+    request_schema: str  # JSON template with {{message}} placeholder
+    response_format: str = "sse"  # "sse" or "json"
+
+@router.put("/{agent_id}/langchain-config")
+async def update_langchain_config(
+    agent_id: int,
+    config: LangchainConfigRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update Langchain configuration for an agent
+    
+    This stores the user-configured endpoint and request schema
+    that will be used for deploying and calling Langchain agents.
+    """
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this agent"
+        )
+
+    # Verify it's a Langchain agent
+    if agent.framework != AgentFramework.LANGCHAIN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for Langchain(custom) agents"
+        )
+
+    # Store config
+    agent.langchain_config = {
+        "endpoint": config.endpoint,
+        "request_schema": config.request_schema,
+        "response_format": config.response_format
+    }
+    
+    await db.commit()
+    await db.refresh(agent)
+
+    logger.info(f"[Langchain Config] Updated config for agent {agent_id}")
+
+    return {
+        "agent_id": agent.id,
+        "langchain_config": agent.langchain_config,
+        "message": "Langchain configuration updated successfully"
+    }
+
+@router.get("/{agent_id}/langchain-config")
+async def get_langchain_config(
+    agent_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get Langchain configuration for an agent"""
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this agent"
+        )
+
+    return {
+        "agent_id": agent.id,
+        "langchain_config": agent.langchain_config or {}
     }

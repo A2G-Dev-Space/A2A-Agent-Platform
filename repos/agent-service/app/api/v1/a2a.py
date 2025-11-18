@@ -41,15 +41,24 @@ async def register_a2a_agent(
     db=Depends(get_db)
 ):
     """Register A2A compatible agent"""
-    # Create agent record
-    agent = Agent(
-        name=request.name,
-        framework=request.framework,
-        a2a_endpoint=request.endpoint,
-        capabilities=request.capabilities,
-        owner_id=current_user["username"],
-        status="DEVELOPMENT"
-    )
+    # Create agent record with framework-specific endpoint
+    agent_data = {
+        "name": request.name,
+        "framework": request.framework,
+        "capabilities": request.capabilities,
+        "owner_id": current_user["username"],
+        "status": "DEVELOPMENT"
+    }
+
+    # Set framework-specific endpoint field
+    if request.framework == AgentFramework.AGNO:
+        agent_data["agno_os_endpoint"] = request.endpoint
+    elif request.framework == AgentFramework.ADK:
+        agent_data["a2a_endpoint"] = request.endpoint
+    elif request.framework == AgentFramework.LANGCHAIN:
+        agent_data["langchain_config"] = {"endpoint": request.endpoint}
+
+    agent = Agent(**agent_data)
     
     db.add(agent)
     await db.commit()
@@ -83,20 +92,30 @@ async def execute_a2a_agent(
             detail="Agent not found"
         )
     
-    if not agent.a2a_endpoint:
+    # Get framework-specific endpoint
+    endpoint = None
+    if agent.framework == AgentFramework.AGNO:
+        endpoint = agent.agno_os_endpoint
+    elif agent.framework == AgentFramework.ADK:
+        endpoint = agent.a2a_endpoint
+    elif agent.framework == AgentFramework.LANGCHAIN:
+        if agent.langchain_config:
+            endpoint = agent.langchain_config.get("endpoint")
+
+    if not endpoint:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Agent does not have A2A endpoint configured"
+            detail=f"Agent does not have endpoint configured for {agent.framework.value} framework"
         )
-    
+
     # Prepare A2A request based on framework
     a2a_request = _prepare_a2a_request(agent.framework, request)
-    
+
     try:
         # Execute A2A request
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                agent.a2a_endpoint,
+                endpoint,
                 json=a2a_request,
                 headers={"Content-Type": "application/json"}
             )

@@ -38,10 +38,30 @@ export const HubDashboard: React.FC = () => {
     select: (data: AgentSearchResponse) => data.agents,
   });
 
-  // Fetch all production agents using react-query
+  // Fetch all deployed agents (DEPLOYED_ALL, DEPLOYED_TEAM, PRODUCTION)
   const { data: productionAgents, isLoading: isLoadingAgents } = useQuery({
     queryKey: ['productionAgents'],
-    queryFn: () => agentService.getAgents({ status: AgentStatus.PRODUCTION }),
+    queryFn: async () => {
+      // Get agents with each deployed status and combine them
+      const [deployedAll, deployedTeam, production] = await Promise.all([
+        agentService.getAgents({ status: AgentStatus.DEPLOYED_ALL }),
+        agentService.getAgents({ status: AgentStatus.DEPLOYED_TEAM }),
+        agentService.getAgents({ status: AgentStatus.PRODUCTION }),
+      ]);
+
+      // Combine all agents and remove duplicates by id
+      const allAgents = [
+        ...deployedAll.agents,
+        ...deployedTeam.agents,
+        ...production.agents,
+      ];
+
+      const uniqueAgents = Array.from(
+        new Map(allAgents.map(agent => [agent.id, agent])).values()
+      );
+
+      return { agents: uniqueAgents };
+    },
     select: (data: GetAgentsResponse) => data.agents,
   });
 
@@ -58,9 +78,9 @@ export const HubDashboard: React.FC = () => {
         <p className="text-slate-500 dark:text-slate-400 mt-2">{t('hub.subtitle')}</p>
       </div>
       <div className="relative mb-10">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <input
-          className="w-full h-14 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-hub-accent focus:border-hub-accent transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-200"
+          className="w-full h-14 pl-12 pr-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-gray-700 focus:ring-2 focus:ring-hub-accent focus:border-hub-accent transition-shadow placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-200"
           placeholder={t('hub.searchPlaceholder')}
           type="text"
           value={searchQuery}
