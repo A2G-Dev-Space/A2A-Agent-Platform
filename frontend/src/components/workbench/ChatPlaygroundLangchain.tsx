@@ -459,7 +459,12 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
 
     try {
       await agentService.updateAgent(agent.id, {
-        a2a_endpoint: agentEndpoint.trim()
+        a2a_endpoint: agentEndpoint.trim(),
+        langchain_config: {
+          endpoint: agentEndpoint.trim(),
+          request_schema: requestSchema,
+          response_format: responseFormat
+        }
       });
 
       agent.a2a_endpoint = agentEndpoint.trim();

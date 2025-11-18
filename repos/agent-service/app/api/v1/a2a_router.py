@@ -22,7 +22,7 @@ import logging
 import json
 from uuid import uuid4
 
-from app.core.database import get_db, Agent, AgentStatus
+from app.core.database import get_db, Agent, AgentStatus, AgentFramework
 from app.a2a.adapters import get_framework_adapter
 
 router = APIRouter()
@@ -415,7 +415,11 @@ async def agent_message_endpoint(
 
     # 5. Transform request to framework format
     try:
-        framework_request = adapter.transform_request(request_body, agent.agent_card)
+        # For Langchain, pass langchain_config instead of agent_card
+        if agent.framework == AgentFramework.LANGCHAIN:
+            framework_request = adapter.transform_request(request_body, agent.langchain_config or {})
+        else:
+            framework_request = adapter.transform_request(request_body, agent.agent_card)
         logger.info(f"[A2A Router] Transformed request for {agent.framework}")
     except Exception as e:
         logger.error(f"Failed to transform request: {e}")
@@ -453,8 +457,40 @@ async def agent_message_endpoint(
                 )
 
             response.raise_for_status()
-            framework_response = response.json()
-            logger.info(f"[A2A Router] Received response from {agent.framework}")
+
+            # Handle Langchain SSE streaming responses
+            if agent.framework == AgentFramework.LANGCHAIN:
+                langchain_config = agent.langchain_config or {}
+                response_format = langchain_config.get("response_format", "sse")
+
+                if response_format == "sse":
+                    # Read SSE stream and collect output
+                    full_output = ""
+                    async for line in response.aiter_lines():
+                        if not line or line.strip() == "":
+                            continue
+                        # Remove "data: " prefix if present
+                        data_str = line[6:] if line.startswith("data: ") else line
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            chunk_data = json.loads(data_str)
+                            # Langchain uses "content" field
+                            content = chunk_data.get("content", chunk_data.get("output", ""))
+                            if content:
+                                full_output += content
+                        except json.JSONDecodeError:
+                            continue
+
+                    # Build framework response
+                    framework_response = {"output": full_output}
+                    logger.info(f"[A2A Router] Received SSE stream from Langchain, total length: {len(full_output)}")
+                else:
+                    framework_response = response.json()
+                    logger.info(f"[A2A Router] Received JSON response from Langchain")
+            else:
+                framework_response = response.json()
+                logger.info(f"[A2A Router] Received response from {agent.framework}")
 
         except httpx.TimeoutException:
             logger.error(f"Timeout calling agent {agent_name}")

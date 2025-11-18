@@ -44,6 +44,7 @@ class AgentUpdate(BaseModel):
     allowed_users: Optional[List[str]] = None
     card_color: Optional[str] = None  # Hex color for agent card
     logo_url: Optional[str] = None  # URL for agent logo
+    langchain_config: Optional[Dict[str, Any]] = None  # Langchain configuration
 
 class AgentResponse(BaseModel):
     id: int
@@ -664,13 +665,13 @@ def validate_host_for_deploy(endpoint: str) -> tuple[bool, str]:
     return True, ""
 
 
-async def test_agent_connection(endpoint: str, framework: str, timeout: int = 5) -> tuple[bool, str]:
+async def test_agent_connection(endpoint: str, framework: str, agent_card_json: Optional[Dict[str, Any]] = None, timeout: int = 5) -> tuple[bool, str]:
     """
     Test if agent endpoint is reachable
     Framework-specific health checks:
     - Agno: GET /health
     - ADK: GET /.well-known/agent-card.json
-    - Langchain: POST with agent/info (fallback for custom frameworks)
+    - Langchain: POST with user-configured schema
 
     Returns (is_reachable, error_message)
     """
@@ -698,21 +699,9 @@ async def test_agent_connection(endpoint: str, framework: str, timeout: int = 5)
                     return False, f"ADK agent card not found (status {response.status_code})"
 
             else:
-                # Langchain and custom frameworks: POST agent/info
-                response = await client.post(
-                    endpoint,
-                    json={
-                        "jsonrpc": "2.0",
-                        "method": "agent/info",
-                        "params": {},
-                        "id": "deploy-test"
-                    }
-                )
-
-                if response.status_code == 200:
-                    return True, ""
-                else:
-                    return False, f"Agent returned status code {response.status_code}"
+                # Langchain and other custom frameworks: Skip validation for now
+                # Will be validated with user-configured schema during actual use
+                return True, ""
 
     except httpx.ConnectTimeout:
         return False, "Connection timeout - endpoint is not reachable"
@@ -818,6 +807,69 @@ async def deploy_agent(
             raise
         except Exception as e:
             logger.error(f"[Deploy] Failed to validate Agno resources: {e}")
+
+    # For Langchain agents, validate response schema is {"content": "..."}
+    if agent.framework == AgentFramework.LANGCHAIN:
+        import httpx
+        import json
+        try:
+            langchain_config = agent.langchain_config or {}
+            request_schema = langchain_config.get("request_schema", '{"input": "{{message}}"}')
+            response_format = langchain_config.get("response_format", "sse")
+
+            # Create test request
+            test_request_str = request_schema.replace("{{message}}", "test")
+            test_request = json.loads(test_request_str)
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    endpoint,
+                    json=test_request,
+                    headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+
+                # Check response format
+                if response_format == "sse":
+                    # Read first SSE chunk to validate format
+                    first_chunk = None
+                    async for line in response.aiter_lines():
+                        if not line or line.strip() == "":
+                            continue
+                        data_str = line[6:] if line.startswith("data: ") else line
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            chunk_data = json.loads(data_str)
+                            first_chunk = chunk_data
+                            break
+                        except json.JSONDecodeError:
+                            continue
+
+                    if not first_chunk or "content" not in first_chunk:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Langchain endpoint must return SSE format with {"content": "..."} schema. Please adjust your return schema.'
+                        )
+                    logger.info(f"[Deploy] Langchain SSE response schema validated")
+                else:
+                    # JSON response
+                    resp_json = response.json()
+                    if "content" not in resp_json and "output" not in resp_json:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Langchain endpoint must return {"content": "..."} or {"output": "..."} schema. Please adjust your return schema.'
+                        )
+                    logger.info(f"[Deploy] Langchain JSON response schema validated")
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[Deploy] Failed to validate Langchain response schema: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to validate Langchain response schema: {str(e)}"
+            )
 
     # Update agent status based on deploy scope
     new_status = AgentStatus.DEPLOYED_TEAM if request.deploy_scope == "team" else AgentStatus.DEPLOYED_ALL
@@ -948,4 +1000,91 @@ async def undeploy_agent(
         "agent_id": agent.id,
         "status": agent.status,
         "message": "Agent undeployed successfully"
+    }
+# Langchain Configuration API
+class LangchainConfigRequest(BaseModel):
+    endpoint: str
+    request_schema: str  # JSON template with {{message}} placeholder
+    response_format: str = "sse"  # "sse" or "json"
+
+@router.put("/{agent_id}/langchain-config")
+async def update_langchain_config(
+    agent_id: int,
+    config: LangchainConfigRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update Langchain configuration for an agent
+    
+    This stores the user-configured endpoint and request schema
+    that will be used for deploying and calling Langchain agents.
+    """
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this agent"
+        )
+
+    # Verify it's a Langchain agent
+    if agent.framework != AgentFramework.LANGCHAIN:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for Langchain(custom) agents"
+        )
+
+    # Store config
+    agent.langchain_config = {
+        "endpoint": config.endpoint,
+        "request_schema": config.request_schema,
+        "response_format": config.response_format
+    }
+    
+    await db.commit()
+    await db.refresh(agent)
+
+    logger.info(f"[Langchain Config] Updated config for agent {agent_id}")
+
+    return {
+        "agent_id": agent.id,
+        "langchain_config": agent.langchain_config,
+        "message": "Langchain configuration updated successfully"
+    }
+
+@router.get("/{agent_id}/langchain-config")
+async def get_langchain_config(
+    agent_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get Langchain configuration for an agent"""
+    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+
+    # Check ownership
+    if agent.owner_id != current_user["username"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this agent"
+        )
+
+    return {
+        "agent_id": agent.id,
+        "langchain_config": agent.langchain_config or {}
     }

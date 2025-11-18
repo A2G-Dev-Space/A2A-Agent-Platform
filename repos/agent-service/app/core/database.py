@@ -81,6 +81,9 @@ class Agent(Base):
     agent_card_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # A2A Agent Card
     workbench_messages: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON)  # Workbench test messages
 
+    # Langchain Configuration (for Langchain(custom) framework)
+    langchain_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # endpoint, request_schema, response_format
+
     # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)

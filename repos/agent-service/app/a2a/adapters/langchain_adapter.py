@@ -21,10 +21,10 @@ class LangchainAdapter(FrameworkAdapter):
     def transform_request(
         self,
         a2a_request: Dict[str, Any],
-        agent_card: Dict[str, Any]
+        langchain_config: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Transform A2A request to Langchain format
+        Transform A2A request to Langchain format using user-configured schema
 
         A2A format → Langchain format
         """
@@ -32,23 +32,26 @@ class LangchainAdapter(FrameworkAdapter):
         message = params.get("message", {})
         parts = message.get("parts", [])
 
-        # Extract text from parts
-        text_parts = [p.get("text", "") for p in parts if p.get("kind") == "text"]
+        # Extract text from parts (support both "kind" and "type" fields)
+        text_parts = [
+            p.get("text", "")
+            for p in parts
+            if p.get("kind") == "text" or p.get("type") == "text"
+        ]
         input_text = " ".join(text_parts)
 
-        # Build Langchain request
-        langchain_request = {
-            "input": {
-                "question": input_text
-            },
-            "config": {
-                "metadata": {
-                    "message_id": message.get("messageId", "unknown"),
-                    "context_id": message.get("contextId"),
-                    "task_id": message.get("taskId")
-                }
-            }
-        }
+        # Get request schema template from langchain_config
+        request_schema_str = langchain_config.get("request_schema", '{"input": "{{message}}"}')
+
+        # Replace {{message}} placeholder with actual message
+        request_schema_str = request_schema_str.replace("{{message}}", input_text)
+
+        # Parse into JSON
+        try:
+            langchain_request = json.loads(request_schema_str)
+        except json.JSONDecodeError:
+            # Fallback to default format if schema is invalid
+            langchain_request = {"input": input_text}
 
         return langchain_request
 
