@@ -84,6 +84,9 @@ class Agent(Base):
     # Langchain Configuration (for Langchain(custom) framework)
     langchain_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # endpoint, request_schema, response_format
 
+    # Agno Configuration (for Agno framework)
+    agno_os_endpoint: Mapped[Optional[str]] = mapped_column(String(500))  # Agno OS endpoint
+
     # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)
