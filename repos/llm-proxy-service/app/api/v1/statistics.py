@@ -17,23 +17,25 @@ logger = logging.getLogger(__name__)
 
 @router.get("/statistics/agent-token-usage")
 async def get_agent_token_usage(
-    limit: int = Query(10, ge=1, le=100, description="Number of top agents to return"),
+    limit: int = Query(100, ge=1, le=200, description="Number of top agent-model combinations to return"),
     model: Optional[str] = Query(None, description="Filter by specific model (use 'all' for all models)"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get agent token usage statistics (Agent-based, not User-based)
+    Get agent token usage statistics (Agent-based by trace_id, not User-based)
 
     Returns:
-    - Token usage by agent (trace_id) and model
-    - Shows prompt_tokens, completion_tokens, and total_tokens separately
-    - Can filter by specific model or show all models
+    - Token usage by agent trace_id and model
+    - Shows all model usage for each agent separately
+    - Frontend can aggregate by trace_id for "all models" view
     - Includes agent name and owner information
     """
 
-    # Build query - Group by agent_id (not trace_id!) and model
-    # agent_id is now properly stored thanks to Redis lookup in LLM proxy
+    # Build query - Group by trace_id, agent_id, model, and provider
+    # This returns separate rows for each agent-model combination
+    # Frontend will aggregate by trace_id when showing "all models"
     query = select(
+        LLMCall.trace_id,
         LLMCall.agent_id,
         LLMCall.model,
         LLMCall.provider,
@@ -43,7 +45,7 @@ async def get_agent_token_usage(
         func.count(LLMCall.id).label('call_count')
     ).where(
         and_(
-            LLMCall.agent_id != "unknown",  # Exclude calls without agent_id
+            LLMCall.trace_id.isnot(None),  # Exclude calls without trace_id
             LLMCall.success == True
         )
     )
@@ -52,8 +54,9 @@ async def get_agent_token_usage(
     if model and model.lower() != 'all':
         query = query.where(LLMCall.model == model)
 
-    # Group by agent_id and model, order by total tokens
+    # Group by trace_id, agent_id, model, and provider
     query = query.group_by(
+        LLMCall.trace_id,
         LLMCall.agent_id,
         LLMCall.model,
         LLMCall.provider
@@ -93,6 +96,7 @@ async def get_agent_token_usage(
         agent_display_name = f"{agent_info['name']} ({agent_info['owner_id']})"
 
         agent_usage.append({
+            "trace_id": row.trace_id,
             "agent_id": row.agent_id,
             "agent_name": agent_info["name"],
             "owner_id": agent_info["owner_id"],
@@ -385,14 +389,18 @@ async def get_monthly_token_usage(
 @router.get("/statistics/agent-usage/{trace_id}")
 async def get_agent_usage_by_trace_id(
     trace_id: str,
+    include_by_model: bool = Query(False, description="Include breakdown by model"),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get token usage statistics for a specific agent by trace_id
     Used by worker service for daily snapshots
+    This accumulates token usage across all models used by the agent
+
+    If include_by_model=True, also returns breakdown by model
     """
-    # Query token usage for the specific trace_id
-    query = select(
+    # Query token usage for the specific trace_id (across all models)
+    total_query = select(
         func.sum(LLMCall.request_tokens).label('prompt_tokens'),
         func.sum(LLMCall.response_tokens).label('completion_tokens'),
         func.sum(LLMCall.total_tokens).label('total_tokens'),
@@ -404,22 +412,44 @@ async def get_agent_usage_by_trace_id(
         )
     )
 
-    result = await db.execute(query)
+    result = await db.execute(total_query)
     row = result.first()
 
-    if row:
-        return {
-            "trace_id": trace_id,
-            "prompt_tokens": row.prompt_tokens or 0,
-            "completion_tokens": row.completion_tokens or 0,
-            "total_tokens": row.total_tokens or 0,
-            "call_count": row.call_count or 0
-        }
-    else:
-        return {
-            "trace_id": trace_id,
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0,
-            "call_count": 0
-        }
+    response = {
+        "trace_id": trace_id,
+        "prompt_tokens": row.prompt_tokens or 0 if row else 0,
+        "completion_tokens": row.completion_tokens or 0 if row else 0,
+        "total_tokens": row.total_tokens or 0 if row else 0,
+        "call_count": row.call_count or 0 if row else 0
+    }
+
+    if include_by_model:
+        # Query token usage by model for this trace_id
+        by_model_query = select(
+            LLMCall.model,
+            func.sum(LLMCall.request_tokens).label('prompt_tokens'),
+            func.sum(LLMCall.response_tokens).label('completion_tokens'),
+            func.sum(LLMCall.total_tokens).label('total_tokens'),
+            func.count(LLMCall.id).label('call_count')
+        ).where(
+            and_(
+                LLMCall.trace_id == trace_id,
+                LLMCall.success == True
+            )
+        ).group_by(LLMCall.model)
+
+        by_model_result = await db.execute(by_model_query)
+        by_model_rows = by_model_result.all()
+
+        by_model = {}
+        for model_row in by_model_rows:
+            by_model[model_row.model] = {
+                "prompt_tokens": model_row.prompt_tokens or 0,
+                "completion_tokens": model_row.completion_tokens or 0,
+                "total_tokens": model_row.total_tokens or 0,
+                "call_count": model_row.call_count or 0
+            }
+
+        response["by_model"] = by_model
+
+    return response

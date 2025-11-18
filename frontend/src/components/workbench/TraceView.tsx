@@ -345,7 +345,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
     if (autoScroll) {
-      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }
   }, [logs, autoScroll]);
 
@@ -469,7 +469,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
           <button
             onClick={() => {
               setAutoScroll(true);
-              logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              logsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
             }}
             className="w-full text-xs text-primary-dark dark:text-primary hover:underline"
           >

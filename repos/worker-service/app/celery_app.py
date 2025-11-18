@@ -35,9 +35,9 @@ celery_app.conf.update(
             "task": "app.tasks.check_llm_health",
             "schedule": crontab(minute="*/5"),  # Every 5 minutes
         },
-        "collect-hourly-snapshot": {
-            "task": "app.tasks.collect_hourly_snapshot",
-            "schedule": crontab(minute=0),  # Every hour at minute 0
+        "collect-daily-snapshot": {
+            "task": "app.tasks.collect_daily_snapshot",
+            "schedule": crontab(hour=0, minute=0),  # Daily at 00:00 UTC
         },
         "cleanup-old-snapshots": {
             "task": "app.tasks.cleanup_old_snapshots",

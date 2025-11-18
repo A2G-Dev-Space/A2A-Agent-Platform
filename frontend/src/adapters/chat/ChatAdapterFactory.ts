@@ -7,6 +7,7 @@ import { AgentFramework } from '@/types';
 import type { ChatAdapter } from './types';
 import { ADKChatAdapter } from './ADKChatAdapter';
 import { AgnoChatAdapter } from './AgnoChatAdapter';
+import { LangchainChatAdapter } from './LangchainChatAdapter';
 
 export class ChatAdapterFactory {
   /**
@@ -23,9 +24,19 @@ export class ChatAdapterFactory {
       case AgentFramework.AGNO:
         return new AgnoChatAdapter();
 
+      case AgentFramework.LANGCHAIN:
+        return new LangchainChatAdapter();
+
       default:
         throw new Error(`Unsupported framework: ${framework}`);
     }
+  }
+
+  /**
+   * Alias for createAdapter for backward compatibility
+   */
+  static create(framework: AgentFramework): ChatAdapter {
+    return this.createAdapter(framework);
   }
 
   /**
@@ -34,7 +45,7 @@ export class ChatAdapterFactory {
    * @returns true if framework is supported
    */
   static isSupported(framework: AgentFramework): boolean {
-    return [AgentFramework.ADK, AgentFramework.AGNO].includes(framework);
+    return [AgentFramework.ADK, AgentFramework.AGNO, AgentFramework.LANGCHAIN].includes(framework);
   }
 
   /**
@@ -42,6 +53,6 @@ export class ChatAdapterFactory {
    * @returns Array of supported framework types
    */
   static getSupportedFrameworks(): AgentFramework[] {
-    return [AgentFramework.ADK, AgentFramework.AGNO];
+    return [AgentFramework.ADK, AgentFramework.AGNO, AgentFramework.LANGCHAIN];
   }
 }

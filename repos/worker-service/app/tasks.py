@@ -41,10 +41,10 @@ async def _check_llm_health_async():
     logger.info("Starting LLM health check...")
 
     try:
-        # Get all LLMs from admin service
+        # Get all LLMs from admin service (using internal endpoint - includes API keys)
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                response = await client.get(f"{ADMIN_SERVICE_URL}/api/llm")
+                response = await client.get(f"{ADMIN_SERVICE_URL}/api/admin/internal/llm-models/")
                 if response.status_code != 200:
                     logger.error(f"Failed to get LLMs: {response.status_code}")
                     return {"error": "Failed to fetch LLMs"}
@@ -61,7 +61,7 @@ async def _check_llm_health_async():
                     llm_id = llm["id"]
                     endpoint = llm.get("endpoint", "")
                     provider = llm.get("provider", "")
-                    model = llm.get("model", "")
+                    model_name = llm.get("name", "")
 
                     # Perform health check (simple HTTP check)
                     is_healthy = False
@@ -73,23 +73,47 @@ async def _check_llm_health_async():
 
                         # Health check: Try to reach the LLM endpoint
                         if endpoint:
-                            # For OpenAI-compatible APIs, check /models endpoint
-                            if "openai" in provider.lower() or "v1" in endpoint:
-                                check_url = endpoint.rstrip("/chat/completions") + "/models"
-                            else:
-                                check_url = endpoint
-
-                            check_response = await client.get(
-                                check_url,
-                                headers={
+                            # For OpenAI-compatible APIs, send a minimal chat completion request
+                            if provider == 'openai_compatible' or provider == 'openai':
+                                headers = {
                                     "Authorization": f"Bearer {llm.get('api_key', '')}",
-                                    "Accept": "application/json"
-                                },
-                                timeout=5.0
-                            )
+                                    "Content-Type": "application/json"
+                                }
+
+                                # Adjust model name for Gemini API
+                                model_for_request = model_name
+                                if 'gemini' in model_name.lower():
+                                    model_for_request = f"models/{model_name}"
+
+                                data = {
+                                    "model": model_for_request,
+                                    "messages": [{"role": "user", "content": "test"}],
+                                    "max_tokens": 1
+                                }
+
+                                # Ensure endpoint ends with /chat/completions for OpenAI compatibility
+                                check_url = endpoint
+                                if not check_url.endswith('/chat/completions'):
+                                    if check_url.endswith('/'):
+                                        check_url += 'chat/completions'
+                                    else:
+                                        check_url += '/chat/completions'
+
+                                check_response = await client.post(
+                                    check_url,
+                                    headers=headers,
+                                    json=data,
+                                    timeout=10.0
+                                )
+                            else:
+                                # For other providers, try a simple GET request
+                                check_response = await client.get(
+                                    endpoint,
+                                    timeout=10.0
+                                )
 
                             response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-                            is_healthy = check_response.status_code in [200, 404]  # 404 might be OK for some endpoints
+                            is_healthy = check_response.status_code in [200, 201]
 
                             if not is_healthy:
                                 error_msg = f"HTTP {check_response.status_code}"
@@ -122,7 +146,7 @@ async def _check_llm_health_async():
                     health_status = LLMHealthStatus(
                         llm_id=llm_id,
                         provider=provider,
-                        model=model,
+                        model=model_name,
                         endpoint_url=endpoint,
                         is_healthy=is_healthy,
                         response_time_ms=response_time,
@@ -134,19 +158,26 @@ async def _check_llm_health_async():
                     )
                     session.add(health_status)
 
-                    # Update LLM status in admin service if health changed
-                    if consecutive_failures >= 3 and llm.get("active", True):
-                        # Mark LLM as inactive in admin service
-                        try:
-                            await client.patch(
-                                f"{ADMIN_SERVICE_URL}/api/llm/{llm_id}",
-                                json={"active": False}
-                            )
-                            logger.warning(f"Marked LLM {llm_id} ({model}) as inactive after {consecutive_failures} failures")
-                        except Exception as e:
-                            logger.error(f"Failed to update LLM status: {e}")
+                    # Update LLM health status in admin service
+                    try:
+                        update_payload = {
+                            "health_status": "healthy" if is_healthy else "unhealthy",
+                            "last_health_check": datetime.utcnow().isoformat()
+                        }
 
-                    health_results[f"{provider}-{model}"] = {
+                        # Mark as inactive after 3 consecutive failures
+                        if consecutive_failures >= 3:
+                            update_payload["is_active"] = False
+                            logger.warning(f"Marked LLM {llm_id} ({model_name}) as inactive after {consecutive_failures} failures")
+
+                        await client.put(
+                            f"{ADMIN_SERVICE_URL}/api/admin/internal/llm-models/{llm_id}/health/",
+                            json=update_payload
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to update LLM status in admin service: {e}")
+
+                    health_results[f"{provider}-{model_name}"] = {
                         "healthy": is_healthy,
                         "response_time_ms": response_time,
                         "consecutive_failures": consecutive_failures,
@@ -164,20 +195,20 @@ async def _check_llm_health_async():
 
 
 @celery_app.task
-def collect_hourly_snapshot():
-    """Collect hourly statistics snapshot for trend tracking"""
+def collect_daily_snapshot():
+    """Collect daily statistics snapshot for trend tracking"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_collect_hourly_snapshot_async())
+        return loop.run_until_complete(_collect_daily_snapshot_async())
     finally:
         loop.close()
 
-async def _collect_hourly_snapshot_async():
-    """Async implementation of hourly snapshot collection"""
+async def _collect_daily_snapshot_async():
+    """Async implementation of daily snapshot collection"""
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-    logger.info("Starting hourly statistics snapshot collection...")
+    logger.info("Starting daily statistics snapshot collection...")
 
     try:
         # Create a new async engine for this task's event loop
@@ -212,31 +243,45 @@ async def _collect_hourly_snapshot_async():
                 logger.error(f"Failed to get agent statistics: {e}")
                 total_agents = deployed_agents = development_agents = 0
 
-            # 3. Get token usage by agent
+            # 3. Get token usage by agent (both total and by-model)
             agent_token_usage = {}
+            agent_token_usage_by_model = {}
             try:
                 # Get all agents (using internal endpoint - no auth required)
                 agents_response = await client.get(f"{AGENT_SERVICE_URL}/api/agents/internal/agents")
                 if agents_response.status_code == 200:
                     agents = agents_response.json()
 
-                    # Get token usage for each agent
+                    # Get token usage for each agent by trace_id
+                    # This ensures token usage is accumulated even when agent changes models
                     for agent in agents:
                         trace_id = agent.get("trace_id")
                         if trace_id:
                             try:
+                                # Get both total and by-model breakdown
                                 usage_response = await client.get(
-                                    f"{LLM_PROXY_SERVICE_URL}/api/v1/statistics/agent-usage/{trace_id}"
+                                    f"{LLM_PROXY_SERVICE_URL}/api/v1/statistics/agent-usage/{trace_id}?include_by_model=true"
                                 )
                                 if usage_response.status_code == 200:
                                     usage_data = usage_response.json()
-                                    agent_token_usage[str(agent["id"])] = {
+                                    agent_id_str = str(agent["id"])
+
+                                    # Store total usage with trace_id as key (trace_id is the real identifier)
+                                    agent_token_usage[trace_id] = {
+                                        "agent_id": agent_id_str,
+                                        "trace_id": trace_id,
                                         "name": agent.get("name", "Unknown"),
+                                        "display_name": agent.get("display_name", agent.get("name", "Unknown")),
+                                        "owner_id": agent.get("owner_id"),
                                         "total_tokens": usage_data.get("total_tokens", 0),
                                         "call_count": usage_data.get("call_count", 0),
                                         "prompt_tokens": usage_data.get("prompt_tokens", 0),
                                         "completion_tokens": usage_data.get("completion_tokens", 0)
                                     }
+
+                                    # Store by-model usage with trace_id as key
+                                    if "by_model" in usage_data and usage_data["by_model"]:
+                                        agent_token_usage_by_model[trace_id] = usage_data["by_model"]
                             except Exception as e:
                                 logger.error(f"Failed to get usage for agent {agent['id']}: {e}")
             except Exception as e:
@@ -262,6 +307,7 @@ async def _collect_hourly_snapshot_async():
                 deployed_agents=deployed_agents,
                 development_agents=development_agents,
                 agent_token_usage=agent_token_usage,
+                agent_token_usage_by_model=agent_token_usage_by_model,
                 model_usage_stats=model_usage_stats,
                 created_at=datetime.utcnow()
             )
@@ -269,9 +315,10 @@ async def _collect_hourly_snapshot_async():
             await session.commit()
 
             logger.info(
-                f"Hourly snapshot saved: users={total_users}, agents={total_agents}, "
+                f"Daily snapshot saved: users={total_users}, agents={total_agents}, "
                 f"deployed={deployed_agents}, development={development_agents}, "
-                f"agents_with_usage={len(agent_token_usage)}"
+                f"agents_with_usage={len(agent_token_usage)}, "
+                f"agents_with_model_breakdown={len(agent_token_usage_by_model)}"
             )
 
         # Dispose of the engine
@@ -288,7 +335,7 @@ async def _collect_hourly_snapshot_async():
         }
 
     except Exception as e:
-        logger.error(f"Error collecting hourly snapshot: {e}", exc_info=True)
+        logger.error(f"Error collecting daily snapshot: {e}", exc_info=True)
         return {"error": str(e)}
 
 
@@ -340,9 +387,9 @@ async def _cleanup_old_snapshots_async():
 # Keep the existing placeholder tasks for compatibility
 @celery_app.task
 def aggregate_statistics():
-    """Aggregate platform statistics (deprecated - use collect_hourly_snapshot)"""
-    logger.info("aggregate_statistics called - redirecting to collect_hourly_snapshot")
-    return collect_hourly_snapshot()
+    """Aggregate platform statistics (deprecated - use collect_daily_snapshot)"""
+    logger.info("aggregate_statistics called - redirecting to collect_daily_snapshot")
+    return collect_daily_snapshot()
 
 @celery_app.task
 def check_agent_health():

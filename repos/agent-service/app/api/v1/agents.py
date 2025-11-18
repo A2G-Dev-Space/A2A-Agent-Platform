@@ -538,7 +538,7 @@ DUMMY_AGENTS_FOR_SEARCH = [
     },
     {
         "id": 102, "name": "Data Analysis Agent", "description": "An agent that can analyze sales data and generate reports.",
-        "framework": AgentFramework.CUSTOM, "status": AgentStatus.PRODUCTION, "a2a_endpoint": "http://dummy-host:8102/agent",
+        "framework": AgentFramework.LANGCHAIN, "status": AgentStatus.PRODUCTION, "a2a_endpoint": "http://dummy-host:8102/agent",
         "capabilities": {"skills": ["analyze", "report", "sql"]}, "owner_id": "byungju.lee", "department": "Business Intelligence",
         "is_public": False, "visibility": "team", "allowed_users": [], "health_status": HealthStatus.HEALTHY,
         "last_health_check": datetime.utcnow(), "created_at": datetime.utcnow(), "updated_at": datetime.utcnow(),
