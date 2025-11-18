@@ -167,6 +167,15 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
     };
   };
 
+  // Get framework icon path
+  const getFrameworkIcon = () => {
+    const framework = agent.framework?.toLowerCase();
+    if (framework === 'agno') return '/framework-icons/agno.png';
+    if (framework === 'adk') return '/framework-icons/adk.png';
+    if (framework === 'langchain' || framework === 'langchain(custom)') return '/framework-icons/langchain.png';
+    return null;
+  };
+
   return (
     <div
       onClick={handleCardClick}
@@ -175,15 +184,23 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
     >
       {/* Header with Logo and Status */}
       <div className={`flex items-center justify-between mb-3 ${isDeployed ? 'opacity-60' : ''}`}>
-        {agent.logo_url ? (
-          <div className={`h-10 w-10 rounded-lg overflow-hidden ${getIconBgColor()}`}>
-            <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <div className={`h-10 w-10 rounded-lg ${getIconBgColor()} flex items-center justify-center text-xl font-bold ${getIconTextColor()}`}>
-            {agent.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div className="relative">
+          {agent.logo_url ? (
+            <div className={`h-10 w-10 rounded-lg overflow-hidden ${getIconBgColor()}`}>
+              <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className={`h-10 w-10 rounded-lg ${getIconBgColor()} flex items-center justify-center text-xl font-bold ${getIconTextColor()}`}>
+              {agent.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {/* Framework Icon Badge */}
+          {getFrameworkIcon() && (
+            <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-gray-800 rounded-full p-0.5 border border-gray-200 dark:border-gray-700">
+              <img src={getFrameworkIcon()!} alt={agent.framework} className="w-full h-full object-contain" />
+            </div>
+          )}
+        </div>
         {getStatusBadge(agent.status, isDarkMode, agent.card_color ? isLightColor(agent.card_color) : true, t)}
       </div>
 

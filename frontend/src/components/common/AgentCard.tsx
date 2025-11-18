@@ -29,19 +29,36 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
     return agent.card_color;
   };
 
+  // Get framework icon path
+  const getFrameworkIcon = () => {
+    const framework = agent.framework?.toLowerCase();
+    if (framework === 'agno') return '/framework-icons/agno.png';
+    if (framework === 'adk') return '/framework-icons/adk.png';
+    if (framework === 'langchain' || framework === 'langchain(custom)') return '/framework-icons/langchain.png';
+    return null;
+  };
+
   return (
     <Card className="group hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
       <Card.Body className="flex flex-col h-full">
         {/* Header: Logo + Name */}
         <div className="flex items-center gap-4 mb-3">
-          <div
-            className="size-12 rounded-lg flex items-center justify-center overflow-hidden"
-            style={{ backgroundColor: getCardColor() }}
-          >
-            {agent.logo_url ? (
-              <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="material-symbols-outlined text-2xl text-gray-700 dark:text-gray-200">smart_toy</span>
+          <div className="relative">
+            <div
+              className="size-12 rounded-lg flex items-center justify-center overflow-hidden"
+              style={{ backgroundColor: getCardColor() }}
+            >
+              {agent.logo_url ? (
+                <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-2xl text-gray-700 dark:text-gray-200">smart_toy</span>
+              )}
+            </div>
+            {/* Framework Icon Badge */}
+            {getFrameworkIcon() && (
+              <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-gray-800 rounded-full p-0.5 border border-gray-200 dark:border-gray-700">
+                <img src={getFrameworkIcon()!} alt={agent.framework} className="w-full h-full object-contain" />
+              </div>
             )}
           </div>
           <div className="flex-1 min-w-0">
