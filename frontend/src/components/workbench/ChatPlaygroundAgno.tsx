@@ -73,7 +73,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     const stored = localStorage.getItem(`agno_selected_resource_${agent.id}`);
     return stored || '';
   });
-  const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>([]);
+  const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>(() => {
+    // Load from localStorage on mount
+    const stored = localStorage.getItem(`agno_resources_${agent.id}`);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (error) {
+        console.warn('[ChatPlaygroundAgno] Failed to parse stored agnoResources:', error);
+      }
+    }
+    return [];
+  });
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false);
 
@@ -273,6 +284,14 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
       console.log('[ChatPlaygroundAgno] Saved selected resource to localStorage:', selectedResource);
     }
   }, [selectedResource, agent.id]);
+
+  // Save agnoResources to localStorage whenever they change
+  useEffect(() => {
+    if (agnoResources.length > 0) {
+      localStorage.setItem(`agno_resources_${agent.id}`, JSON.stringify(agnoResources));
+      console.log('[ChatPlaygroundAgno] Saved agno resources to localStorage:', agnoResources.length, 'resources');
+    }
+  }, [agnoResources, agent.id]);
 
   // Validate selectedResource when agnoResources are loaded
   useEffect(() => {
