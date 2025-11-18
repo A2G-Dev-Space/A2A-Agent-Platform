@@ -1480,7 +1480,7 @@ export function DeployDialog({ agent, onDeploy }: DeployDialogProps) {
 
 ---
 
-## 6. Hub Chat 및 A2A API Endpoint ❌ **[미구현]**
+## 6. Hub Chat  ❌ **[미구현]**
 
 ### 6.1 Hub Chat API (Framework별 분기 처리)
 
