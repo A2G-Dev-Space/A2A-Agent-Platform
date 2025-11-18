@@ -27,9 +27,13 @@ class FrameworkAdapter(ABC):
     2. Transforming framework responses back to A2A formats
     """
 
-    def get_endpoint_path(self) -> str:
+    def get_endpoint_path(self, resource_type: str = None, resource_id: str = None) -> str:
         """
         Get the endpoint path to append to base URL
+
+        Args:
+            resource_type: Optional resource type (e.g., "team" or "agent" for Agno)
+            resource_id: Optional resource ID (e.g., team_id or agent_id for Agno)
 
         Returns:
             URL path to append (e.g., "/tasks/send" for ADK)

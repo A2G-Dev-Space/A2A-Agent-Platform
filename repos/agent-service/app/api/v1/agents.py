@@ -780,6 +780,45 @@ async def deploy_agent(
             detail=f"Agent endpoint validation failed: {error_msg}"
         )
 
+    # For Agno agents, validate that teams or agents exist
+    if agent.framework.value == "Agno":
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                has_resources = False
+
+                # Check for teams
+                try:
+                    teams_resp = await client.get(f"{endpoint}/teams")
+                    if teams_resp.status_code == 200:
+                        teams = teams_resp.json()
+                        if teams and len(teams) > 0:
+                            has_resources = True
+                            logger.info(f"[Deploy] Agno has {len(teams)} teams: {[t.get('id') for t in teams]}")
+                except Exception as e:
+                    logger.warning(f"[Deploy] Failed to fetch Agno teams: {e}")
+
+                # Check for agents
+                try:
+                    agents_resp = await client.get(f"{endpoint}/agents")
+                    if agents_resp.status_code == 200:
+                        agents_list = agents_resp.json()
+                        if agents_list and len(agents_list) > 0:
+                            has_resources = True
+                            logger.info(f"[Deploy] Agno has {len(agents_list)} agents: {[a.get('id') for a in agents_list]}")
+                except Exception as e:
+                    logger.warning(f"[Deploy] Failed to fetch Agno agents: {e}")
+
+                if not has_resources:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Agno endpoint has no teams or agents available"
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[Deploy] Failed to validate Agno resources: {e}")
+
     # Update agent status based on deploy scope
     new_status = AgentStatus.DEPLOYED_TEAM if request.deploy_scope == "team" else AgentStatus.DEPLOYED_ALL
 

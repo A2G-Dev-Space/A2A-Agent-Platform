@@ -29,6 +29,31 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def parse_agno_agent_name(agent_name: str) -> tuple[str, Optional[str], Optional[str]]:
+    """
+    Parse Agno agent name pattern
+
+    Patterns:
+    - "math-agno" → ("math-agno", None, None)
+    - "math-agno-team-math-team" → ("math-agno", "team", "math-team")
+    - "math-agno-agent-basic-calculator" → ("math-agno", "agent", "basic-calculator")
+
+    Args:
+        agent_name: Agent name from URL
+
+    Returns:
+        Tuple of (base_name, resource_type, resource_id)
+    """
+    if "-team-" in agent_name:
+        parts = agent_name.split("-team-", 1)  # Split only on first occurrence
+        return (parts[0], "team", parts[1])
+    elif "-agent-" in agent_name:
+        parts = agent_name.split("-agent-", 1)  # Split only on first occurrence
+        return (parts[0], "agent", parts[1])
+    else:
+        return (agent_name, None, None)
+
+
 async def verify_api_key(
     x_api_key: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db)
@@ -58,23 +83,80 @@ async def get_agent_card(
     Agent Card Discovery Endpoint
 
     Returns the Agent Card for the specified agent.
-    Uses 3-tier strategy:
+
+    For Agno agents, supports sub-endpoints:
+    - /a2a/math-agno/.well-known/agent-card.json (base agent)
+    - /a2a/math-agno-team-math-team/.well-known/agent-card.json (team-specific)
+    - /a2a/math-agno-agent-basic-calculator/.well-known/agent-card.json (agent-specific)
+
+    Uses 3-tier strategy for base agents:
     1. ADK agents: Fetch from original endpoint
     2. Stored agent_card_json: Use from database
     3. Generate from DB info
 
     **Public Endpoint**: No authentication required
     """
-    # Query agent by name
+    # Parse agent name (for Agno sub-endpoints)
+    base_name, resource_type, resource_id = parse_agno_agent_name(agent_name)
+
+    # Query base agent by name
     result = await db.execute(
-        select(Agent).where(Agent.name == agent_name)
+        select(Agent).where(Agent.name == base_name)
     )
     agent = result.scalar_one_or_none()
 
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent '{agent_name}' not found"
+            detail=f"Agent '{base_name}' not found"
+        )
+
+    # Check if agent is deployed
+    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Agent '{base_name}' is not deployed. Current status: {agent.status.value}"
+        )
+
+    # Validate Agno resource if specified
+    if resource_type:
+        if agent.framework.value != "Agno":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Agent '{base_name}' is not an Agno agent"
+            )
+
+        # Validate resource exists by calling Agno API
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                api_path = f"/{resource_type}s"  # "/teams" or "/agents"
+                response = await client.get(f"{agent.original_endpoint}{api_path}")
+
+                if response.status_code == 200:
+                    resources = response.json()
+                    if not any(r.get("id") == resource_id for r in resources):
+                        raise HTTPException(
+                            status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Agno {resource_type} '{resource_id}' not found"
+                        )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Failed to validate Agno {resource_type}"
+                    )
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to validate Agno resource: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to connect to Agno endpoint"
+            )
+
+        logger.info(f"[Agent Card] Agno sub-endpoint: {base_name} -> {resource_type}/{resource_id}")
+    elif agent.framework.value == "Agno":
+        # Base Agno endpoint without team/agent is not allowed
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Agno agent '{base_name}' requires team or agent specification. Use: /a2a/{base_name}-team-{{team_id}} or /a2a/{base_name}-agent-{{agent_id}}"
         )
 
     agent_card = None
@@ -121,7 +203,8 @@ async def get_agent_card(
             }
         }
 
-    # Override URL to point to this platform
+
+    # Override URL to point to this platform (use full agent_name, not base_name)
     agent_card["url"] = f"http://localhost:9050/api/v1/a2a/{agent_name}"
 
     # Add provider info
@@ -130,6 +213,28 @@ async def get_agent_card(
             "organization": "A2G Platform",
             "url": "http://localhost:9050"
         }
+
+    # For Agno sub-endpoints, customize name and description with real-time data
+    if resource_type and resource_id:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                api_path = f"/{resource_type}s"
+                response = await client.get(f"{agent.original_endpoint}{api_path}")
+
+                if response.status_code == 200:
+                    resources = response.json()
+                    resource_info = next((r for r in resources if r.get("id") == resource_id), None)
+
+                    if resource_info:
+                        # Customize agent card for this specific resource
+                        resource_name = resource_info.get("name", resource_id)
+                        agent_card["name"] = f"{agent.name} ({resource_type}: {resource_name})"
+                        agent_card["description"] = f"{agent.description or ''} - {resource_type.capitalize()}: {resource_name}"
+                        agent_card["metadata"] = agent_card.get("metadata", {})
+                        agent_card["metadata"]["agno_resource_type"] = resource_type
+                        agent_card["metadata"]["agno_resource_id"] = resource_id
+        except Exception as e:
+            logger.warning(f"Failed to fetch Agno resource details: {e}")
 
     logger.info(f"Agent Card served for {agent_name}")
     return agent_card
@@ -199,9 +304,12 @@ async def agent_message_endpoint(
             detail=f"Unsupported method: {method}. Only 'message/send' is supported"
         )
 
-    # 2. Load agent by name
+    # 2. Parse agent name (for Agno sub-endpoints)
+    base_name, resource_type, resource_id = parse_agno_agent_name(agent_name)
+
+    # Load base agent by name
     result = await db.execute(
-        select(Agent).where(Agent.name == agent_name)
+        select(Agent).where(Agent.name == base_name)
     )
     agent = result.scalar_one_or_none()
 
@@ -210,7 +318,79 @@ async def agent_message_endpoint(
             "jsonrpc": "2.0",
             "error": {
                 "code": -32002,
-                "message": f"Agent '{agent_name}' not found"
+                "message": f"Agent '{base_name}' not found"
+            },
+            "id": request_body.get("id")
+        }
+
+    # Check if agent is deployed
+    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32003,
+                "message": f"Agent '{base_name}' is not deployed. Current status: {agent.status.value}"
+            },
+            "id": request_body.get("id")
+        }
+
+    # Validate Agno resource if specified
+    if resource_type:
+        if agent.framework.value != "Agno":
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32002,
+                    "message": f"Agent '{base_name}' is not an Agno agent"
+                },
+                "id": request_body.get("id")
+            }
+
+        # Validate resource exists by calling Agno API
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                api_path = f"/{resource_type}s"
+                response = await client.get(f"{agent.original_endpoint}{api_path}")
+
+                if response.status_code == 200:
+                    resources = response.json()
+                    if not any(r.get("id") == resource_id for r in resources):
+                        return {
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32002,
+                                "message": f"Agno {resource_type} '{resource_id}' not found"
+                            },
+                            "id": request_body.get("id")
+                        }
+                else:
+                    return {
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": -32003,
+                            "message": f"Failed to validate Agno {resource_type}"
+                        },
+                        "id": request_body.get("id")
+                    }
+        except Exception as e:
+            logger.error(f"Failed to validate Agno resource: {e}")
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32003,
+                    "message": "Failed to connect to Agno endpoint"
+                },
+                "id": request_body.get("id")
+            }
+
+        logger.info(f"[A2A Router] Request to Agno {resource_type} '{resource_id}' in agent '{base_name}'")
+    elif agent.framework.value == "Agno":
+        # Base Agno endpoint without team/agent is not allowed
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32002,
+                "message": f"Agno agent '{base_name}' requires team or agent specification. Use: /a2a/{base_name}-team-{{team_id}} or /a2a/{base_name}-agent-{{agent_id}}"
             },
             "id": request_body.get("id")
         }
@@ -251,15 +431,27 @@ async def agent_message_endpoint(
     # 6. Call agent endpoint
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
-            endpoint_path = adapter.get_endpoint_path()
+            # Get endpoint path (with resource info for Agno)
+            endpoint_path = adapter.get_endpoint_path(resource_type, resource_id)
             full_endpoint = f"{agent.original_endpoint}{endpoint_path}"
             logger.info(f"[A2A Router] Calling {full_endpoint}")
 
-            response = await client.post(
-                full_endpoint,
-                json=framework_request,
-                headers={"Content-Type": "application/json"}
-            )
+            # Check if Agno framework (uses multipart/form-data)
+            if agent.framework.value == "Agno":
+                # Agno uses multipart/form-data, not JSON
+                response = await client.post(
+                    full_endpoint,
+                    data=framework_request,  # Send as form data
+                    files=[]  # Empty files list ensures multipart encoding
+                )
+            else:
+                # Other frameworks use JSON
+                response = await client.post(
+                    full_endpoint,
+                    json=framework_request,
+                    headers={"Content-Type": "application/json"}
+                )
+
             response.raise_for_status()
             framework_response = response.json()
             logger.info(f"[A2A Router] Received response from {agent.framework}")
