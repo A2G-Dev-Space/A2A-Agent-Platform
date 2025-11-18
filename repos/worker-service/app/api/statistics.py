@@ -134,7 +134,12 @@ async def get_historical_trends(
                             })
 
         # Process token_usage_trend based on agent_id and top_k parameters
-        logger.info(f"[DEBUG] Before processing: agent_id={agent_id}, top_k={top_k}, token_usage_trend keys={list(token_usage_trend.keys())}")
+        logger.info(f"[DEBUG] Before processing: agent_id={agent_id}, top_k={top_k}, model={model}, token_usage_trend keys={list(token_usage_trend.keys())}")
+
+        # Check if we need to return model-specific breakdown
+        # This happens when: agent_id != "all" AND model == "all"
+        needs_model_breakdown = (agent_id != "all" and model == "all")
+
         if agent_id == "all":
             if top_k and token_usage_trend:
                 logger.info(f"[DEBUG] Processing top-k filtering: top_k={top_k}")
@@ -178,8 +183,45 @@ async def get_historical_trends(
                         "data": sorted(aggregated_data.values(), key=lambda x: x["date"])
                     }
                 }
+        elif needs_model_breakdown:
+            # For specific agent with model='all', return breakdown by model
+            # We need to fetch model-specific data from agent_token_usage_by_model
+            logger.info(f"[DEBUG] Returning model breakdown for agent {agent_id}")
+
+            model_trends = {}
+            for snapshot in snapshots:
+                date_str = snapshot.snapshot_date.strftime("%Y-%m-%d")
+
+                if snapshot.agent_token_usage_by_model and agent_id in snapshot.agent_token_usage_by_model:
+                    models_data = snapshot.agent_token_usage_by_model[agent_id]
+
+                    for model_name, model_usage in models_data.items():
+                        if model_name not in model_trends:
+                            # Get agent metadata from agent_token_usage
+                            agent_name = f"Agent {agent_id}"
+                            if snapshot.agent_token_usage and agent_id in snapshot.agent_token_usage:
+                                agent_info = snapshot.agent_token_usage[agent_id]
+                                agent_name = agent_info.get("display_name", agent_info.get("name", agent_name))
+
+                            model_trends[model_name] = {
+                                "trace_id": agent_id,
+                                "model": model_name,
+                                "agent_name": agent_name,
+                                "model_display_name": model_name,
+                                "data": []
+                            }
+
+                        model_trends[model_name]["data"].append({
+                            "date": date_str,
+                            "total_tokens": model_usage.get("total_tokens", 0),
+                            "prompt_tokens": model_usage.get("prompt_tokens", 0),
+                            "completion_tokens": model_usage.get("completion_tokens", 0),
+                            "call_count": model_usage.get("call_count", 0)
+                        })
+
+            token_usage_trend = model_trends
         else:
-            # Filter to specific agent by trace_id
+            # Filter to specific agent by trace_id (model is also specific or we already filtered above)
             # Note: agent_id parameter actually contains trace_id value
             if agent_id in token_usage_trend:
                 token_usage_trend = {agent_id: token_usage_trend[agent_id]}
@@ -233,23 +275,51 @@ async def get_historical_trends(
                         "development": 0
                     })
 
-        # Pad token usage trends
+        # Pad token usage trends and calculate cumulative sums
         for agent_id in token_usage_trend:
             agent_data = token_usage_trend[agent_id]["data"]
             agent_date_dict = {item["date"]: item for item in agent_data}
 
             padded_data = []
+            cumulative_total = 0
+            cumulative_prompt = 0
+            cumulative_completion = 0
+            cumulative_calls = 0
+            last_recorded_total = 0
+            last_recorded_prompt = 0
+            last_recorded_completion = 0
+            last_recorded_calls = 0
+
             for date in expected_dates:
                 if date in agent_date_dict:
-                    padded_data.append(agent_date_dict[date])
-                else:
-                    # Use zeros for missing dates
+                    # Add daily values to cumulative sums
+                    cumulative_total += agent_date_dict[date]["total_tokens"]
+                    cumulative_prompt += agent_date_dict[date]["prompt_tokens"]
+                    cumulative_completion += agent_date_dict[date]["completion_tokens"]
+                    cumulative_calls += agent_date_dict[date]["call_count"]
+
+                    # Update last recorded values
+                    last_recorded_total = cumulative_total
+                    last_recorded_prompt = cumulative_prompt
+                    last_recorded_completion = cumulative_completion
+                    last_recorded_calls = cumulative_calls
+
                     padded_data.append({
                         "date": date,
-                        "total_tokens": 0,
-                        "prompt_tokens": 0,
-                        "completion_tokens": 0,
-                        "call_count": 0
+                        "total_tokens": cumulative_total,
+                        "prompt_tokens": cumulative_prompt,
+                        "completion_tokens": cumulative_completion,
+                        "call_count": cumulative_calls
+                    })
+                else:
+                    # For missing dates, use last recorded cumulative value
+                    # This ensures deleted agents/models maintain their final cumulative value
+                    padded_data.append({
+                        "date": date,
+                        "total_tokens": last_recorded_total,
+                        "prompt_tokens": last_recorded_prompt,
+                        "completion_tokens": last_recorded_completion,
+                        "call_count": last_recorded_calls
                     })
 
             token_usage_trend[agent_id]["data"] = padded_data
