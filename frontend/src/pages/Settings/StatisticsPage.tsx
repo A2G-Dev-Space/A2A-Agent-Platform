@@ -112,7 +112,8 @@ const StatisticsPage: React.FC = () => {
   const [agentGrowthFilter, setAgentGrowthFilter] = useState<'all' | 'deployed'>('all');
   const [searchUserId] = useState<string>('');
   const [selectedAgentForToken, setSelectedAgentForToken] = useState<string>('all');
-  const [selectedTopK, setSelectedTopK] = useState<number | null>(null); // For top-k agents in token usage
+  const [selectedTopK, setSelectedTopK] = useState<number>(10); // For top-k agents in token usage (default: Top 10)
+  const [selectedModelForTrend, setSelectedModelForTrend] = useState<string>('all'); // For model filter in trend
 
   // Parse period value and auto-determine group_by based on period length
   const getPeriodParams = () => {
@@ -228,7 +229,8 @@ const StatisticsPage: React.FC = () => {
         const queryParams = new URLSearchParams({
           period: periodValue,
           agent_id: selectedAgentForToken,
-          ...(selectedAgentForToken === 'all' && selectedTopK ? { top_k: selectedTopK.toString() } : {})
+          model: selectedModelForTrend,
+          ...(selectedAgentForToken === 'all' ? { top_k: selectedTopK.toString() } : {})
         });
 
         const response = await fetch(
@@ -247,7 +249,7 @@ const StatisticsPage: React.FC = () => {
     };
 
     fetchHistoricalTrends();
-  }, [periodValue, selectedTopK, selectedAgentForToken]);
+  }, [periodValue, selectedTopK, selectedAgentForToken, selectedModelForTrend]);
 
   // Token usage is already included in historical trends
   // No separate fetch needed
@@ -481,6 +483,113 @@ const StatisticsPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Model Usage Stats - Bar Charts */}
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Total Tokens by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Total Tokens by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="total_tokens"
+                      fill="#359EFF"
+                      name="Total Tokens"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
+
+          {/* LLM Calls by Model */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1f2937]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              LLM Calls by Model
+            </h3>
+            {stats.model_usage_stats && stats.model_usage_stats.length > 0 ? (
+              <div className="mt-4" style={{ width: '100%', height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.model_usage_stats}
+                    layout="horizontal"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                    <XAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis
+                      type="number"
+                      stroke="#94a3b8"
+                      tick={{ fill: '#94a3b8' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #475569',
+                        borderRadius: '8px'
+                      }}
+                      labelStyle={{ color: '#f1f5f9' }}
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend wrapperStyle={{ color: '#cbd5e1' }} />
+                    <Bar
+                      dataKey="call_count"
+                      fill="#16a34a"
+                      name="LLM Calls"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="mt-4 py-8 text-center text-slate-500">
+                Loading model usage statistics...
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Trends Section */}
@@ -627,18 +736,38 @@ const StatisticsPage: React.FC = () => {
               <span>Agent:</span>
               <select
                 value={selectedAgentForToken}
-                onChange={(e) => {
-                  setSelectedAgentForToken(e.target.value);
-                  if (e.target.value !== 'all') {
-                    setSelectedTopK(null);
-                  }
-                }}
+                onChange={(e) => setSelectedAgentForToken(e.target.value)}
                 className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
               >
                 <option value="all">All Agents</option>
-                {stats.agent_token_usage.map((agent) => (
-                  <option key={agent.trace_id} value={agent.trace_id}>
-                    {agent.agent_display_name}
+                {(() => {
+                  // Get unique agents by trace_id
+                  const uniqueAgents = stats.agent_token_usage.reduce((acc, agent) => {
+                    if (!acc.find(a => a.trace_id === agent.trace_id)) {
+                      acc.push(agent);
+                    }
+                    return acc;
+                  }, [] as typeof stats.agent_token_usage);
+
+                  return uniqueAgents.map((agent) => (
+                    <option key={agent.trace_id} value={agent.trace_id}>
+                      {agent.agent_display_name}
+                    </option>
+                  ));
+                })()}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <span>Model:</span>
+              <select
+                value={selectedModelForTrend}
+                onChange={(e) => setSelectedModelForTrend(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
+              >
+                <option value="all">All Models</option>
+                {stats.model_usage_stats.map((model) => (
+                  <option key={`${model.model}-${model.provider}`} value={model.model}>
+                    {model.model} ({model.provider})
                   </option>
                 ))}
               </select>
@@ -647,11 +776,10 @@ const StatisticsPage: React.FC = () => {
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                 <span>Top:</span>
                 <select
-                  value={selectedTopK || ''}
-                  onChange={(e) => setSelectedTopK(e.target.value ? Number(e.target.value) : null)}
+                  value={selectedTopK}
+                  onChange={(e) => setSelectedTopK(Number(e.target.value))}
                   className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
                 >
-                  <option value="">All</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
                     <option key={n} value={n}>Top {n}</option>
                   ))}
