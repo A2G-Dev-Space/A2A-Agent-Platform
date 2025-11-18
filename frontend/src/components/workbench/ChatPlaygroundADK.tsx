@@ -35,7 +35,6 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
   const isDeployed = [
     AgentStatus.DEPLOYED_TEAM,
     AgentStatus.DEPLOYED_ALL,
-    AgentStatus.DEPLOYED_DEPT,
     AgentStatus.PRODUCTION
   ].includes(agent.status);
 

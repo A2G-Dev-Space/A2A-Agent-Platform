@@ -37,7 +37,6 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const isDeployed = [
     AgentStatus.DEPLOYED_TEAM,
     AgentStatus.DEPLOYED_ALL,
-    AgentStatus.DEPLOYED_DEPT,
     AgentStatus.PRODUCTION
   ].includes(agent.status);
 

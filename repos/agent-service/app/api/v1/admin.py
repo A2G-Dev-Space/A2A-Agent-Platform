@@ -27,13 +27,20 @@ async def get_agent_statistics(
     """
 
     # Count agents by status
+    from app.core.database import AgentStatus
     deployed_result = await db.execute(
-        select(func.count(Agent.id)).where(Agent.status == "PRODUCTION")
+        select(func.count(Agent.id)).where(
+            Agent.status.in_([
+                AgentStatus.DEPLOYED_ALL,
+                AgentStatus.DEPLOYED_TEAM,
+                AgentStatus.PRODUCTION
+            ])
+        )
     )
     deployed_count = deployed_result.scalar() or 0
 
     development_result = await db.execute(
-        select(func.count(Agent.id)).where(Agent.status == "DEVELOPMENT")
+        select(func.count(Agent.id)).where(Agent.status == AgentStatus.DEVELOPMENT)
     )
     development_count = development_result.scalar() or 0
 
@@ -132,11 +139,15 @@ async def get_agents_monthly_growth(
         )
         deployed_query = select(func.count(Agent.id)).where(
             Agent.created_at < period_end,
-            Agent.status == 'PRODUCTION'
+            Agent.status.in_([
+                AgentStatus.DEPLOYED_ALL,
+                AgentStatus.DEPLOYED_TEAM,
+                AgentStatus.PRODUCTION
+            ])
         )
         dev_query = select(func.count(Agent.id)).where(
             Agent.created_at < period_end,
-            Agent.status == 'DEVELOPMENT'
+            Agent.status == AgentStatus.DEVELOPMENT
         )
 
         total_result = await db.execute(total_query)

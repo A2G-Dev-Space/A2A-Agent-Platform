@@ -33,7 +33,8 @@ MOCK_USERS = {
         "loginid": "syngha.han",
         "username": "한승하",
         "mail": "syngha.han@company.com",
-        "deptname": "AI Platform Team",
+        "deptid": "ai_platform",
+        "deptname": "AI 플랫폼팀",
         "deptname_en": "AI Platform Team",
         "role": "ADMIN"
     },
@@ -41,7 +42,8 @@ MOCK_USERS = {
         "loginid": "byungju.lee",
         "username": "이병주",
         "mail": "byungju.lee@company.com",
-        "deptname": "AI Platform Team",
+        "deptid": "ai_platform",
+        "deptname": "AI 플랫폼팀",
         "deptname_en": "AI Platform Team",
         "role": "ADMIN"
     },
@@ -49,7 +51,8 @@ MOCK_USERS = {
         "loginid": "youngsub.kim",
         "username": "김영섭",
         "mail": "youngsub.kim@company.com",
-        "deptname": "AI Platform Team",
+        "deptid": "ai_platform",
+        "deptname": "AI 플랫폼팀",
         "deptname_en": "AI Platform Team",
         "role": "ADMIN"
     },
@@ -57,7 +60,8 @@ MOCK_USERS = {
         "loginid": "junhyung.ahn",
         "username": "안준형",
         "mail": "junhyung.ahn@company.com",
-        "deptname": "AI Platform Team",
+        "deptid": "ai_platform",
+        "deptname": "AI 플랫폼팀",
         "deptname_en": "AI Platform Team",
         "role": "ADMIN"
     },
@@ -65,7 +69,8 @@ MOCK_USERS = {
         "loginid": "test.user",
         "username": "테스트유저",
         "mail": "test.user@company.com",
-        "deptname": "Test Team",
+        "deptid": "test",
+        "deptname": "테스트팀",
         "deptname_en": "Test Team",
         "role": "USER"
     },
@@ -73,7 +78,8 @@ MOCK_USERS = {
         "loginid": "pending.user",
         "username": "승인대기",
         "mail": "pending.user@company.com",
-        "deptname": "New Team",
+        "deptid": "new",
+        "deptname": "신규팀",
         "deptname_en": "New Team",
         "role": "PENDING"
     }
@@ -257,11 +263,15 @@ async def mock_login_page(
                     return;
                 }}
 
+                // Generate deptid from department name (lowercase, replace spaces with underscores)
+                const deptid = (dept || 'custom').toLowerCase().replace(/\s+/g, '_');
+
                 // Create custom user data
                 const userData = {{
                     loginid: loginid,
                     username: username,
                     mail: email,
+                    deptid: deptid,
                     deptname: dept || 'Custom Team',
                     deptname_en: dept || 'Custom Team'
                 }};

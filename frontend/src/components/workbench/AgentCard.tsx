@@ -19,10 +19,10 @@ const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boo
           {t('workbench.agentCard.deployedAll')}
         </span>
       );
-    case AgentStatus.DEPLOYED_DEPT:
+    case AgentStatus.DEPLOYED_TEAM:
       return (
-        <span className="inline-flex items-center rounded-full bg-sky-500/20 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300 border border-sky-700/30 dark:border-sky-300/30">
-          {t('workbench.agentCard.deployedDept')}
+        <span className="inline-flex items-center rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-700/30 dark:border-blue-300/30">
+          {t('workbench.agentCard.deployedTeam')}
         </span>
       );
     case AgentStatus.DEVELOPMENT:
@@ -41,7 +41,8 @@ const getStatusBadge = (status: AgentStatus, isDarkMode: boolean, isLightBg: boo
 
 export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, onDeploy, onClick }) => {
   const { t } = useTranslation();
-  const isDeployed = agent.status === AgentStatus.DEPLOYED_ALL || agent.status === AgentStatus.DEPLOYED_DEPT;
+  const isDeployed = agent.status === AgentStatus.DEPLOYED_ALL ||
+                     agent.status === AgentStatus.DEPLOYED_TEAM;
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -49,6 +50,13 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
+
+    // Show error if deployed
+    if (isDeployed) {
+      alert(t('workbench.agentCard.undeployFirst', { defaultValue: 'Please undeploy the agent first to access the playground' }));
+      return;
+    }
+
     onClick(agent);
   };
 
@@ -132,6 +140,33 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
     };
   };
 
+  // Undeploy button styles (red/danger)
+  const getUndeployButtonStyle = () => {
+    if (isDarkMode) {
+      return {
+        backgroundColor: 'rgba(239, 68, 68, 0.9)', // red-500 with opacity
+        color: '#ffffff',
+        borderColor: 'rgba(239, 68, 68, 0.5)'
+      };
+    }
+    return {
+      backgroundColor: 'rgba(220, 38, 38, 0.9)', // red-600 with opacity
+      color: '#ffffff',
+      borderColor: 'rgba(220, 38, 38, 0.3)'
+    };
+  };
+
+  const getUndeployButtonHoverStyle = () => {
+    if (isDarkMode) {
+      return {
+        backgroundColor: 'rgba(220, 38, 38, 0.95)' // red-600
+      };
+    }
+    return {
+      backgroundColor: 'rgba(185, 28, 28, 0.95)' // red-700
+    };
+  };
+
   return (
     <div
       onClick={handleCardClick}
@@ -139,7 +174,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
       style={{ backgroundColor: getCardColor() }}
     >
       {/* Header with Logo and Status */}
-      <div className="flex items-center justify-between mb-3">
+      <div className={`flex items-center justify-between mb-3 ${isDeployed ? 'opacity-60' : ''}`}>
         {agent.logo_url ? (
           <div className={`h-10 w-10 rounded-lg overflow-hidden ${getIconBgColor()}`}>
             <img src={agent.logo_url} alt={agent.name} className="w-full h-full object-cover" />
@@ -153,7 +188,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
       </div>
 
       {/* Name and Description */}
-      <div className="flex flex-col gap-1 mb-3 flex-1">
+      <div className={`flex flex-col gap-1 mb-3 flex-1 ${isDeployed ? 'opacity-60' : ''}`}>
         <p className={`${getTextColor()} text-base font-bold leading-normal`}>
           {agent.name}
         </p>
@@ -167,9 +202,15 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (isDeployed) {
+              alert(t('workbench.agentCard.undeployFirst', { defaultValue: 'Please undeploy the agent first to edit' }));
+              return;
+            }
             onEdit(agent);
           }}
-          className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border"
+          className={`flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border ${
+            isDeployed ? 'opacity-60' : ''
+          }`}
           style={getButtonStyle()}
           onMouseEnter={(e) => {
             const hoverStyle = getButtonHoverStyle();
@@ -188,13 +229,13 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
             onDeploy(agent);
           }}
           className="flex h-9 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-sm font-bold leading-normal transition-colors border"
-          style={getButtonStyle()}
+          style={isDeployed ? getUndeployButtonStyle() : getButtonStyle()}
           onMouseEnter={(e) => {
-            const hoverStyle = getButtonHoverStyle();
+            const hoverStyle = isDeployed ? getUndeployButtonHoverStyle() : getButtonHoverStyle();
             e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor;
           }}
           onMouseLeave={(e) => {
-            const style = getButtonStyle();
+            const style = isDeployed ? getUndeployButtonStyle() : getButtonStyle();
             e.currentTarget.style.backgroundColor = style.backgroundColor;
           }}
         >
@@ -203,9 +244,15 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (isDeployed) {
+              alert(t('workbench.agentCard.undeployFirst', { defaultValue: 'Please undeploy the agent first to delete' }));
+              return;
+            }
             onDelete(agent);
           }}
-          className="flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-colors border"
+          className={`flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-colors border ${
+            isDeployed ? 'opacity-60' : ''
+          }`}
           style={getButtonStyle()}
           onMouseEnter={(e) => {
             const hoverStyle = getButtonHoverStyle();

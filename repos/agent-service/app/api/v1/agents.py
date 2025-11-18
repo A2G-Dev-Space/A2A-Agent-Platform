@@ -335,11 +335,15 @@ async def get_agent_statistics(
     )
     total_agents = total_result.scalar() or 0
 
-    # Count deployed agents (PRODUCTION)
+    # Count deployed agents (DEPLOYED_ALL, DEPLOYED_TEAM, PRODUCTION)
     from app.core.database import AgentStatus
     deployed_result = await db.execute(
         select(func.count(Agent.id)).where(
-            Agent.status == AgentStatus.PRODUCTION
+            Agent.status.in_([
+                AgentStatus.DEPLOYED_ALL,
+                AgentStatus.DEPLOYED_TEAM,
+                AgentStatus.PRODUCTION
+            ])
         )
     )
     deployed_agents = deployed_result.scalar() or 0
@@ -660,28 +664,55 @@ def validate_host_for_deploy(endpoint: str) -> tuple[bool, str]:
     return True, ""
 
 
-async def test_agent_connection(endpoint: str, timeout: int = 5) -> tuple[bool, str]:
+async def test_agent_connection(endpoint: str, framework: str, timeout: int = 5) -> tuple[bool, str]:
     """
     Test if agent endpoint is reachable
+    Framework-specific health checks:
+    - Agno: GET /health
+    - ADK: GET /.well-known/agent-card.json
+    - Langchain: POST with agent/info (fallback for custom frameworks)
+
     Returns (is_reachable, error_message)
     """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            # Test with A2A info request
-            response = await client.post(
-                endpoint,
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "agent/info",
-                    "params": {},
-                    "id": "deploy-test"
-                }
-            )
+            # Framework-specific health check
+            if framework.lower() == "agno":
+                # Agno: GET /health
+                health_url = endpoint.rstrip('/') + '/health'
+                response = await client.get(health_url)
 
-            if response.status_code == 200:
-                return True, ""
+                if response.status_code == 200:
+                    return True, ""
+                else:
+                    return False, f"Agno health check failed with status {response.status_code}"
+
+            elif framework.lower() == "adk":
+                # ADK: GET /.well-known/agent-card.json
+                card_url = endpoint.rstrip('/') + '/.well-known/agent-card.json'
+                response = await client.get(card_url)
+
+                if response.status_code == 200:
+                    return True, ""
+                else:
+                    return False, f"ADK agent card not found (status {response.status_code})"
+
             else:
-                return False, f"Agent returned status code {response.status_code}"
+                # Langchain and custom frameworks: POST agent/info
+                response = await client.post(
+                    endpoint,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "agent/info",
+                        "params": {},
+                        "id": "deploy-test"
+                    }
+                )
+
+                if response.status_code == 200:
+                    return True, ""
+                else:
+                    return False, f"Agent returned status code {response.status_code}"
 
     except httpx.ConnectTimeout:
         return False, "Connection timeout - endpoint is not reachable"
@@ -725,7 +756,7 @@ async def deploy_agent(
         )
 
     # Check if already deployed
-    if agent.status in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+    if agent.status in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Agent is already deployed with status: {agent.status}"
@@ -741,8 +772,8 @@ async def deploy_agent(
         )
 
     # Test agent connection
-    logger.info(f"[Deploy] Testing connection to {endpoint}")
-    is_reachable, error_msg = await test_agent_connection(endpoint)
+    logger.info(f"[Deploy] Testing connection to {endpoint} (framework: {agent.framework})")
+    is_reachable, error_msg = await test_agent_connection(endpoint, agent.framework)
     if not is_reachable:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -752,12 +783,14 @@ async def deploy_agent(
     # Update agent status based on deploy scope
     new_status = AgentStatus.DEPLOYED_TEAM if request.deploy_scope == "team" else AgentStatus.DEPLOYED_ALL
 
-    # For team deployment, check department is set
-    if request.deploy_scope == "team" and not agent.department:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Department must be set for team deployment"
-        )
+    # For team deployment, check user has department
+    if request.deploy_scope == "team":
+        user_department = current_user.get("department")
+        if not user_department:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User must belong to a department for team deployment"
+            )
 
     # Store previous status for logging
     previous_status = agent.status
@@ -769,11 +802,13 @@ async def deploy_agent(
     agent.validated_endpoint = endpoint
     agent.deploy_config = request.deploy_config
 
-    # Update visibility based on deploy scope
+    # Update visibility and department based on deploy scope
     if request.deploy_scope == "team":
         agent.visibility = "team"
+        agent.department = current_user.get("department")  # Set agent's department to user's department
     else:
         agent.visibility = "public"
+        agent.department = None  # Clear department for public deployment
 
     # Create deployment log
     deploy_log = DeploymentLog(
@@ -834,7 +869,7 @@ async def undeploy_agent(
         )
 
     # Check if deployed
-    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.DEPLOYED_DEPT, AgentStatus.PRODUCTION]:
+    if agent.status not in [AgentStatus.DEPLOYED_TEAM, AgentStatus.DEPLOYED_ALL, AgentStatus.PRODUCTION]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Agent is not deployed. Current status: {agent.status}"

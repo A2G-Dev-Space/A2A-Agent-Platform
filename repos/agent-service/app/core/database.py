@@ -38,7 +38,6 @@ class AgentStatus(str, PyEnum):
     PRODUCTION = "PRODUCTION"
     DEPLOYED_TEAM = "DEPLOYED_TEAM"
     DEPLOYED_ALL = "DEPLOYED_ALL"
-    DEPLOYED_DEPT = "DEPLOYED_DEPT"
     ARCHIVED = "ARCHIVED"
 
 class HealthStatus(str, PyEnum):

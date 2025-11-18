@@ -27,6 +27,7 @@ class User(Base):
     username_kr: Mapped[Optional[str]] = mapped_column(String(255))
     username_en: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    department: Mapped[Optional[str]] = mapped_column(String(100))  # Language-neutral code
     department_kr: Mapped[Optional[str]] = mapped_column(String(255))
     department_en: Mapped[Optional[str]] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(50), default="PENDING")  # PENDING, USER, ADMIN (no REJECTED)

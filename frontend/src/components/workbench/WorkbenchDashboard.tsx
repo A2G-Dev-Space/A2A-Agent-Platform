@@ -28,10 +28,10 @@ export const WorkbenchDashboard: React.FC = () => {
     setTraceId(newTraceId);
   }, []);
 
-  // Fetch development agents
+  // Fetch all my agents (both development and deployed)
   const { data: developmentAgents, isLoading } = useQuery({
     queryKey: ['developmentAgents'],
-    queryFn: () => agentService.getAgents({ status: AgentStatus.DEVELOPMENT }),
+    queryFn: () => agentService.getAgents({}), // No status filter - get all my agents
     select: (data: GetAgentsResponse) => data.agents,
   });
 
@@ -91,7 +91,8 @@ export const WorkbenchDashboard: React.FC = () => {
 
   const handleDeploySuccess = () => {
     // Refetch agents to update status
-    queryClient.invalidateQueries({ queryKey: ['agents'] });
+    queryClient.invalidateQueries({ queryKey: ['developmentAgents'] });
+    queryClient.invalidateQueries({ queryKey: ['productionAgents'] });
   };
 
   // Default view: Grid layout

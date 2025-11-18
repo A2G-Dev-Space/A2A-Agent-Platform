@@ -38,10 +38,30 @@ export const HubDashboard: React.FC = () => {
     select: (data: AgentSearchResponse) => data.agents,
   });
 
-  // Fetch all production agents using react-query
+  // Fetch all deployed agents (DEPLOYED_ALL, DEPLOYED_TEAM, PRODUCTION)
   const { data: productionAgents, isLoading: isLoadingAgents } = useQuery({
     queryKey: ['productionAgents'],
-    queryFn: () => agentService.getAgents({ status: AgentStatus.PRODUCTION }),
+    queryFn: async () => {
+      // Get agents with each deployed status and combine them
+      const [deployedAll, deployedTeam, production] = await Promise.all([
+        agentService.getAgents({ status: AgentStatus.DEPLOYED_ALL }),
+        agentService.getAgents({ status: AgentStatus.DEPLOYED_TEAM }),
+        agentService.getAgents({ status: AgentStatus.PRODUCTION }),
+      ]);
+
+      // Combine all agents and remove duplicates by id
+      const allAgents = [
+        ...deployedAll.agents,
+        ...deployedTeam.agents,
+        ...production.agents,
+      ];
+
+      const uniqueAgents = Array.from(
+        new Map(allAgents.map(agent => [agent.id, agent])).values()
+      );
+
+      return { agents: uniqueAgents };
+    },
     select: (data: GetAgentsResponse) => data.agents,
   });
 

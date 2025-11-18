@@ -12,6 +12,7 @@ export interface User {
   username_kr: string
   email: string
   role: UserRole
+  department: string  // Language-neutral department code
   department_kr: string
   department_en: string
   created_at: string
@@ -32,7 +33,6 @@ export enum AgentStatus {
   PRODUCTION = 'PRODUCTION',
   DEPLOYED_TEAM = 'DEPLOYED_TEAM',
   DEPLOYED_ALL = 'DEPLOYED_ALL',
-  DEPLOYED_DEPT = 'DEPLOYED_DEPT',
   ARCHIVED = 'ARCHIVED',
 }
 

@@ -36,41 +36,75 @@
    - Platform LLM endpoint에 trace_id 포함
    - LLM Proxy에서 trace_id 추출 및 token tracking
 
-### ❌ 미구현 (Hub 신규 기능)
+### ✅ 최근 완료 (2025-11-18)
 
 1. **Deploy/Undeploy 로직** (Section 3.1, 5)
-   - Endpoint 검증 (localhost 차단, Public IP/DNS만 허용)
-   - Agent Card 검증 (ADK만)
-   - Deploy 범위 설정 (team/public)
-   - Status 관리 (DEVELOPMENT ↔ DEPLOYED)
+   - ✅ Endpoint 검증 (localhost/127.0.0.1/0.0.0.0 차단, Private IP 허용)
+   - ✅ Framework별 Health Check
+     - Agno: GET /health
+     - ADK: GET /.well-known/agent-card.json
+     - Langchain/Custom: POST agent/info
+   - ✅ Deploy 범위 설정 (team/public)
+   - ✅ Status 관리 (DEVELOPMENT ↔ DEPLOYED_ALL/DEPLOYED_TEAM/DEPLOYED_DEPT)
+   - ✅ Workbench에서 deployed agent 표시 (빨간색 Undeploy 버튼)
+   - ✅ Hub에서 deployed agent 표시
+   - ✅ Deployed agent는 Edit/Playground 접근 차단
+   - ✅ Deployment Logging (deployment_logs 테이블)
+   - ✅ Alembic migration 생성 및 적용
 
-2. **Hub UI** (Section 3.5)
+2. **Database Schema 부분 완료** (Section 4)
+   - ✅ deployment_logs 테이블 (Alembic migration 008)
+   - ✅ agent_call_statistics 테이블 (Alembic migration 008)
+   - ❌ hub_sessions 테이블 (미구현)
+   - ❌ hub_messages 테이블 (미구현)
+
+### ❌ 미구현 (Hub 신규 기능)
+
+1. **Hub UI** (Section 3.5)
    - Agent 검색 (이름, 태그, framework)
    - 추천 Agent (개인별 사용 많은 3개)
    - Agent Card 표시
 
-3. **Agent Call 추적** (Section 3.4.2)
-   - agent_call_statistics 테이블
-   - Chat/A2A Router 호출 기록
+2. **Agent Call 추적** (Section 3.4.2)
+   - Chat/A2A Router 호출 기록 수집
    - Agent Call Trend API
 
-4. **Hub Chat API** (Section 6)
+3. **Hub Chat API** (Section 6)
    - Multi-session 지원
    - Hub Database 사용 (hub_sessions, hub_messages)
+   - **중요**: 기존 Workbench와 동일한 방식으로 구현
+     - Chat history를 모두 DB에 기록
+     - 매번 전체 message를 이어붙여서 전송
 
-5. **A2A Router** (Section 7)
+4. **A2A Router** (Section 7)
    - Agno/Langchain용 A2A wrapper
    - A2A Protocol → Framework Protocol 변환
 
-6. **Hub Database Schema** (Section 4)
-   - hub_sessions 테이블
-   - hub_messages 테이블
-   - deployment_logs 테이블
-   - agent_call_statistics 테이블
-
-7. **Agent Card Hosting** (Section 3.2)
+5. **Agent Card Hosting** (Section 3.2)
    - .well-known/agent-card.json 생성
    - Agno/Langchain용 Agent Card hosting
+
+### 📋 구현 가이드 및 주의사항
+
+1. **Database 스키마 변경 시 Alembic 사용 필수**
+   - `docker exec a2g-agent-service uv run alembic revision -m "description"`
+   - `docker exec a2g-agent-service uv run alembic upgrade head`
+   - 절대 직접 SQL 실행 금지
+
+2. **Agent Endpoint Host IP 정책**
+   - 차단: `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`
+   - 허용: Private IP (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+   - 허용: Public IP, DNS
+
+3. **Framework별 Health Check**
+   - Agno: `GET /health`
+   - ADK: `GET /.well-known/agent-card.json`
+   - Langchain/Custom: `POST {endpoint}` with agent/info
+
+4. **Multi-session History 구현 방침**
+   - Workbench 단일 세션 방식과 동일하게 구현
+   - 모든 chat history를 DB에 저장
+   - 매 요청 시 전체 conversation history를 포함해서 전송
 
 ---
 

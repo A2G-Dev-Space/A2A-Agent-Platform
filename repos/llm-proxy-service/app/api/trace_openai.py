@@ -93,7 +93,7 @@ async def create_traced_chat_completion(
                     logger.info(f"[Traced LLM] ✅ Resolved agent_id={resolved_agent_id}, status={agent_status} from trace_id={trace_id}")
 
                     # Check if agent is deployed - if so, don't collect trace
-                    deployed_statuses = ["DEPLOYED_TEAM", "DEPLOYED_ALL", "DEPLOYED_DEPT", "PRODUCTION"]
+                    deployed_statuses = ["DEPLOYED_TEAM", "DEPLOYED_ALL", "PRODUCTION"]
                     if agent_status in deployed_statuses:
                         logger.info(f"[Traced LLM] 🚫 Agent is deployed ({agent_status}), skipping trace collection")
                         # Clear trace_id to prevent trace collection
