@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent } from '@/types';
 import type { ChatAdapter } from '@/adapters/chat';
-import { ChatAdapterFactory } from '@/adapters/chat';
+import { HubLangchainChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
@@ -69,19 +69,14 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
     if (!accessToken) return;
 
     try {
-      const adapter = ChatAdapterFactory.createAdapter(agent.framework);
+      const adapter = new HubLangchainChatAdapter();
 
-      // Langchain adapter expects LangchainChatAdapterConfig with custom schema
       adapter.initialize({
         agentId: agent.id,
         agentEndpoint: agent.langchain_config?.endpoint || '',
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
         sessionId: currentSessionId || undefined,
-        // Langchain-specific configuration from agent.langchain_config
-        requestSchema: agent.langchain_config?.request_schema,
-        responseFormat: agent.langchain_config?.response_format as 'sse' | 'json',
-        messagePathInResponse: undefined, // Let adapter use default extraction logic
       });
 
       chatAdapterRef.current = adapter;

@@ -234,6 +234,13 @@ async def hub_chat_stream(
 
         return await _handle_agno_stream(request, agent_url, user_id, trace_id, session, db)
 
+    elif framework == "Langchain":
+        # Langchain: Use content
+        if not request.content:
+            raise HTTPException(status_code=400, detail="content is required for Langchain agents")
+
+        return await _handle_langchain_stream(request, agent_url, agent_info, trace_id, session, db)
+
     else:  # ADK or other frameworks
         # ADK: Use messages array
         if not request.messages:
@@ -351,16 +358,9 @@ async def _handle_agno_stream(
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                # Build message content with conversation history if provided
+                # Use content directly from request
+                # Frontend adapter already handles conversation history internally
                 message_content = request.content or ""
-
-                if request.messages and len(request.messages) > 0:
-                    history_text = "Previous conversation:\n"
-                    for msg in request.messages:
-                        role = "User" if msg.role == "user" else "Assistant"
-                        history_text += f"{role}: {msg.content}\n"
-                    history_text += "\nCurrent question:\n"
-                    message_content = history_text + message_content
 
                 # Build form data for Agno
                 form_data = {
@@ -439,6 +439,139 @@ async def _handle_agno_stream(
         except Exception as e:
             logger.error(f"[Hub] Error streaming from Agno agent: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+async def _handle_langchain_stream(
+    request: HubChatRequest,
+    agent_url: str,
+    agent_info: dict,
+    trace_id: Optional[str],
+    session: HubSession,
+    db: AsyncSession
+) -> StreamingResponse:
+    """
+    Handle Langchain framework streaming using custom endpoint
+    """
+    # Replace localhost with host.docker.internal for Docker network
+    agent_url = agent_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
+
+    # Get Langchain-specific configuration
+    langchain_config = agent_info.get("langchain_config", {})
+    endpoint = langchain_config.get("endpoint", agent_url)
+    request_schema = langchain_config.get("request_schema", '{"input": "{{message}}"}')
+    response_format = langchain_config.get("response_format", "sse")
+
+    logger.info(f"[Hub] Langchain endpoint: {endpoint}, format: {response_format}")
+
+    async def stream_generator():
+        """Generator that forwards streaming response from Langchain agent"""
+        assistant_response = ""
+
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                # Use content directly from request
+                message_content = request.content or ""
+
+                # Build request body using schema template
+                request_body_str = request_schema.replace("{{message}}", message_content)
+                request_body = json.loads(request_body_str)
+
+                # Stream start
+                if trace_id:
+                    yield f"data: {json.dumps({'type': 'stream_start', 'trace_id': trace_id, 'session_id': str(session.id)})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'type': 'stream_start', 'session_id': str(session.id)})}\n\n"
+
+                if response_format == "sse":
+                    # SSE streaming response
+                    async with client.stream(
+                        "POST",
+                        endpoint,
+                        json=request_body,
+                        headers={"Accept": "text/event-stream"}
+                    ) as response:
+                        if response.status_code != 200:
+                            yield f"data: {json.dumps({'type': 'error', 'message': f'Agent error: {response.status_code}'})}\n\n"
+                            return
+
+                        # Forward SSE events from Langchain and collect response
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                try:
+                                    event_data = json.loads(line[6:])
+                                    # Extract content based on common patterns
+                                    content = event_data.get("content") or event_data.get("output") or event_data.get("delta")
+                                    if content:
+                                        assistant_response += content
+                                        yield f"data: {json.dumps({'type': 'content_chunk', 'content': content})}\n\n"
+                                except:
+                                    pass
+                else:
+                    # JSON blocking response
+                    response = await client.post(
+                        endpoint,
+                        json=request_body,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    if response.status_code != 200:
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'Agent error: {response.status_code}'})}\n\n"
+                        return
+
+                    response_data = response.json()
+                    # Extract content based on config or common patterns
+                    assistant_response = response_data.get("output") or response_data.get("content") or str(response_data)
+                    yield f"data: {json.dumps({'type': 'content_chunk', 'content': assistant_response})}\n\n"
+
+                # Stream end
+                yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
+
+                # Update session with messages after stream completes
+                message_dicts = []
+                for msg in request.messages:
+                    msg_dict = {
+                        "id": msg.id or f"msg-{int(time.time() * 1000)}",
+                        "role": msg.role,
+                        "content": msg.content,
+                        "timestamp": msg.timestamp or datetime.utcnow().isoformat()
+                    }
+                    message_dicts.append(msg_dict)
+
+                # Add current user message
+                message_dicts.append({
+                    "id": f"msg-{int(time.time() * 1000)}",
+                    "role": "user",
+                    "content": request.content,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+
+                # Add assistant response
+                if assistant_response:
+                    message_dicts.append({
+                        "id": f"msg-{int(time.time() * 1000)}",
+                        "role": "assistant",
+                        "content": assistant_response,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+
+                session.messages = message_dicts
+                session.last_message_at = datetime.utcnow()
+                attributes.flag_modified(session, "messages")
+                await db.commit()
+
+        except Exception as e:
+            logger.error(f"[Hub] Error streaming from Langchain agent: {e}")
+            error_event = {"type": "error", "message": str(e)}
+            yield f"data: {json.dumps(error_event)}\n\n"
 
     return StreamingResponse(
         stream_generator(),

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent } from '@/types';
 import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
-import { ChatAdapterFactory } from '@/adapters/chat';
+import { HubAgnoChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
@@ -121,7 +121,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
     if (!accessToken) return;
 
     try {
-      const adapter = ChatAdapterFactory.createAdapter(agent.framework);
+      const adapter = new HubAgnoChatAdapter();
 
       const resourceId = selectedResource || undefined;
       const resourceType = resourceId
@@ -134,7 +134,6 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
         sessionId: currentSessionId || undefined,
-        chatEndpoint: `${API_BASE_URL}/api/hub/chat/stream`,
         selectedResource: resourceId,
         selectedResourceType: resourceType,
       });

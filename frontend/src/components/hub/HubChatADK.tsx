@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent } from '@/types';
 import type { ChatAdapter } from '@/adapters/chat';
-import { ChatAdapterFactory } from '@/adapters/chat';
+import { HubADKChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 
 interface Message {
@@ -66,7 +66,7 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
     if (!accessToken) return;
 
     try {
-      const adapter = ChatAdapterFactory.createAdapter(agent.framework);
+      const adapter = new HubADKChatAdapter();
 
       adapter.initialize({
         agentId: agent.id,
@@ -74,7 +74,6 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
         sessionId: currentSessionId || undefined,
-        chatEndpoint: `${API_BASE_URL}/api/hub/chat/stream`,
       });
 
       chatAdapterRef.current = adapter;
