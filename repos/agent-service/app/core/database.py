@@ -77,11 +77,28 @@ class Agent(Base):
     deploy_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default={})
     validated_endpoint: Mapped[Optional[str]] = mapped_column(String(500))  # Validated public endpoint for deployed agents
 
+    # A2A Protocol Support
+    agent_card_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # A2A Agent Card
+    workbench_messages: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON)  # Workbench test messages
+
     # Health and Metadata
     health_status: Mapped[HealthStatus] = mapped_column(SQLAlchemyEnum(HealthStatus), default=HealthStatus.UNKNOWN)
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def agent_card(self) -> Dict[str, Any]:
+        """Get agent card (for backward compatibility with a2a_proxy.py)"""
+        return self.agent_card_json or {}
+
+    @property
+    def original_endpoint(self) -> Optional[str]:
+        """
+        Get the original agent endpoint
+        Returns validated_endpoint if deployed, otherwise a2a_endpoint
+        """
+        return self.validated_endpoint if self.validated_endpoint else self.a2a_endpoint
 
 class AgentCallStatistics(Base):
     """Agent call statistics for tracking Hub/Workbench Chat and A2A Router usage"""

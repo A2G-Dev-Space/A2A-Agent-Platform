@@ -46,6 +46,9 @@ SERVICE_ROUTES = {
     # LLM Proxy Service (OpenAI Compatible Endpoint)
     '/api/llm': os.getenv('LLM_PROXY_SERVICE_URL', 'http://llm-proxy-service:8006'),
 
+    # A2A Protocol (Agent Service) - Must be before /api/agents
+    '/api/a2a': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
+
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
     '/api/workbench': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),  # Workbench endpoints
