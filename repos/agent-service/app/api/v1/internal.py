@@ -2,14 +2,24 @@
 Internal API endpoints for service-to-service communication
 No authentication required
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+from datetime import datetime
 
-from app.core.database import get_db, Agent
+from app.core.database import get_db, Agent, AgentCallStatistics
 
 router = APIRouter()
+
+
+class AgentCallRecord(BaseModel):
+    """Request model for recording agent call statistics"""
+    agent_id: int
+    user_id: str
+    call_type: str  # 'chat' or 'a2a_router'
+    agent_status: str  # 'DEPLOYED', 'DEVELOPMENT', etc.
 
 
 @router.get("/internal/agents/by-trace-ids")
@@ -116,4 +126,44 @@ async def get_agent_by_trace_id(
             "trace_id": agent.trace_id,
             "status": agent.status.value if agent.status else None
         }
+    }
+
+
+@router.post("/internal/statistics/agent-calls", status_code=201)
+async def record_agent_call(
+    record: AgentCallRecord,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Record agent call statistics (Internal API - No Auth Required)
+
+    Used by chat-service and a2a_router to track agent usage
+
+    call_type:
+    - 'chat': Hub or Workbench chat calls
+    - 'a2a_router': External A2A API calls
+
+    agent_status: Agent status at the time of call
+    """
+    # Validate call_type
+    if record.call_type not in ["chat", "a2a_router"]:
+        raise HTTPException(status_code=400, detail="call_type must be 'chat' or 'a2a_router'")
+
+    # Create statistics record
+    stat = AgentCallStatistics(
+        agent_id=record.agent_id,
+        user_id=record.user_id,
+        call_type=record.call_type,
+        agent_status=record.agent_status,
+        called_at=datetime.utcnow()
+    )
+
+    db.add(stat)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Agent call recorded",
+        "call_type": record.call_type,
+        "agent_id": record.agent_id
     }

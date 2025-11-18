@@ -84,10 +84,10 @@ export class ADKChatAdapter implements ChatAdapter {
       throw new Error('Invalid adapter state');
     }
 
-    const { apiBaseUrl, accessToken, agentId, sessionId } = this.config;
+    const { apiBaseUrl, accessToken, agentId, sessionId, chatEndpoint } = this.config;
 
-    // Workbench always uses workbench API with agent-managed sessions
-    const endpoint = `${apiBaseUrl}/api/workbench/chat/stream`;
+    // Use custom endpoint if provided (for Hub mode), otherwise use workbench endpoint
+    const endpoint = chatEndpoint || `${apiBaseUrl}/api/workbench/chat/stream`;
 
     // Build messages array for workbench mode (includes conversation history)
     const messages = [];

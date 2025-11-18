@@ -125,49 +125,49 @@ const getLevelIcon = (level: string) => {
   }
 };
 
-// Get agent color based on agent_id (returns actual color values, not Tailwind class names)
-const getAgentColor = (agentId: string | undefined) => {
-  if (!agentId) return { bg: '#e5e7eb', text: '#6b7280', border: '#d1d5db' };
-
-  // Hash agent_id to a consistent color
-  const colorSchemes = [
-    { bg: '#fee2e2', text: '#dc2626', border: '#f87171' }, // red
-    { bg: '#fed7aa', text: '#ea580c', border: '#fb923c' }, // orange
-    { bg: '#fef3c7', text: '#d97706', border: '#fbbf24' }, // amber
-    { bg: '#ecfccb', text: '#65a30d', border: '#a3e635' }, // lime
-    { bg: '#d1fae5', text: '#059669', border: '#34d399' }, // emerald
-    { bg: '#ccfbf1', text: '#0d9488', border: '#2dd4bf' }, // teal
-    { bg: '#cffafe', text: '#0891b2', border: '#22d3ee' }, // cyan
-    { bg: '#e0f2fe', text: '#0284c7', border: '#38bdf8' }, // sky
-    { bg: '#e0e7ff', text: '#4f46e5', border: '#818cf8' }, // indigo
-    { bg: '#ede9fe', text: '#7c3aed', border: '#a78bfa' }, // violet
-    { bg: '#fae8ff', text: '#c026d3', border: '#e879f9' }, // fuchsia
-    { bg: '#ffe4e6', text: '#e11d48', border: '#fb7185' }, // rose
-  ];
-
-  const hash = agentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-  const scheme = colorSchemes[hash % colorSchemes.length];
-
-  // Adjust for dark mode
-  if (isDark) {
-    return {
-      bg: scheme.text + '20', // 20% opacity
-      text: scheme.border,
-      border: scheme.text + '60' // 60% opacity
-    };
-  }
-
-  return scheme;
-};
+// TODO: Get agent color based on agent_id (returns actual color values, not Tailwind class names)
+// const getAgentColor = (agentId: string | undefined) => {
+//   if (!agentId) return { bg: '#e5e7eb', text: '#6b7280', border: '#d1d5db' };
+//
+//   // Hash agent_id to a consistent color
+//   const colorSchemes = [
+//     { bg: '#fee2e2', text: '#dc2626', border: '#f87171' }, // red
+//     { bg: '#fed7aa', text: '#ea580c', border: '#fb923c' }, // orange
+//     { bg: '#fef3c7', text: '#d97706', border: '#fbbf24' }, // amber
+//     { bg: '#ecfccb', text: '#65a30d', border: '#a3e635' }, // lime
+//     { bg: '#d1fae5', text: '#059669', border: '#34d399' }, // emerald
+//     { bg: '#ccfbf1', text: '#0d9488', border: '#2dd4bf' }, // teal
+//     { bg: '#cffafe', text: '#0891b2', border: '#22d3ee' }, // cyan
+//     { bg: '#e0f2fe', text: '#0284c7', border: '#38bdf8' }, // sky
+//     { bg: '#e0e7ff', text: '#4f46e5', border: '#818cf8' }, // indigo
+//     { bg: '#ede9fe', text: '#7c3aed', border: '#a78bfa' }, // violet
+//     { bg: '#fae8ff', text: '#c026d3', border: '#e879f9' }, // fuchsia
+//     { bg: '#ffe4e6', text: '#e11d48', border: '#fb7185' }, // rose
+//   ];
+//
+//   const hash = agentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+//   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+//
+//   const scheme = colorSchemes[hash % colorSchemes.length];
+//
+//   // Adjust for dark mode
+//   if (isDark) {
+//     return {
+//       bg: scheme.text + '20', // 20% opacity
+//       text: scheme.border,
+//       border: scheme.text + '60' // 60% opacity
+//     };
+//   }
+//
+//   return scheme;
+// };
 
 const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { Icon, label, color, bg } = getLogIcon(log);
   const { Icon: LevelIcon, color: levelColor } = getLevelIcon(log.level);
   const hasMetadata = log.metadata && Object.keys(log.metadata).length > 0;
-  const agentColor = getAgentColor(log.agent_id);
+  // const agentColor = getAgentColor(log.agent_id); // TODO: Use for agent-specific styling
 
   // Replace "Tool Response: None" message text but keep the log entry
   const displayMessage = log.message && /Tool Response:\s*(None|null|undefined)/i.test(log.message)

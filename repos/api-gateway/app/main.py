@@ -51,6 +51,7 @@ SERVICE_ROUTES = {
 
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
+    '/api/hub': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),  # Hub endpoints (deployed agents)
     '/api/workbench': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),  # Workbench endpoints
     '/api/chat': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
     '/api/tracing': os.getenv('TRACING_SERVICE_URL', 'http://tracing-service:8004'),

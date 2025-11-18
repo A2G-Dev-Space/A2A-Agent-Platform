@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Agent, AgentStatus } from '@/types';
+import { type Agent } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 
 interface AgentCardProps {

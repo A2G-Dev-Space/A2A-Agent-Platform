@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
-import { type Agent, AgentStatus } from '@/types';
+import { type Agent } from '@/types';
 import AddAgentModal from './AddAgentModal';
 import { DeployModal } from './DeployModal';
 import { AgentCard } from './AgentCard';

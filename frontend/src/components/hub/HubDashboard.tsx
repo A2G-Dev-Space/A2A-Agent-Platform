@@ -5,9 +5,10 @@ import { Search } from 'lucide-react';
 import { agentService, type AgentSearchResponse, type GetAgentsResponse } from '@/services/agentService';
 import { type Agent, AgentStatus } from '@/types';
 import AgentCard from '../common/AgentCard';
+import { HubChat } from './HubChat';
 
 // This component remains local as it's specific to the top picks section's style
-const TopPickCard: React.FC<{ agent: Agent }> = ({ agent }) => {
+const TopPickCard: React.FC<{ agent: Agent; onClick?: () => void }> = ({ agent, onClick }) => {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 w-72 flex-shrink-0 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
       <div
@@ -19,7 +20,10 @@ const TopPickCard: React.FC<{ agent: Agent }> = ({ agent }) => {
           <p className="text-slate-800 dark:text-white text-base font-bold">{agent.name}</p>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 line-clamp-2">{agent.description}</p>
         </div>
-        <button className="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors">
+        <button
+          onClick={onClick}
+          className="flex mt-4 min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-hub-accent hover:bg-hub-accent-dark text-white text-sm font-bold transition-colors"
+        >
           <span>Launch</span>
         </button>
       </div>
@@ -30,6 +34,7 @@ const TopPickCard: React.FC<{ agent: Agent }> = ({ agent }) => {
 export const HubDashboard: React.FC = () => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
   // Fetch top picks using the new search endpoint.
   const { data: topPicks, isLoading: isLoadingTopPicks } = useQuery({
@@ -60,7 +65,7 @@ export const HubDashboard: React.FC = () => {
         new Map(allAgents.map(agent => [agent.id, agent])).values()
       );
 
-      return { agents: uniqueAgents };
+      return { agents: uniqueAgents, total: uniqueAgents.length };
     },
     select: (data: GetAgentsResponse) => data.agents,
   });
@@ -70,6 +75,15 @@ export const HubDashboard: React.FC = () => {
     agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (agent.description && agent.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // If an agent is selected, show HubChat with absolute positioning to fill parent main
+  if (selectedAgent) {
+    return (
+      <div className="absolute inset-0 z-10 bg-background-light dark:bg-background-dark">
+        <HubChat agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -94,7 +108,13 @@ export const HubDashboard: React.FC = () => {
           {isLoadingTopPicks ? (
             <p>Loading recommendations...</p>
           ) : (
-            topPicks?.map((agent: Agent) => <TopPickCard key={agent.id} agent={agent} />)
+            topPicks?.map((agent: Agent) => (
+              <TopPickCard
+                key={agent.id}
+                agent={agent}
+                onClick={() => setSelectedAgent(agent)}
+              />
+            ))
           )}
         </div>
       </div>
@@ -104,7 +124,13 @@ export const HubDashboard: React.FC = () => {
          <p>Loading...</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredAgents.map((agent: Agent) => <AgentCard key={agent.id} agent={agent} />)}
+          {filteredAgents.map((agent: Agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              onClick={() => setSelectedAgent(agent)}
+            />
+          ))}
         </div>
       )}
     </div>

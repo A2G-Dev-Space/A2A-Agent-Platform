@@ -10,7 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1 import sessions, messages, llm_proxy, workbench, admin
+from app.api.v1 import sessions, messages, llm_proxy, workbench, admin, hub
 from app.core.redis_client import redis_client
 
 # Configure logging
@@ -61,6 +61,7 @@ app.include_router(sessions.router, prefix="/api/chat", tags=["sessions"])
 app.include_router(messages.router, prefix="/api/chat", tags=["messages"])
 app.include_router(llm_proxy.router, prefix="/api", tags=["llm-proxy"])
 app.include_router(workbench.router, prefix="/api", tags=["workbench"])
+app.include_router(hub.router, prefix="/api", tags=["hub"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
 @app.get("/health")

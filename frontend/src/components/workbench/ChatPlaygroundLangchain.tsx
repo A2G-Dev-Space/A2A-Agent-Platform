@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Send, User, Bot, Settings, ChevronUp, ChevronDown, Copy, Check, HelpCircle, Globe, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { type Agent, AgentFramework, AgentStatus } from '@/types';
+import { type Agent, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 import { getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter } from '@/adapters/chat';
