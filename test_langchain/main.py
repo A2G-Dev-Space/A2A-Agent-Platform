@@ -17,6 +17,7 @@ FastAPI application with invoke and stream endpoints
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -26,7 +27,7 @@ from typing import AsyncGenerator
 # Configuration
 API_KEY = "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490"
 TRACE_ENDPOINT = "http://localhost:9050/api/llm/trace/b8f5b410-1cf5-4b61-84e8-7a9d9f126aae/v1"
-MODEL_NAME = "openai/gpt-oss-20b"
+MODEL_NAME = "qwen/qwen3-14b"
 
 app = FastAPI(
     title="Test LangChain Agent",
@@ -34,9 +35,18 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:9060", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Request/Response Models
 class ChatRequest(BaseModel):
-    message: str
+    input: str  # Changed from 'message' to match Input Schema {"input": "{{message}}"}
     system_prompt: str = "You are a helpful AI assistant."
 
 class ChatResponse(BaseModel):
@@ -84,7 +94,7 @@ async def invoke(request: ChatRequest):
 
         messages = [
             SystemMessage(content=request.system_prompt),
-            HumanMessage(content=request.message)
+            HumanMessage(content=request.input)
         ]
 
         response = await llm.ainvoke(messages)
@@ -113,7 +123,7 @@ async def stream(request: ChatRequest):
 
             messages = [
                 SystemMessage(content=request.system_prompt),
-                HumanMessage(content=request.message)
+                HumanMessage(content=request.input)
             ]
 
             # Stream the response
