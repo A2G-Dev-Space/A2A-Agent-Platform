@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Globe, Users, AlertCircle, Loader2 } from 'lucide-react';
 import type { Agent } from '@/types';
-import { AgentStatus } from '@/types';
+import { AgentStatus, AgentFramework } from '@/types';
 import { agentService } from '@/services/agentService';
 
 interface DeployModalProps {
@@ -11,6 +11,20 @@ interface DeployModalProps {
   agent: Agent;
   onDeploySuccess: () => void;
 }
+
+// Helper function to get framework-specific endpoint
+const getAgentEndpoint = (agent: Agent): string | undefined => {
+  switch (agent.framework) {
+    case AgentFramework.AGNO:
+      return agent.agno_os_endpoint;
+    case AgentFramework.ADK:
+      return agent.a2a_endpoint;
+    case AgentFramework.LANGCHAIN:
+      return agent.langchain_config?.endpoint;
+    default:
+      return agent.a2a_endpoint;
+  }
+};
 
 export const DeployModal: React.FC<DeployModalProps> = ({
   isOpen,
@@ -22,6 +36,8 @@ export const DeployModal: React.FC<DeployModalProps> = ({
   const [deployScope, setDeployScope] = useState<'team' | 'public'>('team');
   const [isDeploying, setIsDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const agentEndpoint = getAgentEndpoint(agent);
 
   const isDeployed = [
     AgentStatus.DEPLOYED_TEAM,
@@ -91,7 +107,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
             <div className="flex justify-between">
               <span className="text-sm text-text-light-secondary dark:text-text-dark-secondary">{t('workbench.deployModal.endpoint')}</span>
               <span className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
-                {agent.a2a_endpoint || t('workbench.deployModal.notConfigured')}
+                {agentEndpoint || t('workbench.deployModal.notConfigured')}
               </span>
             </div>
             <div className="flex justify-between">
@@ -148,7 +164,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
         )}
 
         {/* Warning/Info Messages */}
-        {!isDeployed && !agent.a2a_endpoint && (
+        {!isDeployed && !agentEndpoint && (
           <div className="mb-4 flex items-start rounded-lg bg-yellow-50 p-3 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
             <AlertCircle className="mr-2 mt-0.5 h-5 w-5 flex-shrink-0" />
             <div className="text-sm">
@@ -192,7 +208,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
           </button>
           <button
             onClick={handleDeploy}
-            disabled={isDeploying || (!isDeployed && !agent.a2a_endpoint)}
+            disabled={isDeploying || (!isDeployed && !agentEndpoint)}
             className={`
               flex items-center rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50 transition-colors
               ${isDeployed

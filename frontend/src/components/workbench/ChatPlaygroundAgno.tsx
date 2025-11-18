@@ -62,7 +62,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [showConfig, setShowConfig] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
-  const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
+  const [agentEndpoint, setAgentEndpoint] = useState(agent.agno_os_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
 
@@ -246,7 +246,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
       adapter.initialize({
         agentId: agent.id,
-        agentEndpoint: agent.a2a_endpoint || '',
+        agentEndpoint: agent.agno_os_endpoint || '',
         apiBaseUrl: API_BASE_URL,
         accessToken: accessToken,
         sessionId: undefined, // Workbench mode
@@ -547,10 +547,10 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
     try {
       await agentService.updateAgent(agent.id, {
-        a2a_endpoint: agentEndpoint.trim()
+        agno_os_endpoint: agentEndpoint.trim()
       });
 
-      agent.a2a_endpoint = agentEndpoint.trim();
+      agent.agno_os_endpoint = agentEndpoint.trim();
 
       console.log('Agent endpoint saved successfully');
       setTimeout(() => setIsSavingEndpoint(false), 500);
@@ -577,7 +577,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          a2a_endpoint: agentEndpoint,
+          agno_os_endpoint: agentEndpoint,
         }),
       });
 
@@ -1403,7 +1403,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             </div>
 
             {/* Agno Team/Agent Selector */}
-            {agent.a2a_endpoint && agnoResources.length > 0 && (
+            {agent.agno_os_endpoint && agnoResources.length > 0 && (
               <div className="flex flex-col gap-3 border-t border-border-light dark:border-border-dark pt-3">
                 <h4 className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">
                   Agno Configuration

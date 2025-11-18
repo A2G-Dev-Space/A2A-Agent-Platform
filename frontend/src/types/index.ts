@@ -49,7 +49,13 @@ export interface Agent {
   description: string
   framework: AgentFramework
   status: AgentStatus
-  a2a_endpoint: string
+  a2a_endpoint: string  // For ADK framework
+  agno_os_endpoint?: string  // For Agno framework
+  langchain_config?: {
+    endpoint?: string
+    request_schema?: string
+    response_format?: string
+  }  // For Langchain framework
   trace_id?: string  // Unique trace ID for LLM tracking
   capabilities: {
     skills?: string[]

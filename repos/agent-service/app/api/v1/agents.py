@@ -24,7 +24,9 @@ class AgentCreate(BaseModel):
     name: str
     description: Optional[str] = None
     framework: AgentFramework
-    a2a_endpoint: Optional[str] = None
+    a2a_endpoint: Optional[str] = None  # For ADK framework
+    agno_os_endpoint: Optional[str] = None  # For Agno framework
+    langchain_config: Optional[Dict[str, Any]] = None  # For Langchain framework (includes endpoint)
     capabilities: Dict[str, Any] = {}
     is_public: bool = True
     visibility: str = "public"  # public, private, team
@@ -36,7 +38,8 @@ class AgentUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     framework: Optional[AgentFramework] = None
-    a2a_endpoint: Optional[str] = None
+    a2a_endpoint: Optional[str] = None  # For ADK framework
+    agno_os_endpoint: Optional[str] = None  # For Agno framework
     capabilities: Optional[Dict[str, Any]] = None
     is_public: Optional[bool] = None
     status: Optional[AgentStatus] = None  # Status update integrated here
@@ -44,7 +47,7 @@ class AgentUpdate(BaseModel):
     allowed_users: Optional[List[str]] = None
     card_color: Optional[str] = None  # Hex color for agent card
     logo_url: Optional[str] = None  # URL for agent logo
-    langchain_config: Optional[Dict[str, Any]] = None  # Langchain configuration
+    langchain_config: Optional[Dict[str, Any]] = None  # Langchain configuration (includes endpoint)
 
 class AgentResponse(BaseModel):
     id: int
@@ -52,7 +55,9 @@ class AgentResponse(BaseModel):
     description: Optional[str]
     framework: AgentFramework
     status: AgentStatus
-    a2a_endpoint: Optional[str]
+    a2a_endpoint: Optional[str]  # For ADK framework
+    agno_os_endpoint: Optional[str]  # For Agno framework
+    langchain_config: Optional[Dict[str, Any]]  # For Langchain framework
     trace_id: Optional[str]
     capabilities: Dict[str, Any]
     owner_id: str
@@ -228,6 +233,8 @@ async def get_agents(
                 framework=agent.framework,
                 status=agent.status,
                 a2a_endpoint=agent.a2a_endpoint,
+                agno_os_endpoint=agent.agno_os_endpoint,
+                langchain_config=agent.langchain_config,
                 trace_id=agent.trace_id,
                 capabilities=agent.capabilities,
                 owner_id=agent.owner_id,
@@ -283,7 +290,9 @@ async def create_agent(
         name=request.name,
         description=request.description,
         framework=request.framework,
-        a2a_endpoint=request.a2a_endpoint,
+        a2a_endpoint=request.a2a_endpoint,  # For ADK
+        agno_os_endpoint=request.agno_os_endpoint,  # For Agno
+        langchain_config=request.langchain_config,  # For Langchain
         trace_id=trace_id,
         capabilities=request.capabilities,
         owner_id=current_user["username"],
@@ -307,6 +316,8 @@ async def create_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -407,6 +418,8 @@ async def get_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -446,17 +459,31 @@ async def update_agent(
             detail="Not authorized to update this agent"
         )
 
-    # Validate A2A endpoint if it's being updated (ADK only)
+    # Validate endpoints if they're being updated
     update_data = request.dict(exclude_unset=True)
+
+    # Validate ADK a2a_endpoint
     if "a2a_endpoint" in update_data and update_data["a2a_endpoint"]:
-        # Only validate for ADK framework (requires .well-known/agent.json)
-        # Agno framework doesn't provide agent card, so skip validation
         if agent.framework == AgentFramework.ADK:
             logger.info(f"[Update Agent] Validating new ADK endpoint: {update_data['a2a_endpoint']}")
             agent_card = await validate_agent_endpoint(update_data["a2a_endpoint"])
             logger.info(f"[Update Agent] Endpoint validation successful for agent {agent_id}")
         else:
-            logger.info(f"[Update Agent] Skipping validation for {agent.framework} framework - endpoint will be saved directly")
+            logger.info(f"[Update Agent] Skipping validation for {agent.framework} framework - a2a_endpoint not used")
+
+    # Validate Agno agno_os_endpoint (no validation needed, just save)
+    if "agno_os_endpoint" in update_data and update_data["agno_os_endpoint"]:
+        if agent.framework == AgentFramework.AGNO:
+            logger.info(f"[Update Agent] Saving Agno OS endpoint: {update_data['agno_os_endpoint']}")
+        else:
+            logger.info(f"[Update Agent] Skipping agno_os_endpoint for {agent.framework} framework")
+
+    # Langchain config (no validation at update, will be validated at deploy)
+    if "langchain_config" in update_data and update_data["langchain_config"]:
+        if agent.framework == AgentFramework.LANGCHAIN:
+            logger.info(f"[Update Agent] Saving Langchain config for agent {agent_id}")
+        else:
+            logger.info(f"[Update Agent] Skipping langchain_config for {agent.framework} framework")
 
     # Update fields
     for field, value in update_data.items():
@@ -472,6 +499,8 @@ async def update_agent(
         framework=agent.framework,
         status=agent.status,
         a2a_endpoint=agent.a2a_endpoint,
+        agno_os_endpoint=agent.agno_os_endpoint,
+        langchain_config=agent.langchain_config,
         trace_id=agent.trace_id,
         capabilities=agent.capabilities,
         owner_id=agent.owner_id,
@@ -751,8 +780,36 @@ async def deploy_agent(
             detail=f"Agent is already deployed with status: {agent.status}"
         )
 
+    # Get endpoint based on framework
+    endpoint = None
+    if agent.framework == AgentFramework.AGNO:
+        endpoint = agent.agno_os_endpoint
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Agno OS endpoint is required for Agno agents"
+            )
+    elif agent.framework == AgentFramework.ADK:
+        endpoint = agent.a2a_endpoint
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A2A endpoint is required for ADK agents"
+            )
+    elif agent.framework == AgentFramework.LANGCHAIN:
+        if not agent.langchain_config or not agent.langchain_config.get("endpoint"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Langchain configuration with endpoint is required for Langchain agents"
+            )
+        endpoint = agent.langchain_config.get("endpoint")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown framework: {agent.framework}"
+        )
+
     # Validate endpoint is not localhost
-    endpoint = agent.a2a_endpoint
     is_valid, error_msg = validate_host_for_deploy(endpoint)
     if not is_valid:
         raise HTTPException(
@@ -762,7 +819,7 @@ async def deploy_agent(
 
     # Test agent connection
     logger.info(f"[Deploy] Testing connection to {endpoint} (framework: {agent.framework})")
-    is_reachable, error_msg = await test_agent_connection(endpoint, agent.framework)
+    is_reachable, error_msg = await test_agent_connection(endpoint, agent.framework.value)
     if not is_reachable:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

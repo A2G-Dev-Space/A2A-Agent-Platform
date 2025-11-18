@@ -101,10 +101,28 @@ class Agent(Base):
     @property
     def original_endpoint(self) -> Optional[str]:
         """
-        Get the original agent endpoint
-        Returns validated_endpoint if deployed, otherwise a2a_endpoint
+        Get the original agent endpoint based on framework
+        Returns validated_endpoint if deployed, otherwise framework-specific endpoint
+
+        Framework-specific endpoints:
+        - Agno: agno_os_endpoint
+        - ADK: a2a_endpoint
+        - Langchain: langchain_config['endpoint']
         """
-        return self.validated_endpoint if self.validated_endpoint else self.a2a_endpoint
+        if self.validated_endpoint:
+            return self.validated_endpoint
+
+        # Return framework-specific endpoint
+        if self.framework == AgentFramework.AGNO:
+            return self.agno_os_endpoint
+        elif self.framework == AgentFramework.ADK:
+            return self.a2a_endpoint
+        elif self.framework == AgentFramework.LANGCHAIN:
+            if self.langchain_config:
+                return self.langchain_config.get("endpoint")
+            return None
+        else:
+            return None
 
 class AgentCallStatistics(Base):
     """Agent call statistics for tracking Hub/Workbench Chat and A2A Router usage"""

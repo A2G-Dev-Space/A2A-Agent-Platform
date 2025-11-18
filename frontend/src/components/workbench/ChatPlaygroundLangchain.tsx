@@ -59,17 +59,25 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
   const [showConfig, setShowConfig] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
-  const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
+  const [agentEndpoint, setAgentEndpoint] = useState(agent.langchain_config?.endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   // Langchain-specific configuration
   const [requestSchema, setRequestSchema] = useState(() => {
+    // Try agent.langchain_config first, then fallback to localStorage
+    if (agent.langchain_config?.request_schema) {
+      return agent.langchain_config.request_schema;
+    }
     const stored = localStorage.getItem(`langchain_request_schema_${agent.id}`);
     return stored || '{"input": "{{message}}"}';
   });
   const [responseFormat, setResponseFormat] = useState<'sse' | 'json'>(() => {
+    // Try agent.langchain_config first, then fallback to localStorage
+    if (agent.langchain_config?.response_format) {
+      return agent.langchain_config.response_format as 'sse' | 'json';
+    }
     const stored = localStorage.getItem(`langchain_response_format_${agent.id}`);
     return (stored as 'sse' | 'json') || 'sse';
   });
@@ -459,7 +467,6 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
 
     try {
       await agentService.updateAgent(agent.id, {
-        a2a_endpoint: agentEndpoint.trim(),
         langchain_config: {
           endpoint: agentEndpoint.trim(),
           request_schema: requestSchema,
@@ -467,7 +474,13 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
         }
       });
 
-      agent.a2a_endpoint = agentEndpoint.trim();
+      // Update agent's langchain_config in local state
+      if (!agent.langchain_config) {
+        agent.langchain_config = {};
+      }
+      agent.langchain_config.endpoint = agentEndpoint.trim();
+      agent.langchain_config.request_schema = requestSchema;
+      agent.langchain_config.response_format = responseFormat;
 
       console.log('Agent endpoint saved successfully');
       setTimeout(() => setIsSavingEndpoint(false), 500);
@@ -493,7 +506,11 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          a2a_endpoint: agentEndpoint,
+          langchain_config: {
+            endpoint: agentEndpoint,
+            request_schema: requestSchema,
+            response_format: responseFormat
+          }
         }),
       });
 
