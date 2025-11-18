@@ -12,7 +12,7 @@ import logging
 import re
 import os
 
-from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus
+from app.core.database import get_db, Agent, AgentFramework, AgentStatus, HealthStatus, DeploymentLog
 from app.core.security import get_current_user
 from sqlalchemy import select, and_, func
 
@@ -652,21 +652,10 @@ def validate_host_for_deploy(endpoint: str) -> tuple[bool, str]:
 
     hostname = match.group(1)
 
-    # Check for localhost variations
+    # Check for localhost variations only (allow private IPs)
     invalid_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
     if hostname in invalid_hosts:
         return False, f"Cannot deploy with local endpoint '{hostname}'. Please provide a public URL."
-
-    # Check for private IP ranges (optional, more strict validation)
-    private_ip_patterns = [
-        r'^10\.',  # 10.0.0.0 - 10.255.255.255
-        r'^172\.(1[6-9]|2[0-9]|3[0-1])\.',  # 172.16.0.0 - 172.31.255.255
-        r'^192\.168\.',  # 192.168.0.0 - 192.168.255.255
-    ]
-
-    for pattern in private_ip_patterns:
-        if re.match(pattern, hostname):
-            return False, f"Cannot deploy with private IP '{hostname}'. Please provide a public URL."
 
     return True, ""
 
@@ -770,6 +759,9 @@ async def deploy_agent(
             detail="Department must be set for team deployment"
         )
 
+    # Store previous status for logging
+    previous_status = agent.status
+
     # Update agent
     agent.status = new_status
     agent.deployed_at = datetime.utcnow()
@@ -782,6 +774,19 @@ async def deploy_agent(
         agent.visibility = "team"
     else:
         agent.visibility = "public"
+
+    # Create deployment log
+    deploy_log = DeploymentLog(
+        agent_id=agent.id,
+        action="deploy",
+        performed_by=current_user["username"],
+        visibility=agent.visibility,
+        validated_endpoint=endpoint,
+        previous_status=previous_status.value,
+        new_status=new_status.value,
+        extra_data={"deploy_config": request.deploy_config, "deploy_scope": request.deploy_scope}
+    )
+    db.add(deploy_log)
 
     await db.commit()
     await db.refresh(agent)
@@ -835,6 +840,10 @@ async def undeploy_agent(
             detail=f"Agent is not deployed. Current status: {agent.status}"
         )
 
+    # Store previous status for logging
+    previous_status = agent.status
+    previous_endpoint = agent.validated_endpoint
+
     # Update agent status back to DEVELOPMENT
     agent.status = AgentStatus.DEVELOPMENT
     agent.deployed_at = None
@@ -842,6 +851,19 @@ async def undeploy_agent(
     agent.validated_endpoint = None
     agent.deploy_config = {}
     agent.visibility = "private"  # Reset to private
+
+    # Create deployment log
+    undeploy_log = DeploymentLog(
+        agent_id=agent.id,
+        action="undeploy",
+        performed_by=current_user["username"],
+        visibility="private",
+        validated_endpoint=previous_endpoint,
+        previous_status=previous_status.value,
+        new_status=AgentStatus.DEVELOPMENT.value,
+        extra_data={}
+    )
+    db.add(undeploy_log)
 
     await db.commit()
     await db.refresh(agent)

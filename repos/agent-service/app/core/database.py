@@ -3,8 +3,8 @@ Database configuration and models
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON, Enum as SQLAlchemyEnum
-from datetime import datetime
+from sqlalchemy import String, Integer, Boolean, DateTime, Text, JSON, Enum as SQLAlchemyEnum, Date, ForeignKey
+from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from enum import Enum as PyEnum
 import uuid
@@ -83,6 +83,33 @@ class Agent(Base):
     last_health_check: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class AgentCallStatistics(Base):
+    """Agent call statistics for tracking Hub/Workbench Chat and A2A Router usage"""
+    __tablename__ = "agent_call_statistics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[int] = mapped_column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(String(50), index=True)
+    call_type: Mapped[str] = mapped_column(String(20), index=True)  # 'chat', 'a2a_router'
+    agent_status: Mapped[str] = mapped_column(String(20))  # DEPLOYED, DEVELOPMENT at call time
+    called_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    date: Mapped[date] = mapped_column(Date, default=date.today, index=True)  # For daily aggregation
+
+class DeploymentLog(Base):
+    """Deployment history log"""
+    __tablename__ = "deployment_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[int] = mapped_column(Integer, ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(20))  # 'deploy', 'undeploy'
+    performed_by: Mapped[str] = mapped_column(String(50))
+    visibility: Mapped[Optional[str]] = mapped_column(String(20))  # team, public (for deploy)
+    validated_endpoint: Mapped[Optional[str]] = mapped_column(String(500))
+    previous_status: Mapped[str] = mapped_column(String(20))
+    new_status: Mapped[str] = mapped_column(String(20))
+    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)  # Additional info (renamed from metadata)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 async def init_db():
     """Initialize database"""
