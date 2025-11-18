@@ -41,10 +41,10 @@ async def _check_llm_health_async():
     logger.info("Starting LLM health check...")
 
     try:
-        # Get all LLMs from admin service
+        # Get all LLMs from admin service (using public endpoint - no auth required)
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                response = await client.get(f"{ADMIN_SERVICE_URL}/api/llm")
+                response = await client.get(f"{ADMIN_SERVICE_URL}/api/admin/public/llm-models/")
                 if response.status_code != 200:
                     logger.error(f"Failed to get LLMs: {response.status_code}")
                     return {"error": "Failed to fetch LLMs"}
