@@ -6,6 +6,7 @@ import { type Agent } from '@/types';
 import type { ChatAdapter } from '@/adapters/chat';
 import { HubADKChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
+import { A2AInfoSidebar } from './A2AInfoSidebar';
 
 interface Message {
   id: string;
@@ -394,7 +395,7 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
       </aside>
 
       {/* Chat Area */}
-      <div className="flex flex-col h-full max-w-4xl mx-auto w-full flex-1">
+      <div className="flex flex-col h-full max-w-4xl mx-auto w-full flex-1 flex-shrink">
         {/* Agent Header */}
         <div className="relative text-center pt-8 pb-6 border-b shrink-0"
           style={{
@@ -603,6 +604,9 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* A2A Info Sidebar */}
+      <A2AInfoSidebar agent={agent} />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { type Agent } from '@/types';
 import type { ChatAdapter } from '@/adapters/chat';
 import { HubLangchainChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
+import { A2AInfoSidebar } from './A2AInfoSidebar';
 
 interface Message {
   id: string;
@@ -734,6 +735,9 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
           </div>
         </div>
       </div>
+
+      {/* A2A Info Sidebar */}
+      <A2AInfoSidebar agent={agent} />
     </div>
   );
 };
