@@ -27,7 +27,7 @@ from typing import AsyncGenerator
 # Configuration
 API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
 TRACE_ENDPOINT = "http://localhost:9050/api/llm/trace/b8f5b410-1cf5-4b61-84e8-7a9d9f126aae/v1"
-MODEL_NAME = "qwen/qwen3-14b"
+MODEL_NAME = "openai/gpt-oss-20b"
 
 app = FastAPI(
     title="Test LangChain Agent",
