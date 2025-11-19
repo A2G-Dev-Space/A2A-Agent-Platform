@@ -77,6 +77,16 @@ interface HistoricalTrends {
     };
   };
   top_k: number | null;
+  available_agents: Array<{
+    trace_id: string;
+    agent_id: string | null;
+    agent_name: string;
+    owner_id: string | null;
+  }>;
+  available_models: Array<{
+    model: string;
+    provider: string;
+  }>;
 }
 
 interface UserTokenUsage {
@@ -740,21 +750,11 @@ const StatisticsPage: React.FC = () => {
                 className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
               >
                 <option value="all">All Agents</option>
-                {(() => {
-                  // Get unique agents by trace_id
-                  const uniqueAgents = stats.agent_token_usage.reduce((acc, agent) => {
-                    if (!acc.find(a => a.trace_id === agent.trace_id)) {
-                      acc.push(agent);
-                    }
-                    return acc;
-                  }, [] as typeof stats.agent_token_usage);
-
-                  return uniqueAgents.map((agent) => (
-                    <option key={agent.trace_id} value={agent.trace_id}>
-                      {agent.agent_display_name}
-                    </option>
-                  ));
-                })()}
+                {historicalTrends?.available_agents?.map((agent) => (
+                  <option key={agent.trace_id} value={agent.trace_id}>
+                    {agent.agent_name}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -765,7 +765,7 @@ const StatisticsPage: React.FC = () => {
                 className="rounded-md border border-slate-300 bg-white px-3 py-1 text-slate-900 dark:border-slate-700 dark:bg-[#1f2937] dark:text-slate-100"
               >
                 <option value="all">All Models</option>
-                {stats.model_usage_stats.map((model) => (
+                {historicalTrends?.available_models?.map((model) => (
                   <option key={`${model.model}-${model.provider}`} value={model.model}>
                     {model.model} ({model.provider})
                   </option>

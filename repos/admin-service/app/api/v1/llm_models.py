@@ -11,6 +11,7 @@ import httpx
 
 from app.core.database import LLMModel, HealthStatus
 from app.core.security import require_admin, get_db
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -231,6 +232,7 @@ async def delete_llm_model(
 ):
     """
     Delete LLM model (ADMIN only)
+    Also cleans up related statistics data in worker-service
     """
     result = await db.execute(select(LLMModel).where(LLMModel.id == model_id))
     model = result.scalar_one_or_none()
@@ -241,10 +243,38 @@ async def delete_llm_model(
             detail=f"LLM model with id {model_id} not found"
         )
 
+    model_name = model.name
+
+    # Delete from database
     await db.delete(model)
     await db.commit()
 
-    return {"message": f"LLM model '{model.name}' deleted successfully"}
+    # Clean up real-time token usage data in llm-proxy-service
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{settings.LLM_PROXY_SERVICE_URL}/api/internal/llm-calls/model/{model_name}",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                result = response.json()
+                deleted_count = result.get("deleted_count", 0)
+                return {
+                    "message": f"LLM model '{model_name}' deleted successfully",
+                    "deleted_llm_calls": deleted_count
+                }
+            else:
+                # LLM deleted but cleanup failed - log warning
+                return {
+                    "message": f"LLM model '{model_name}' deleted successfully, but token usage cleanup failed",
+                    "warning": f"Cleanup returned status {response.status_code}"
+                }
+    except Exception as e:
+        # LLM deleted but cleanup failed - log error
+        return {
+            "message": f"LLM model '{model_name}' deleted successfully, but token usage cleanup failed",
+            "error": str(e)
+        }
 
 @router.post("/llm-models/{model_id}/health-check/", response_model=HealthCheckResponse)
 async def health_check_llm_model(

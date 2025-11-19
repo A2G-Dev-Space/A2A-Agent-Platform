@@ -202,6 +202,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
       REDIS_URL: redis://redis:6379/4
       JWT_SECRET_KEY: local-dev-secret-key
+      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
     depends_on:
       postgres:
         condition: service_healthy

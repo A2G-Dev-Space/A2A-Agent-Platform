@@ -57,3 +57,36 @@ async def delete_agent_llm_calls(
         logger.error(f"Failed to delete records for agent_id={agent_id}: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/internal/llm-calls/model/{model_name:path}")
+async def delete_model_llm_calls(
+    model_name: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete all LLM call records for a specific model (Internal API - No Auth Required)
+
+    Called by Admin Service when an LLM is deleted to clean up real-time token usage records.
+    Worker-service snapshots are kept as-is (model name based, continues accumulating if same name is reused).
+    """
+    try:
+        # Delete LLM calls for this model
+        llm_delete_stmt = delete(LLMCall).where(LLMCall.model == model_name)
+        llm_result = await db.execute(llm_delete_stmt)
+
+        await db.commit()
+
+        deleted_count = llm_result.rowcount
+
+        logger.info(f"Deleted {deleted_count} LLM call records for model={model_name}")
+
+        return {
+            "message": f"Successfully deleted all LLM call records for model '{model_name}'",
+            "deleted_count": deleted_count
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to delete records for model={model_name}: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
