@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # - Token usage tracking by agent
 # - Trace events in Workbench UI
 PLATFORM_LLM_ENDPOINT = "http://localhost:9050/api/llm/trace/999c92a6-9468-4662-885c-fed69de0d95b/v1"
-PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490")
+PLATFORM_API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5" 
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration (Agno)")
@@ -197,7 +197,7 @@ def square_root(number: float) -> dict:
 
 
 # ======================== Create LLM Model Instance ========================
-def create_platform_llm(model_name: str = "qwen/qwen3-14b") -> OpenAILike:
+def create_platform_llm(model_name: str = "openai/gpt-oss-20b") -> OpenAILike:
     """
     Platform LLM Proxy를 사용하는 OpenAILike 인스턴스를 생성합니다.
 

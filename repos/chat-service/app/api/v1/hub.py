@@ -229,15 +229,17 @@ async def hub_chat_stream(
     # 5. Record agent call statistics
     await record_agent_call(request.agent_id, user_id, agent_status, token)
 
-    # 6. Branch based on framework
-    if framework == "Agno":
+    # 6. Branch based on framework (case-insensitive comparison)
+    framework_upper = framework.upper() if framework else "ADK"
+
+    if framework_upper.startswith("AGNO"):
         # Agno: Use content + selected_resource
         if not request.content:
             raise HTTPException(status_code=400, detail="content is required for Agno agents")
 
         return await _handle_agno_stream(request, agent_url, user_id, trace_id, session, db)
 
-    elif framework == "Langchain":
+    elif framework_upper.startswith("LANGCHAIN"):
         # Langchain: Use content
         if not request.content:
             raise HTTPException(status_code=400, detail="content is required for Langchain agents")
