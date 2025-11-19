@@ -45,7 +45,8 @@ class HubChatRequest(BaseModel):
     session_id: Optional[str] = None  # UUID of existing session or None for new
     messages: List[Message] = []  # For ADK framework
     content: Optional[str] = None  # For Agno framework
-    selected_resource: Optional[str] = None  # For Agno team routing
+    selected_resource: Optional[str] = None  # For Agno team/agent routing
+    selected_resource_type: Optional[str] = None  # 'team' or 'agent'
 
 
 # Use shared helper function
@@ -352,11 +353,18 @@ async def _handle_agno_stream(
     # Replace localhost with host.docker.internal for Docker network
     agent_url = agent_url.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal")
 
-    # Build Agno endpoint with team routing
-    if request.selected_resource:
-        team_id = request.selected_resource.replace("team_", "") if request.selected_resource.startswith("team_") else request.selected_resource
-        chat_endpoint = f"{agent_url.rstrip('/')}/teams/{team_id}/runs"
+    # Build Agno endpoint with team/agent routing
+    if request.selected_resource and request.selected_resource_type:
+        resource_id = request.selected_resource
+        if request.selected_resource_type == "team":
+            chat_endpoint = f"{agent_url.rstrip('/')}/teams/{resource_id}/runs"
+        elif request.selected_resource_type == "agent":
+            chat_endpoint = f"{agent_url.rstrip('/')}/agents/{resource_id}/runs"
+        else:
+            # Fallback to default runs endpoint
+            chat_endpoint = f"{agent_url.rstrip('/')}/runs"
     else:
+        # No resource selected - use default runs endpoint
         chat_endpoint = f"{agent_url.rstrip('/')}/runs"
 
     logger.info(f"[Hub] Agno endpoint: {chat_endpoint}")
@@ -413,13 +421,17 @@ async def _handle_agno_stream(
                         if line.startswith("data: "):
                             try:
                                 event_data = json.loads(line[6:])
-                                # Collect content based on mode (team vs agent)
+                                # Collect content based on resource type
                                 # Team mode: collect TeamRunContent only
                                 # Agent mode: collect RunContent only
-                                if request.selected_resource:  # Team mode
+                                if request.selected_resource_type == "team":
                                     if event_data.get("event") == "TeamRunContent" and event_data.get("content"):
                                         assistant_response += event_data.get("content", "")
-                                else:  # Agent mode
+                                elif request.selected_resource_type == "agent":
+                                    if event_data.get("event") == "RunContent" and event_data.get("content"):
+                                        assistant_response += event_data.get("content", "")
+                                else:
+                                    # Fallback: collect RunContent for backward compatibility
                                     if event_data.get("event") == "RunContent" and event_data.get("content"):
                                         assistant_response += event_data.get("content", "")
                             except:

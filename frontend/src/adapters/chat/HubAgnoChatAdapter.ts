@@ -93,7 +93,7 @@ export class HubAgnoChatAdapter implements ChatAdapter {
       throw new Error('Invalid adapter state');
     }
 
-    const { apiBaseUrl, accessToken, agentId, sessionId, selectedResource } = this.config;
+    const { apiBaseUrl, accessToken, agentId, sessionId, selectedResource, selectedResourceType } = this.config;
     const endpoint = `${apiBaseUrl}/api/hub/chat/stream`;
 
     // Build request body for Agno framework
@@ -102,6 +102,7 @@ export class HubAgnoChatAdapter implements ChatAdapter {
       session_id: sessionId || undefined,
       content: message.content,
       selected_resource: selectedResource,
+      selected_resource_type: selectedResourceType,
     };
 
     // Add conversation history as messages array
