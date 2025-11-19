@@ -236,6 +236,26 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
     }
   };
 
+  // Helper function to parse <think> tags from content
+  const parseThinkingContent = (content: string): { content: string; reasoningContent?: string } => {
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+    const thinkMatches: string[] = [];
+    let match;
+
+    // Extract all <think> blocks
+    while ((match = thinkRegex.exec(content)) !== null) {
+      thinkMatches.push(match[1].trim());
+    }
+
+    // Remove <think> blocks from content
+    const cleanContent = content.replace(thinkRegex, '').trim();
+
+    return {
+      content: cleanContent,
+      reasoningContent: thinkMatches.length > 0 ? thinkMatches.join('\n\n') : undefined,
+    };
+  };
+
   const loadSessionMessages = async (sessionId: string) => {
     if (!accessToken) return;
 
@@ -249,10 +269,22 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
 
       if (response.ok) {
         const data = await response.json();
-        const loadedMessages = (data.messages || []).map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }));
+        const loadedMessages = (data.messages || []).map((msg: any) => {
+          // Parse <think> tags from assistant messages
+          if (msg.role === 'assistant' && msg.content) {
+            const parsed = parseThinkingContent(msg.content);
+            return {
+              ...msg,
+              content: parsed.content,
+              reasoningContent: parsed.reasoningContent,
+              timestamp: new Date(msg.timestamp),
+            };
+          }
+          return {
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          };
+        });
         setMessages(loadedMessages);
         console.log('[HubChatAgno] Loaded messages:', loadedMessages.length);
 
