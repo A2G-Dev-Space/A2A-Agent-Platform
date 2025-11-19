@@ -413,9 +413,15 @@ async def _handle_agno_stream(
                         if line.startswith("data: "):
                             try:
                                 event_data = json.loads(line[6:])
-                                # Collect content from TeamRunContent or RunContent for DB storage
-                                if (event_data.get("event") == "TeamRunContent" or event_data.get("event") == "RunContent") and event_data.get("content"):
-                                    assistant_response += event_data.get("content", "")
+                                # Collect content based on mode (team vs agent)
+                                # Team mode: collect TeamRunContent only
+                                # Agent mode: collect RunContent only
+                                if request.selected_resource:  # Team mode
+                                    if event_data.get("event") == "TeamRunContent" and event_data.get("content"):
+                                        assistant_response += event_data.get("content", "")
+                                else:  # Agent mode
+                                    if event_data.get("event") == "RunContent" and event_data.get("content"):
+                                        assistant_response += event_data.get("content", "")
                             except:
                                 pass
 

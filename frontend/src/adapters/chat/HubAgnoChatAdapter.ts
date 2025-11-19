@@ -176,11 +176,8 @@ export class HubAgnoChatAdapter implements ChatAdapter {
     }
 
     if (event.type === 'stream_end') {
-      callbacks.onComplete?.({
-        content: this.streamingMessageBuffer,
-        timestamp: new Date(),
-        reasoningContent: this.reasoningBuffer || undefined,
-      });
+      // Stream ended - completion is handled by TeamRunCompleted/RunCompleted events
+      // Don't call onComplete here to avoid duplicate messages
       return;
     }
 

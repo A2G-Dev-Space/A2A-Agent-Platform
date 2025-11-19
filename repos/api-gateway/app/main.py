@@ -221,24 +221,64 @@ async def proxy_request(request: Request, service_url: str, path: str):
     logger.info("=" * 80)
 
     try:
-        # Make the request to the backend service
-        response = await http_client.request(
-            method=request.method,
-            url=target_url,
-            params=query_params,
-            headers=headers,
-            content=body
-        )
+        # Check if this is an SSE request (for real-time streaming)
+        accept_header = headers.get("accept", "")
+        is_sse = "text/event-stream" in accept_header or path.endswith("/stream")
 
-        logger.info(f"[API Gateway] Response received: status={response.status_code}, content-type={response.headers.get('content-type')}")
+        if is_sse:
+            logger.info(f"[API Gateway] Detected SSE request, using streaming proxy")
 
-        # Return the response
-        return StreamingResponse(
-            content=response.iter_bytes(),
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            media_type=response.headers.get("content-type", "application/json")
-        )
+            # For SSE, use streaming to avoid buffering
+            async def stream_sse():
+                async with http_client.stream(
+                    method=request.method,
+                    url=target_url,
+                    params=query_params,
+                    headers=headers,
+                    content=body
+                ) as response:
+                    logger.info(f"[API Gateway] SSE stream started: status={response.status_code}")
+
+                    # Check status code
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        logger.error(f"[API Gateway] SSE error: {error_text.decode()}")
+                        yield f"data: {json.dumps({'error': error_text.decode()})}\n\n".encode()
+                        return
+
+                    # Yield response line by line for SSE
+                    async for line in response.aiter_lines():
+                        # Add newline to each line and encode
+                        yield f"{line}\n".encode()
+
+            return StreamingResponse(
+                content=stream_sse(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"
+                }
+            )
+        else:
+            # For non-SSE requests, use regular request
+            response = await http_client.request(
+                method=request.method,
+                url=target_url,
+                params=query_params,
+                headers=headers,
+                content=body
+            )
+
+            logger.info(f"[API Gateway] Response received: status={response.status_code}, content-type={response.headers.get('content-type')}")
+
+            # Return the response
+            return StreamingResponse(
+                content=response.iter_bytes(),
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.headers.get("content-type", "application/json")
+            )
 
     except httpx.TimeoutException:
         logger.error(f"Timeout while proxying to {target_url}")
