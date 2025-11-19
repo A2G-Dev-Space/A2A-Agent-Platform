@@ -568,48 +568,6 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
                     )}
 
                     <div className="flex-1">
-                      {/* Show reasoning content if exists for assistant messages */}
-                      {message.role === 'assistant' && message.reasoningContent && (
-                        <div className="mb-4">
-                          <button
-                            onClick={() => {
-                              setExpandedThinking((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(message.id)) {
-                                  next.delete(message.id);
-                                } else {
-                                  next.add(message.id);
-                                }
-                                return next;
-                              });
-                            }}
-                            className="flex items-center gap-2 text-sm mb-2"
-                            style={{
-                              color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280',
-                            }}
-                          >
-                            {expandedThinking.has(message.id) ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                            <span>Chain of Thought</span>
-                          </button>
-                          {expandedThinking.has(message.id) && (
-                            <div className="p-4 rounded-lg text-sm"
-                              style={{
-                                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(147, 51, 234, 0.1)' : '#faf5ff',
-                                borderLeft: '3px solid',
-                                borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#a855f7' : '#9333ea',
-                                color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e0e7ff' : '#4c1d95',
-                              }}
-                            >
-                              <MessageContent content={message.reasoningContent} contentType="markdown" />
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       <div className={`p-4 rounded-lg prose prose-slate dark:prose-invert prose-p:my-2 prose-headings:my-3 max-w-none ${
                         message.role === 'user' ? 'rounded-br-none' : 'rounded-tl-none'
                       }`}
