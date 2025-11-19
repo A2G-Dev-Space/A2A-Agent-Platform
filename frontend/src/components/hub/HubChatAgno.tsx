@@ -255,6 +255,15 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
         }));
         setMessages(loadedMessages);
         console.log('[HubChatAgno] Loaded messages:', loadedMessages.length);
+
+        // Auto-expand all thinking sections in loaded messages
+        const messageIdsWithReasoning = loadedMessages
+          .filter((msg: Message) => msg.role === 'assistant' && msg.reasoningContent)
+          .map((msg: Message) => msg.id);
+
+        if (messageIdsWithReasoning.length > 0) {
+          setExpandedThinking(new Set(messageIdsWithReasoning));
+        }
       }
     } catch (error) {
       console.error('[HubChatAgno] Failed to load messages:', error);
@@ -362,16 +371,27 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
             }
           },
           onComplete: (response) => {
+            const messageId = `msg-${Date.now()}`;
             setMessages((prev) => [
               ...prev,
               {
-                id: `msg-${Date.now()}`,
+                id: messageId,
                 role: 'assistant',
                 content: response.content,
                 timestamp: response.timestamp,
                 reasoningContent: response.reasoningContent,
               },
             ]);
+
+            // Auto-expand thinking section if reasoning content exists
+            if (response.reasoningContent) {
+              setExpandedThinking((prev) => {
+                const next = new Set(prev);
+                next.delete('streaming'); // Remove streaming id
+                next.add(messageId); // Add completed message id
+                return next;
+              });
+            }
 
             setStreamingMessage('');
             setStreamingReasoning('');
