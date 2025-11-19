@@ -35,9 +35,82 @@ check_docker_compose() {
     echo "✅ Docker Compose is available: $DOCKER_COMPOSE"
 }
 
+# Function to apply HOST_IP configuration
+apply_host_configuration() {
+    # Load HOST_IP from repos/infra/.env
+    if [ -f "repos/infra/.env" ]; then
+        export $(grep HOST_IP repos/infra/.env | xargs)
+        echo "📌 Using HOST_IP: ${HOST_IP:-localhost}"
+    else
+        echo "⚠️  repos/infra/.env not found, using default: localhost"
+        HOST_IP="localhost"
+    fi
+
+    # Update all configuration files with HOST_IP
+    echo "🔧 Applying HOST_IP configuration..."
+
+    # Update frontend/.env
+    if [ -f "frontend/.env" ]; then
+        sed -i "s/^VITE_HOST_IP=.*/VITE_HOST_IP=${HOST_IP}/" frontend/.env
+        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" frontend/.env
+    else
+        echo "VITE_HOST_IP=${HOST_IP}" > frontend/.env
+        echo "VITE_GATEWAY_PORT=9050" >> frontend/.env
+        echo "VITE_API_URL=/api" >> frontend/.env
+        echo "# Internal network - no proxy needed" >> frontend/.env
+        echo "HTTP_PROXY=" >> frontend/.env
+        echo "HTTPS_PROXY=" >> frontend/.env
+        echo "NO_PROXY=localhost,127.0.0.1,*.local,${HOST_IP},10.*,172.*,192.168.*" >> frontend/.env
+    fi
+
+    # Update vite.config.ts
+    if [ -f "frontend/vite.config.ts" ]; then
+        sed -i "s|http://[0-9.]*:9050|http://${HOST_IP}:9050|g" frontend/vite.config.ts
+        sed -i "s|ws://[0-9.]*:9050|ws://${HOST_IP}:9050|g" frontend/vite.config.ts
+    fi
+
+    # Update all backend service config files
+    echo "   Updating backend service configurations..."
+    for service in user-service agent-service chat-service tracing-service admin-service
+    do
+        config_file="repos/${service}/app/core/config.py"
+        if [ -f "$config_file" ]; then
+            # Replace hardcoded IPs in CORS origins
+            sed -i "s/172\.26\.110\.192/${HOST_IP}/g" "$config_file"
+            # Replace in SSO settings if exists
+            sed -i "s|http://172\.26\.110\.192:9999|http://${HOST_IP}:9999|g" "$config_file"
+            sed -i "s|http://172\.26\.110\.192:9050|http://${HOST_IP}:9050|g" "$config_file"
+            echo "   ✓ Updated ${service}"
+        fi
+    done
+
+    # Update API Gateway config
+    if [ -f "repos/api-gateway/app/config.py" ]; then
+        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/api-gateway/app/config.py
+        echo "   ✓ Updated api-gateway config"
+    fi
+    if [ -f "repos/api-gateway/app/main.py" ]; then
+        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/api-gateway/app/main.py
+        echo "   ✓ Updated api-gateway main"
+    fi
+
+    # Update LLM Proxy service
+    if [ -f "repos/llm-proxy-service/app/main.py" ]; then
+        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/llm-proxy-service/app/main.py
+        echo "   ✓ Updated llm-proxy-service"
+    fi
+
+    # Update docker-compose environment
+    export HOST_IP
+    export GATEWAY_PORT=${GATEWAY_PORT:-9050}
+
+    echo "✅ Configuration applied"
+}
+
 # Main execution
 check_docker
 check_docker_compose
+apply_host_configuration
 
 # Parse arguments
 MODE=${1:-start}
@@ -232,8 +305,8 @@ case $MODE in
         echo ""
         echo "📌 Next steps:"
         echo "   1. Start frontend: cd frontend && npm install && npm run dev"
-        echo "   2. Access platform: http://localhost:9060"
-        echo "   3. Mock SSO: http://localhost:9050/mock-sso"
+        echo "   2. Access platform: http://${HOST_IP}:9060"
+        echo "   3. Mock SSO: http://${HOST_IP}:9050/mock-sso"
         echo ""
 
         exit 0
@@ -392,8 +465,8 @@ echo ""
 echo "🔍 Checking service health..."
 
 # Check API Gateway
-if curl -s -o /dev/null -w "%{http_code}" http://localhost:9050/health | grep -q "200"; then
-    echo "✅ API Gateway is healthy at http://localhost:9050"
+if curl -s -o /dev/null -w "%{http_code}" http://${HOST_IP}:9050/health | grep -q "200"; then
+    echo "✅ API Gateway is healthy at http://${HOST_IP}:9050"
 else
     echo "⚠️  API Gateway is not ready yet. It may take a few more seconds."
 fi
@@ -416,9 +489,9 @@ echo ""
 echo "🎉 Development environment is starting!"
 echo ""
 echo "📌 Service URLs:"
-echo "   - Frontend:    http://localhost:9060 (run: cd frontend && npm install && npm run dev)"
-echo "   - API Gateway: http://localhost:9050"
-echo "   - Mock SSO:    http://localhost:9050/mock-sso"
+echo "   - Frontend:    http://${HOST_IP}:9060 (run: cd frontend && npm install && npm run dev)"
+echo "   - API Gateway: http://${HOST_IP}:9050"
+echo "   - Mock SSO:    http://${HOST_IP}:9050/mock-sso"
 echo ""
 echo "📝 To view logs: cd repos/infra && $DOCKER_COMPOSE -f docker-compose.yml logs -f [service-name]"
 echo "📝 To stop all: ./start.sh stop"

@@ -206,13 +206,16 @@ async def get_agent_card(
 
 
     # Override URL to point to this platform (use full agent_name, not base_name)
-    agent_card["url"] = f"http://localhost:9050/api/v1/a2a/{agent_name}"
+    import os
+    gateway_host = os.getenv("GATEWAY_HOST", "localhost")
+    gateway_port = os.getenv("GATEWAY_PORT", "9050")
+    agent_card["url"] = f"http://{gateway_host}:{gateway_port}/api/v1/a2a/{agent_name}"
 
     # Add provider info
     if "provider" not in agent_card:
         agent_card["provider"] = {
             "organization": "A2G Platform",
-            "url": "http://localhost:9050"
+            "url": f"http://{gateway_host}:{gateway_port}"
         }
 
     # For Agno sub-endpoints, customize name and description with real-time data

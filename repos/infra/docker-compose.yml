@@ -102,8 +102,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: local-dev-secret-key
-      IDP_ENTITY_ID: http://localhost:9999/mock-sso/login
-      SP_REDIRECT_URL: http://localhost:9050/api/auth/callback/
+      IDP_ENTITY_ID: http://${HOST_IP:-localhost}:9999/mock-sso/login
+      SP_REDIRECT_URL: http://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/api/auth/callback/
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,6 +130,8 @@ services:
       REDIS_URL: redis://redis:6379/1
       JWT_SECRET_KEY: local-dev-secret-key
       OPENAI_API_KEY: ${OPENAI_API_KEY:-your-api-key}
+      GATEWAY_HOST: ${HOST_IP:-localhost}
+      GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -155,6 +157,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/chat_service_db
       REDIS_URL: redis://redis:6379/2
       JWT_SECRET_KEY: local-dev-secret-key
+      GATEWAY_HOST: ${HOST_IP:-localhost}
+      GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -314,7 +318,7 @@ services:
       GOOGLE_API_KEY: AIzaSyDXVahR7moDwJep7GHRmxzagzVEVF_a_Gc
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
-      CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-http://localhost:8000/v1}
+      CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-http://${HOST_IP:-localhost}:8000/v1}
     depends_on:
       postgres:
         condition: service_healthy

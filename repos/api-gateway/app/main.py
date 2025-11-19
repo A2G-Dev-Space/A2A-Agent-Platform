@@ -106,9 +106,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:9060",  # Frontend dev server
+        "http://10.229.95.228:9060",  # Frontend dev server
+        "http://10.229.95.228:9050",  # Production frontend
+        "https://10.229.95.228:9050",
+        "http://localhost:9060",  # Frontend dev server (localhost fallback)
         "http://localhost:9061",  # Frontend dev server (alternate port)
-        "http://localhost:9050",  # Production frontend
+        "http://localhost:9050",  # Production frontend (localhost fallback)
         "https://localhost:9050",
     ],
     allow_credentials=True,

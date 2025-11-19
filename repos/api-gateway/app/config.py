@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     gateway_host: str = "0.0.0.0"
     environment: str = "development"
 
-    # Service URLs (using localhost for local development)
+    # Service URLs (using environment variable or default to HOST_IP from infra/.env)
+    # These are overridden by docker-compose.yml environment variables
     user_service_url: str = "http://localhost:8001"
     agent_service_url: str = "http://localhost:8002"
     chat_service_url: str = "http://localhost:8003"
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
 
     # CORS settings
     cors_origins: list = [
+        "http://10.229.95.228:9060",
+        "http://10.229.95.228:9050",
+        "https://10.229.95.228:9050",
         "http://localhost:9060",
         "http://localhost:9050",
         "https://localhost:9050",
