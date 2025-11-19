@@ -122,6 +122,26 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
     }
   };
 
+  // Helper function to parse <think> tags from content
+  const parseThinkingContent = (content: string): { content: string; reasoningContent?: string } => {
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+    const thinkMatches: string[] = [];
+    let match;
+
+    // Extract all <think> blocks
+    while ((match = thinkRegex.exec(content)) !== null) {
+      thinkMatches.push(match[1].trim());
+    }
+
+    // Remove <think> blocks from content
+    const cleanContent = content.replace(thinkRegex, '').trim();
+
+    return {
+      content: cleanContent,
+      reasoningContent: thinkMatches.length > 0 ? thinkMatches.join('\n\n') : undefined,
+    };
+  };
+
   const loadSessionMessages = async (sessionId: string) => {
     if (!accessToken) return;
 
@@ -137,12 +157,33 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
         const data = await response.json();
         const loadedMessages = (data.messages || [])
           .filter((msg: any) => msg.role !== 'system') // Filter out system messages
-          .map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp),
-          }));
+          .map((msg: any) => {
+            // Parse <think> tags from assistant messages
+            if (msg.role === 'assistant' && msg.content) {
+              const parsed = parseThinkingContent(msg.content);
+              return {
+                ...msg,
+                content: parsed.content,
+                reasoningContent: parsed.reasoningContent,
+                timestamp: new Date(msg.timestamp),
+              };
+            }
+            return {
+              ...msg,
+              timestamp: new Date(msg.timestamp),
+            };
+          });
         setMessages(loadedMessages);
         console.log('[HubChatLangchain] Loaded messages:', loadedMessages.length);
+
+        // Auto-expand all thinking sections in loaded messages
+        const messageIdsWithReasoning = loadedMessages
+          .filter((msg: Message) => msg.role === 'assistant' && msg.reasoningContent)
+          .map((msg: Message) => msg.id);
+
+        if (messageIdsWithReasoning.length > 0) {
+          setExpandedThinking(new Set(messageIdsWithReasoning));
+        }
       }
     } catch (error) {
       console.error('[HubChatLangchain] Failed to load messages:', error);
