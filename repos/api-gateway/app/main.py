@@ -17,7 +17,7 @@ from datetime import datetime
 from app.websocket_proxy import proxy_websocket
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Service routing configuration
@@ -51,6 +51,7 @@ SERVICE_ROUTES = {
 
     # Other Services
     '/api/agents': os.getenv('AGENT_SERVICE_URL', 'http://agent-service:8002'),
+    '/api/hub': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),  # Hub endpoints (deployed agents)
     '/api/workbench': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),  # Workbench endpoints
     '/api/chat': os.getenv('CHAT_SERVICE_URL', 'http://chat-service:8003'),
     '/api/tracing': os.getenv('TRACING_SERVICE_URL', 'http://tracing-service:8004'),
@@ -220,24 +221,93 @@ async def proxy_request(request: Request, service_url: str, path: str):
     logger.info("=" * 80)
 
     try:
-        # Make the request to the backend service
-        response = await http_client.request(
-            method=request.method,
-            url=target_url,
-            params=query_params,
-            headers=headers,
-            content=body
-        )
+        # Check if this is an SSE request (for real-time streaming)
+        accept_header = headers.get("accept", "")
+        is_sse = "text/event-stream" in accept_header or path.endswith("/stream")
 
-        logger.info(f"[API Gateway] Response received: status={response.status_code}, content-type={response.headers.get('content-type')}")
+        logger.info(f"[API Gateway] SSE Check: accept_header={accept_header}, path={path}, is_sse={is_sse}")
 
-        # Return the response
-        return StreamingResponse(
-            content=response.iter_bytes(),
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            media_type=response.headers.get("content-type", "application/json")
-        )
+        if is_sse:
+            # Check the framework from the custom header
+            agent_framework = headers.get("x-agent-framework", "").lower()
+            logger.info(f"[API Gateway] Detected SSE request, framework: {agent_framework or 'unknown'}")
+
+            # For SSE, use streaming to avoid buffering
+            async def stream_sse():
+                async with http_client.stream(
+                    method=request.method,
+                    url=target_url,
+                    params=query_params,
+                    headers=headers,
+                    content=body
+                ) as response:
+                    logger.info(f"[API Gateway] SSE stream started: status={response.status_code}")
+
+                    # Check status code
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        logger.error(f"[API Gateway] SSE error: {error_text.decode()}")
+                        yield f"data: {json.dumps({'error': error_text.decode()})}\n\n".encode()
+                        return
+
+                    # Different streaming strategies based on framework
+                    if agent_framework == "langchain":
+                        # Langchain: Use line-based streaming for complete SSE events
+                        # This ensures JSON events are not split mid-stream
+                        logger.info("[API Gateway] Using line-based streaming for Langchain")
+                        line_count = 0
+                        try:
+                            async for line in response.aiter_lines():
+                                line_count += 1
+                                logger.debug(f"[API Gateway] Langchain line #{line_count}: {line[:100]}")
+                                # Add newline to each line and encode
+                                yield f"{line}\n".encode()
+                                # Force flush after each line for real-time streaming
+                                await asyncio.sleep(0)  # This allows other tasks to run
+                            logger.info(f"[API Gateway] Langchain streaming completed: {line_count} lines")
+                        except Exception as e:
+                            logger.error(f"[API Gateway] Error in Langchain streaming: {e}")
+                            raise
+                    else:
+                        # Agno and others: Use line-based streaming
+                        # Works well for complete JSON events with newlines
+                        logger.info(f"[API Gateway] Using line-based streaming for {agent_framework or 'default'}")
+                        line_count = 0
+                        async for line in response.aiter_lines():
+                            line_count += 1
+                            logger.debug(f"[API Gateway] Line #{line_count}: {line[:100]}")
+                            # Add newline to each line and encode
+                            yield f"{line}\n".encode()
+                        logger.info(f"[API Gateway] Line-based streaming completed: {line_count} lines")
+
+            return StreamingResponse(
+                content=stream_sse(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"
+                }
+            )
+        else:
+            # For non-SSE requests, use regular request
+            response = await http_client.request(
+                method=request.method,
+                url=target_url,
+                params=query_params,
+                headers=headers,
+                content=body
+            )
+
+            logger.info(f"[API Gateway] Response received: status={response.status_code}, content-type={response.headers.get('content-type')}")
+
+            # Return the response
+            return StreamingResponse(
+                content=response.iter_bytes(),
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.headers.get("content-type", "application/json")
+            )
 
     except httpx.TimeoutException:
         logger.error(f"Timeout while proxying to {target_url}")

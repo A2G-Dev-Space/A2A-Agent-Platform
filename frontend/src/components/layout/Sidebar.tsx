@@ -147,11 +147,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onMobileClose }
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.to);
             const colorConfig = getModeColors(item.mode, isActive);
+
+            const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+              // If already on this route, force a re-navigation to trigger useEffect
+              if (location.pathname === item.to) {
+                e.preventDefault();
+                navigate(item.to, { replace: true });
+              }
+              onMobileClose?.();
+            };
+
             return (
               <NavLink
                 key={item.to}
                 to={item.to}
-                onClick={onMobileClose}
+                onClick={handleClick}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg ${colorConfig.className}`}
                 style={colorConfig.style}
               >

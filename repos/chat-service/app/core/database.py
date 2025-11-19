@@ -64,6 +64,8 @@ class HubSession(Base):
     messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=[])
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_message_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    session_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 async def init_db():
     """Initialize database"""

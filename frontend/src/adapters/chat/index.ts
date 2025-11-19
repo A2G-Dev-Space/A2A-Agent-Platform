@@ -6,6 +6,9 @@ export { ChatAdapterFactory } from './ChatAdapterFactory';
 export { ADKChatAdapter } from './ADKChatAdapter';
 export { AgnoChatAdapter } from './AgnoChatAdapter';
 export { LangchainChatAdapter } from './LangchainChatAdapter';
+export { HubADKChatAdapter } from './HubADKChatAdapter';
+export { HubAgnoChatAdapter } from './HubAgnoChatAdapter';
+export { HubLangchainChatAdapter } from './HubLangchainChatAdapter';
 export type {
   ChatAdapter,
   ChatAdapterConfig,

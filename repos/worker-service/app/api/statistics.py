@@ -324,6 +324,34 @@ async def get_historical_trends(
 
             token_usage_trend[agent_id]["data"] = padded_data
 
+        # Extract unique agents and models from snapshots for dropdown filters
+        unique_agents = {}
+        unique_models = set()
+
+        for snapshot in snapshots:
+            # Extract unique agents from agent_token_usage
+            if snapshot.agent_token_usage:
+                for trace_id, usage in snapshot.agent_token_usage.items():
+                    if trace_id not in unique_agents:
+                        unique_agents[trace_id] = {
+                            "trace_id": trace_id,
+                            "agent_id": usage.get("agent_id"),
+                            "agent_name": usage.get("display_name", usage.get("name", f"Agent {trace_id}")),
+                            "owner_id": usage.get("owner_id")
+                        }
+
+            # Extract unique models from model_usage_stats
+            if snapshot.model_usage_stats:
+                for model_stat in snapshot.model_usage_stats:
+                    unique_models.add((model_stat["model"], model_stat["provider"]))
+
+        # Convert to list for JSON serialization
+        available_agents = list(unique_agents.values())
+        available_models = [
+            {"model": model, "provider": provider}
+            for model, provider in sorted(unique_models)
+        ]
+
         return {
             "period": period,
             "start_date": start_date.isoformat(),
@@ -331,7 +359,9 @@ async def get_historical_trends(
             "user_trend": padded_user_trend,
             "agent_trend": padded_agent_trend,
             "token_usage_trend": token_usage_trend,
-            "top_k": top_k
+            "top_k": top_k,
+            "available_agents": available_agents,
+            "available_models": available_models
         }
 
     except Exception as e:

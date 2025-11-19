@@ -431,7 +431,8 @@
       "copyCode": "Copy code",
       "copied": "Copied!",
       "copy": "Copy",
-      "image": "Image"
+      "image": "Image",
+      "waitingForResponse": "Waiting for agent's respond..."
     }
   }
 }

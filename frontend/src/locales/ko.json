@@ -431,7 +431,8 @@
       "copyCode": "코드 복사",
       "copied": "복사됨!",
       "copy": "복사",
-      "image": "이미지"
+      "image": "이미지",
+      "waitingForResponse": "에이전트 응답 대기 중..."
     }
   }
 }

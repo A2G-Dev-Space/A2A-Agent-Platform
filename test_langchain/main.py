@@ -25,9 +25,9 @@ import json
 from typing import AsyncGenerator
 
 # Configuration
-API_KEY = "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490"
+API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
 TRACE_ENDPOINT = "http://localhost:9050/api/llm/trace/b8f5b410-1cf5-4b61-84e8-7a9d9f126aae/v1"
-MODEL_NAME = "qwen/qwen3-14b"
+MODEL_NAME = "openai/gpt-oss-20b"
 
 app = FastAPI(
     title="Test LangChain Agent",
@@ -119,6 +119,12 @@ async def stream(request: ChatRequest):
     """
     async def generate() -> AsyncGenerator[str, None]:
         try:
+            import time
+            import asyncio
+
+            print(f"\n[Langchain Agent] Stream request received at {time.time()}")
+            print(f"[Langchain Agent] Input: {request.input[:100]}...")
+
             llm = get_llm(streaming=True)
 
             messages = [
@@ -127,19 +133,47 @@ async def stream(request: ChatRequest):
             ]
 
             # Stream the response
+            chunk_count = 0
+            total_content = ""
+            start_time = time.time()
+            last_chunk_time = start_time
+
+            print(f"[Langchain Agent] Starting to stream from LLM...")
             async for chunk in llm.astream(messages):
+                chunk_count += 1
+                current_time = time.time()
+                time_since_last = current_time - last_chunk_time
+
                 if chunk.content:
+                    total_content += chunk.content
+                    print(f"[Langchain Agent] Chunk #{chunk_count} at {current_time:.3f} (+{time_since_last:.3f}s): '{chunk.content}' ({len(chunk.content)} chars)")
+
                     data = {
                         "content": chunk.content,
                         "model": MODEL_NAME,
                         "trace_id": TRACE_ENDPOINT.split("/")[-2]
                     }
-                    yield f"data: {json.dumps(data)}\n\n"
+                    sse_line = f"data: {json.dumps(data)}\n\n"
+                    print(f"[Langchain Agent] Yielding SSE line: {sse_line[:100]}...")
+                    yield sse_line
+
+                    # Force flush to ensure immediate sending
+                    await asyncio.sleep(0)  # Yield control to allow event loop to send data
+
+                    last_chunk_time = current_time
+                else:
+                    print(f"[Langchain Agent] Chunk #{chunk_count} at {current_time:.3f}: Empty content")
 
             # Send done signal
+            total_time = time.time() - start_time
+            print(f"[Langchain Agent] Stream complete: {chunk_count} chunks, {len(total_content)} chars, {total_time:.2f}s")
+            print(f"[Langchain Agent] Sending [DONE] signal")
             yield "data: [DONE]\n\n"
 
         except Exception as e:
+            print(f"[Langchain Agent] Error during streaming: {e}")
+            import traceback
+            traceback.print_exc()
             error_data = {"error": str(e)}
             yield f"data: {json.dumps(error_data)}\n\n"
 

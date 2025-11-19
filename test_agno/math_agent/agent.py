@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # - Token usage tracking by agent
 # - Trace events in Workbench UI
 PLATFORM_LLM_ENDPOINT = "http://localhost:9050/api/llm/trace/c285a23a-88fc-4bfc-9741-714f8ac0aade/v1"
-PLATFORM_API_KEY = os.getenv("PLATFORM_API_KEY", "a2g_75a669be0d569905e08cf51b53ff3f8723a0027a6db653706a0a6dd8f07f5490")
+PLATFORM_API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration (Agno)")

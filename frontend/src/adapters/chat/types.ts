@@ -51,6 +51,11 @@ export interface ChatAdapterConfig {
   sessionId?: string; // Optional for workbench mode
   selectedResource?: string; // Optional team/agent ID for Agno framework
   selectedResourceType?: 'team' | 'agent'; // Resource type for Agno framework
+  chatEndpoint?: string; // Optional custom chat endpoint (defaults to /api/workbench/chat/stream)
+  // Langchain-specific configuration
+  requestSchema?: string; // JSON template for request body (e.g., '{"input": "{{message}}"}')
+  responseFormat?: 'sse' | 'json'; // Response format: SSE streaming or JSON blocking
+  messagePathInResponse?: string; // Path to extract message from JSON response (e.g., 'output')
 }
 
 /**

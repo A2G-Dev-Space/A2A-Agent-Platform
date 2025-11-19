@@ -172,10 +172,6 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   const preprocessContent = (text: string): string => {
     let processed = text;
 
-    // Wrap \boxed{...} with $ delimiters if not already wrapped
-    // This ensures LaTeX \boxed command is properly rendered
-    processed = processed.replace(/(?<!\$)\\boxed\{([^}]+)\}(?!\$)/g, '$\\boxed{$1}$');
-
     // Split by lines and process each line
     const lines = processed.split('\n');
     const processedLines = lines.map(line => {

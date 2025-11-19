@@ -22,8 +22,9 @@ import logging
 import json
 from uuid import uuid4
 
-from app.core.database import get_db, Agent, AgentStatus, AgentFramework
+from app.core.database import get_db, Agent, AgentStatus, AgentFramework, AgentCallStatistics
 from app.a2a.adapters import get_framework_adapter
+from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -398,6 +399,24 @@ async def agent_message_endpoint(
     # 3. Check access control (TODO: implement with API Key)
     # For now, allow all access
     logger.info(f"[A2A Router] Request to agent '{agent_name}' (visibility: {agent.visibility})")
+
+    # 3.5. Record agent call statistics
+    user_id = user_info.get("username", "anonymous") if user_info else "anonymous"
+    try:
+        stat = AgentCallStatistics(
+            agent_id=agent.id,
+            user_id=user_id,
+            call_type="a2a_router",
+            agent_status=agent.status.value,
+            called_at=datetime.utcnow()
+        )
+        db.add(stat)
+        await db.commit()
+        logger.info(f"[A2A Router] Recorded agent call: agent={agent.id}, user={user_id}")
+    except Exception as e:
+        logger.error(f"[A2A Router] Failed to record agent call: {e}")
+        # Don't fail the request if statistics recording fails
+        await db.rollback()
 
     # 4. Get framework adapter
     try:

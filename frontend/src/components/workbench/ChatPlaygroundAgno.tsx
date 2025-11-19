@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Send, User, Bot, Settings, ChevronUp, ChevronDown, Copy, Check, HelpCircle, Globe, BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { type Agent, AgentFramework, AgentStatus } from '@/types';
+import { type Agent, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
 import { getPlatformLlmEndpointUrl } from '@/utils/trace';
 import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
@@ -85,7 +85,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
     return [];
   });
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false);
+  // const [showAgnoGuidePopup, setShowAgnoGuidePopup] = useState(false); // TODO: Implement guide popup
 
   // Available LLMs (healthy & active)
   const [availableLlms, setAvailableLlms] = useState<Array<{ id: number; name: string; provider: string }>>([]);
@@ -385,7 +385,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
       };
 
       setMessages((prev) => [...prev, systemEventsMessage]);
-      setExpandedSystemMessages((prev) => new Set(prev).add(systemEventsMessageId));
+      setExpandedSystemMessages((prev) => new Set(prev).add(systemEventsMessageId!));
     }
 
     try {
