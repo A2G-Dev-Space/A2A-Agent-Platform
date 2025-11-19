@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: dev_password
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -25,7 +25,7 @@ services:
     image: redis:7-alpine
     container_name: a2g-redis
     ports:
-      - "6379:6379"
+      - "16379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -42,7 +42,7 @@ services:
     image: python:3.11-slim
     container_name: a2g-mock-sso
     ports:
-      - "9999:9999"
+      - "0.0.0.0:9999:9999"  # 모든 IP에서 접근 가능
     volumes:
       - ./mock-sso:/app
     working_dir: /app
@@ -59,7 +59,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-api-gateway
     ports:
-      - "9050:9050"
+      - "0.0.0.0:9050:9050"  # 모든 IP에서 접근 가능 (또는 특정 IP: "192.168.1.100:9050:9050")
     environment:
       GATEWAY_PORT: 9050
       GATEWAY_HOST: 0.0.0.0
@@ -97,7 +97,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-user-service
     ports:
-      - "8001:8001"
+      - "0.0.0.0:8001:8001"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
@@ -124,7 +124,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-agent-service
     ports:
-      - "8002:8002"
+      - "0.0.0.0:8002:8002"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/agent_service_db
       REDIS_URL: redis://redis:6379/1
@@ -150,7 +150,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-chat-service
     ports:
-      - "8003:8003"
+      - "0.0.0.0:8003:8003"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/chat_service_db
       REDIS_URL: redis://redis:6379/2
@@ -175,7 +175,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-tracing-service
     ports:
-      - "8004:8004"
+      - "0.0.0.0:8004:8004"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/tracing_service_db
       REDIS_URL: redis://redis:6379/3
@@ -197,7 +197,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-admin-service
     ports:
-      - "8005:8005"
+      - "0.0.0.0:8005:8005"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
       REDIS_URL: redis://redis:6379/4
@@ -303,7 +303,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-llm-proxy
     ports:
-      - "8006:8006"
+      - "0.0.0.0:8006:8006"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/llm_proxy_db
       ADMIN_SERVICE_URL: http://admin-service:8005
