@@ -75,6 +75,29 @@ class LLMHealthStatus(Base):
     # Active status (updated based on health checks)
     is_active = Column(Boolean, default=True)
 
+class AgentHealthStatus(Base):
+    """Track Agent health status over time"""
+    __tablename__ = "agent_health_status"
+
+    id = Column(Integer, primary_key=True, index=True)
+    agent_id = Column(Integer, nullable=False, index=True)
+    agent_name = Column(String, nullable=False)
+    framework = Column(String, nullable=False)  # ADK, Agno, Langchain(custom)
+    endpoint_url = Column(String, nullable=False)
+
+    # Health check results
+    is_healthy = Column(Boolean, default=True)
+    response_time_ms = Column(Float, nullable=True)
+    error_message = Column(String, nullable=True)
+
+    # Status tracking
+    consecutive_failures = Column(Integer, default=0)
+    last_healthy_at = Column(DateTime, nullable=True)
+    checked_at = Column(DateTime, default=datetime.utcnow)
+
+    # Active status (updated based on health checks)
+    is_active = Column(Boolean, default=True)
+
 async def init_db():
     """Initialize database tables"""
     async with engine.begin() as conn:

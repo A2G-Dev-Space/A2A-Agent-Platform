@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { agentService, type AgentSearchResponse, type GetAgentsResponse } from '@/services/agentService';
-import { type Agent, AgentStatus } from '@/types';
+import { type Agent, AgentStatus, HealthStatus } from '@/types';
 import AgentCard from '../common/AgentCard';
 import { HubChat } from './HubChat';
 
@@ -79,11 +79,25 @@ export const HubDashboard: React.FC = () => {
     select: (data: GetAgentsResponse) => data.agents,
   });
 
-  // Filter logic now uses the data from useQuery
-  const filteredAgents = (productionAgents || []).filter((agent: Agent) =>
-    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (agent.description && agent.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter and sort logic - healthy agents first
+  const filteredAgents = (productionAgents || [])
+    .filter((agent: Agent) =>
+      agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (agent.description && agent.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a: Agent, b: Agent) => {
+      // Sort by health status: healthy first, then unknown, then unhealthy
+      const healthOrder = {
+        [HealthStatus.HEALTHY]: 0,
+        [HealthStatus.UNKNOWN]: 1,
+        [HealthStatus.UNHEALTHY]: 2,
+      };
+
+      const aHealth = a.health_status || HealthStatus.UNKNOWN;
+      const bHealth = b.health_status || HealthStatus.UNKNOWN;
+
+      return healthOrder[aHealth] - healthOrder[bHealth];
+    });
 
   // If an agent is selected, show HubChat with absolute positioning to fill parent main
   if (selectedAgent) {

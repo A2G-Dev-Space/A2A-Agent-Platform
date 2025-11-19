@@ -6,6 +6,7 @@ from app.core.database import (
     async_session_maker,
     StatisticsSnapshot,
     LLMHealthStatus,
+    AgentHealthStatus,
     init_db
 )
 from sqlalchemy import select, delete, func
@@ -374,10 +375,22 @@ async def _cleanup_old_snapshots_async():
             )
             health_deleted = health_result.rowcount
 
+            # Clean up old agent health check records (keep only last 7 days)
+            agent_health_result = await session.execute(
+                delete(AgentHealthStatus).where(
+                    AgentHealthStatus.checked_at < health_cutoff
+                )
+            )
+            agent_health_deleted = agent_health_result.rowcount
+
             await session.commit()
 
-            logger.info(f"Cleaned up {deleted_count} old snapshots and {health_deleted} old health records")
-            return {"snapshots_deleted": deleted_count, "health_records_deleted": health_deleted}
+            logger.info(f"Cleaned up {deleted_count} old snapshots, {health_deleted} old LLM health records, and {agent_health_deleted} old agent health records")
+            return {
+                "snapshots_deleted": deleted_count,
+                "llm_health_records_deleted": health_deleted,
+                "agent_health_records_deleted": agent_health_deleted
+            }
 
     except Exception as e:
         logger.error(f"Error cleaning up old snapshots: {e}", exc_info=True)
@@ -393,16 +406,199 @@ def aggregate_statistics():
 
 @celery_app.task
 def check_agent_health():
-    """Check health of all agents"""
+    """Check health of all deployed agents"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_check_agent_health_async())
+    finally:
+        loop.close()
+
+async def _check_agent_health_async():
+    """Async implementation of agent health check"""
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
     logger.info("Starting agent health check...")
 
-    # This could be implemented to check agent A2A endpoints
-    # For now, return mock data
+    try:
+        # Create a new async engine for this task's event loop
+        DATABASE_URL = os.getenv(
+            "DATABASE_URL",
+            "postgresql+asyncpg://postgres:postgres@postgres:5432/worker_db"
+        )
+        engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+        session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
-    return {
-        "status": "completed",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+        # Get all deployed agents from agent service
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                # Get all agents with DEPLOYED_ALL, DEPLOYED_TEAM, or PRODUCTION status
+                response = await client.get(f"{AGENT_SERVICE_URL}/api/internal/agents")
+                if response.status_code != 200:
+                    logger.error(f"Failed to get agents: {response.status_code}")
+                    return {"error": "Failed to fetch agents"}
+
+                all_agents = response.json()
+                # Filter only deployed agents
+                agents = [
+                    agent for agent in all_agents
+                    if agent.get("status") in ["DEPLOYED_ALL", "DEPLOYED_TEAM", "PRODUCTION"]
+                ]
+                logger.info(f"Checking health of {len(agents)} deployed agents")
+            except Exception as e:
+                logger.error(f"Error fetching agents: {e}")
+                return {"error": str(e)}
+
+            # Check health of each agent
+            health_results = {}
+            async with session_maker() as session:
+                for agent in agents:
+                    agent_id = agent["id"]
+                    agent_name = agent["name"]
+                    framework = agent.get("framework", "")
+
+                    # Determine endpoint based on framework
+                    endpoint = None
+                    if framework == "ADK":
+                        endpoint = agent.get("a2a_endpoint")
+                    elif framework == "Agno":
+                        endpoint = agent.get("agno_os_endpoint")
+                    elif framework == "Langchain(custom)":
+                        langchain_config = agent.get("langchain_config", {})
+                        endpoint = langchain_config.get("endpoint") if isinstance(langchain_config, dict) else None
+
+                    if not endpoint:
+                        logger.warning(f"No endpoint configured for agent {agent_name} ({framework})")
+                        continue
+
+                    # Perform framework-specific health check
+                    is_healthy = False
+                    response_time = None
+                    error_msg = None
+
+                    try:
+                        start_time = datetime.utcnow()
+
+                        if framework == "ADK":
+                            # ADK: Check /.well-known/agent-card.json
+                            check_url = endpoint.rstrip('/') + '/.well-known/agent-card.json'
+                            check_response = await client.get(check_url, timeout=10.0)
+                            response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                            is_healthy = check_response.status_code == 200
+                            if not is_healthy:
+                                error_msg = f"HTTP {check_response.status_code}"
+
+                        elif framework == "Agno":
+                            # Agno: Check /health endpoint
+                            check_url = endpoint.rstrip('/') + '/health'
+                            check_response = await client.get(check_url, timeout=10.0)
+                            response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                            is_healthy = check_response.status_code == 200
+                            if not is_healthy:
+                                error_msg = f"HTTP {check_response.status_code}"
+
+                        elif framework == "Langchain(custom)":
+                            # Langchain: Send minimal test message
+                            langchain_config = agent.get("langchain_config", {})
+                            if isinstance(langchain_config, dict):
+                                request_schema = langchain_config.get("request_schema", {})
+
+                                # Create minimal test payload
+                                test_payload = {}
+                                if isinstance(request_schema, dict):
+                                    # Use empty or minimal values for the schema
+                                    if "input" in request_schema:
+                                        test_payload = {"input": {"question": "hi"}}
+                                    elif "messages" in request_schema:
+                                        test_payload = {"messages": [{"role": "user", "content": "hi"}]}
+                                    else:
+                                        test_payload = {"input": "hi"}
+                                else:
+                                    test_payload = {"input": "hi"}
+
+                                check_response = await client.post(
+                                    endpoint,
+                                    json=test_payload,
+                                    timeout=15.0
+                                )
+                                response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                                is_healthy = check_response.status_code in [200, 201]
+                                if not is_healthy:
+                                    error_msg = f"HTTP {check_response.status_code}"
+                            else:
+                                error_msg = "Invalid langchain_config format"
+
+                    except httpx.TimeoutException:
+                        error_msg = "Timeout"
+                        response_time = 10000  # 10 seconds timeout
+                    except Exception as e:
+                        error_msg = str(e)[:200]
+
+                    # Get or create health status record
+                    result = await session.execute(
+                        select(AgentHealthStatus).where(
+                            AgentHealthStatus.agent_id == agent_id
+                        ).order_by(AgentHealthStatus.checked_at.desc()).limit(1)
+                    )
+                    last_status = result.scalar_one_or_none()
+
+                    # Calculate consecutive failures
+                    consecutive_failures = 0
+                    if last_status:
+                        if not is_healthy and not last_status.is_healthy:
+                            consecutive_failures = last_status.consecutive_failures + 1
+                        elif not is_healthy:
+                            consecutive_failures = 1
+
+                    # Create new health status record
+                    health_status = AgentHealthStatus(
+                        agent_id=agent_id,
+                        agent_name=agent_name,
+                        framework=framework,
+                        endpoint_url=endpoint,
+                        is_healthy=is_healthy,
+                        response_time_ms=response_time,
+                        error_message=error_msg,
+                        consecutive_failures=consecutive_failures,
+                        last_healthy_at=datetime.utcnow() if is_healthy else (last_status.last_healthy_at if last_status else None),
+                        checked_at=datetime.utcnow(),
+                        is_active=consecutive_failures < 3  # Mark inactive after 3 consecutive failures
+                    )
+                    session.add(health_status)
+
+                    # Update agent health status in agent service
+                    try:
+                        update_payload = {
+                            "health_status": "healthy" if is_healthy else "unhealthy",
+                            "last_health_check": datetime.utcnow().isoformat()
+                        }
+
+                        await client.put(
+                            f"{AGENT_SERVICE_URL}/api/internal/agents/{agent_id}/health",
+                            json=update_payload
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to update agent status in agent service: {e}")
+
+                    health_results[f"{framework}-{agent_name}"] = {
+                        "healthy": is_healthy,
+                        "response_time_ms": response_time,
+                        "consecutive_failures": consecutive_failures,
+                        "error": error_msg
+                    }
+
+                await session.commit()
+
+            logger.info(f"Agent health check completed: {health_results}")
+
+        # Dispose of the engine
+        await engine.dispose()
+
+        return health_results
+
+    except Exception as e:
+        logger.error(f"Error in agent health check: {e}", exc_info=True)
+        return {"error": str(e)}
 
 @celery_app.task
 def send_notification(user_id: str, message: str):

@@ -45,7 +45,7 @@ celery_app.conf.update(
         },
         "check-agent-health": {
             "task": "app.tasks.check_agent_health",
-            "schedule": crontab(minute="*/10"),  # Every 10 minutes
+            "schedule": crontab(minute="*/3"),  # Every 3 minutes
         },
     }
 )

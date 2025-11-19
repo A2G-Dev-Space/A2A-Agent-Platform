@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Agent } from '@/types';
+import { type Agent, HealthStatus } from '@/types';
 import { Card, Badge, Button } from '@/components/ui';
 
 interface AgentCardProps {
@@ -38,6 +38,20 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
     return null;
   };
 
+  // Get health status badge variant
+  const getHealthBadgeVariant = () => {
+    if (agent.health_status === HealthStatus.HEALTHY) return 'success';
+    if (agent.health_status === HealthStatus.UNHEALTHY) return 'danger';
+    return 'default';
+  };
+
+  // Get health status display text
+  const getHealthStatusText = () => {
+    if (agent.health_status === HealthStatus.HEALTHY) return 'Healthy';
+    if (agent.health_status === HealthStatus.UNHEALTHY) return 'Unhealthy';
+    return 'Unknown';
+  };
+
   return (
     <Card className="group hover:border-hub-accent dark:hover:border-hub-accent-dark hover:shadow-xl transition-all duration-300">
       <Card.Body className="flex flex-col h-full">
@@ -54,6 +68,12 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
                 <span className="material-symbols-outlined text-2xl text-gray-700 dark:text-gray-200">smart_toy</span>
               )}
             </div>
+            {/* Health Status Indicator (Traffic Light) */}
+            {agent.health_status && (
+              <div className="absolute -top-1 -left-1 size-3 rounded-full border-2 border-white dark:border-gray-800" style={{
+                backgroundColor: agent.health_status === HealthStatus.HEALTHY ? '#10b981' : agent.health_status === HealthStatus.UNHEALTHY ? '#ef4444' : '#6b7280'
+              }}></div>
+            )}
             {/* Framework Icon Badge */}
             {getFrameworkIcon() && (
               <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-gray-800 rounded-full p-0.5 border border-gray-200 dark:border-gray-700">
@@ -106,6 +126,14 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
             <div className="flex items-center gap-1.5">
               <span className="font-medium text-text-light-primary dark:text-text-dark-primary">Framework:</span>
               <span className="text-text-light-secondary dark:text-text-dark-secondary">{agent.framework}</span>
+            </div>
+          )}
+          {agent.health_status && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium text-text-light-primary dark:text-text-dark-primary">Health:</span>
+              <Badge variant={getHealthBadgeVariant()} size="sm">
+                {getHealthStatusText()}
+              </Badge>
             </div>
           )}
         </div>
