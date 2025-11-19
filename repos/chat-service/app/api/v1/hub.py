@@ -367,9 +367,16 @@ async def _handle_agno_stream(
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                # Use content directly from request
-                # Frontend adapter already handles conversation history internally
+                # Build message content with conversation history
                 message_content = request.content or ""
+
+                # Add conversation history if provided (same as Workbench)
+                if request.messages and len(request.messages) > 0:
+                    history_text = "Previous conversation:\n"
+                    for msg in request.messages:
+                        role = "User" if msg.role == "user" else "Assistant"
+                        history_text += f"{role}: {msg.content}\n"
+                    message_content = f"{history_text}\nCurrent message:\n{message_content}"
 
                 # Build form data for Agno
                 form_data = {
@@ -397,17 +404,20 @@ async def _handle_agno_stream(
                         yield f"data: {json.dumps({'type': 'error', 'message': f'Agent error: {response.status_code}'})}\n\n"
                         return
 
-                    # Forward SSE events from Agno and collect response
+                    # Forward SSE events from Agno exactly like Workbench
                     async for line in response.aiter_lines():
-                        # Try to parse SSE events to collect assistant response
+                        # Forward ALL lines including empty ones (SSE event separators)
+                        yield f"{line}\n"
+
+                        # Try to collect assistant response for DB storage
                         if line.startswith("data: "):
                             try:
                                 event_data = json.loads(line[6:])
-                                if event_data.get("type") == "content":
+                                # Collect content from TeamRunContent or RunContent for DB storage
+                                if (event_data.get("event") == "TeamRunContent" or event_data.get("event") == "RunContent") and event_data.get("content"):
                                     assistant_response += event_data.get("content", "")
                             except:
                                 pass
-                        yield f"{line}\n"
 
                 # Stream end
                 yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"

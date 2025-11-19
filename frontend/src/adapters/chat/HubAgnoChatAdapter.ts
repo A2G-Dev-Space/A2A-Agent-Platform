@@ -213,11 +213,17 @@ export class HubAgnoChatAdapter implements ChatAdapter {
 
       case 'TeamRunCompleted':
         console.log('[HubAgnoChatAdapter] Team run completed');
-        callbacks.onComplete?.({
-          content: this.streamingMessageBuffer,
-          timestamp: new Date(),
-          reasoningContent: this.reasoningBuffer || undefined,
-        });
+        // Only complete when in team mode
+        if (this.config?.selectedResourceType === 'team' || !this.config?.selectedResourceType) {
+          callbacks.onComplete?.({
+            content: this.streamingMessageBuffer,
+            timestamp: new Date(),
+            reasoningContent: this.reasoningBuffer || undefined,
+          });
+          this.streamingMessageBuffer = '';
+          this.reasoningBuffer = '';
+          this.isInThinkingMode = false;
+        }
         break;
 
       // Agent-level events
