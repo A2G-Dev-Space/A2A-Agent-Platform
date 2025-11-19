@@ -152,17 +152,19 @@ async def get_or_create_hub_session(
         except ValueError:
             logger.warning(f"[Hub] Invalid session_id format: {session_id}, creating new session")
 
-    # Create new session
+    # Create new session with session_id
+    new_session_id = str(uuid.uuid4())
     new_session = HubSession(
         user_id=user_id,
         agent_id=agent_id,
-        messages=[]
+        messages=[],
+        session_id=new_session_id
     )
     db.add(new_session)
     await db.commit()
     await db.refresh(new_session)
 
-    logger.info(f"[Hub] Created new session: {new_session.id}")
+    logger.info(f"[Hub] Created new session: {new_session.id}, session_id: {new_session_id}")
     return new_session
 
 
@@ -308,6 +310,13 @@ async def _handle_adk_stream(
                     "timestamp": datetime.utcnow().isoformat()
                 })
 
+            # Set session name from first user message if not set
+            if not session.session_name and message_dicts:
+                first_user_msg = next((msg for msg in message_dicts if msg["role"] == "user"), None)
+                if first_user_msg:
+                    content = first_user_msg["content"]
+                    session.session_name = content[:50] + "..." if len(content) > 50 else content
+
             session.messages = message_dicts
             session.last_message_at = datetime.utcnow()
             attributes.flag_modified(session, "messages")
@@ -430,6 +439,13 @@ async def _handle_agno_stream(
                         "content": assistant_response,
                         "timestamp": datetime.utcnow().isoformat()
                     })
+
+                # Set session name from first user message if not set
+                if not session.session_name and message_dicts:
+                    first_user_msg = next((msg for msg in message_dicts if msg["role"] == "user"), None)
+                    if first_user_msg:
+                        content = first_user_msg["content"]
+                        session.session_name = content[:50] + "..." if len(content) > 50 else content
 
                 session.messages = message_dicts
                 session.last_message_at = datetime.utcnow()
@@ -562,6 +578,13 @@ async def _handle_langchain_stream(
                         "content": assistant_response,
                         "timestamp": datetime.utcnow().isoformat()
                     })
+
+                # Set session name from first user message if not set
+                if not session.session_name and message_dicts:
+                    first_user_msg = next((msg for msg in message_dicts if msg["role"] == "user"), None)
+                    if first_user_msg:
+                        content = first_user_msg["content"]
+                        session.session_name = content[:50] + "..." if len(content) > 50 else content
 
                 session.messages = message_dicts
                 session.last_message_at = datetime.utcnow()
