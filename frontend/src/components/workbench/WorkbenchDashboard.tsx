@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { agentService, type GetAgentsResponse } from '@/services/agentService';
@@ -12,6 +13,7 @@ import { TraceView } from './TraceView';
 
 export const WorkbenchDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +23,13 @@ export const WorkbenchDashboard: React.FC = () => {
 
   // Dynamic trace_id from SSE stream_start event
   const [traceId, setTraceId] = useState<string | null>(null);
+
+  // Reset selectedAgent when navigating back to /workbench
+  useEffect(() => {
+    if (location.pathname === '/workbench' && selectedAgent) {
+      setSelectedAgent(null);
+    }
+  }, [location]);
 
   // Callback to receive trace_id from ChatPlayground
   const handleTraceIdReceived = useCallback((newTraceId: string) => {

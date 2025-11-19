@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { agentService, type AgentSearchResponse, type GetAgentsResponse } from '@/services/agentService';
@@ -33,8 +34,16 @@ const TopPickCard: React.FC<{ agent: Agent; onClick?: () => void }> = ({ agent, 
 
 export const HubDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+
+  // Reset selectedAgent when navigating back to /hub
+  useEffect(() => {
+    if (location.pathname === '/hub' && selectedAgent) {
+      setSelectedAgent(null);
+    }
+  }, [location]);
 
   // Fetch top picks using the new search endpoint.
   const { data: topPicks, isLoading: isLoadingTopPicks } = useQuery({
