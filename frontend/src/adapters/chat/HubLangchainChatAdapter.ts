@@ -153,6 +153,16 @@ export class HubLangchainChatAdapter implements ChatAdapter {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
 
+          // Handle [DONE] marker from Langchain streaming
+          if (data === '[DONE]') {
+            callbacks.onComplete?.({
+              content: this.streamingMessageBuffer,
+              timestamp: new Date(),
+              reasoningContent: this.reasoningBuffer || undefined,
+            });
+            continue;
+          }
+
           try {
             const event = JSON.parse(data);
             this.handleSSEEvent(event, callbacks);
@@ -184,12 +194,9 @@ export class HubLangchainChatAdapter implements ChatAdapter {
       return;
     }
 
-    // Handle content chunk from Langchain agent
-    if (event.type === 'content_chunk' || event.content) {
-      const content = event.content || event.output || event.delta;
-      if (content) {
-        this.processContentChunk(content, callbacks);
-      }
+    // Handle content from Langchain agent (direct SSE format: {content: "..."})
+    if (event.content !== undefined) {
+      this.processContentChunk(event.content, callbacks);
     }
   }
 

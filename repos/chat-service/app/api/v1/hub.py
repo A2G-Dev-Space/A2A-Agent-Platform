@@ -550,8 +550,12 @@ async def _handle_langchain_stream(
                             yield f"data: {json.dumps({'type': 'error', 'message': f'Agent error: {response.status_code}'})}\n\n"
                             return
 
-                        # Forward SSE events from Langchain and collect response
+                        # Forward SSE events from Langchain exactly like Agno
                         async for line in response.aiter_lines():
+                            # Forward ALL lines including empty ones (SSE event separators)
+                            yield f"{line}\n"
+
+                            # Try to collect assistant response for DB storage
                             if line.startswith("data: "):
                                 try:
                                     event_data = json.loads(line[6:])
@@ -559,7 +563,6 @@ async def _handle_langchain_stream(
                                     content = event_data.get("content") or event_data.get("output") or event_data.get("delta")
                                     if content:
                                         assistant_response += content
-                                        yield f"data: {json.dumps({'type': 'content_chunk', 'content': content})}\n\n"
                                 except:
                                     pass
                 else:
