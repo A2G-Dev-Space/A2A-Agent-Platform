@@ -123,6 +123,7 @@ export class HubAgnoChatAdapter implements ChatAdapter {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
+        'X-Agent-Framework': 'agno',  // Indicate framework for API Gateway streaming optimization
       },
       body: JSON.stringify(body),
       signal: this.abortController.signal,

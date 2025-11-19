@@ -14,7 +14,7 @@ from app.api.v1 import sessions, messages, llm_proxy, workbench, admin, hub
 from app.core.redis_client import redis_client
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager

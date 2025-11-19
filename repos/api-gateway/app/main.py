@@ -17,7 +17,7 @@ from datetime import datetime
 from app.websocket_proxy import proxy_websocket
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Service routing configuration
@@ -225,8 +225,12 @@ async def proxy_request(request: Request, service_url: str, path: str):
         accept_header = headers.get("accept", "")
         is_sse = "text/event-stream" in accept_header or path.endswith("/stream")
 
+        logger.info(f"[API Gateway] SSE Check: accept_header={accept_header}, path={path}, is_sse={is_sse}")
+
         if is_sse:
-            logger.info(f"[API Gateway] Detected SSE request, using streaming proxy")
+            # Check the framework from the custom header
+            agent_framework = headers.get("x-agent-framework", "").lower()
+            logger.info(f"[API Gateway] Detected SSE request, framework: {agent_framework or 'unknown'}")
 
             # For SSE, use streaming to avoid buffering
             async def stream_sse():
@@ -246,10 +250,35 @@ async def proxy_request(request: Request, service_url: str, path: str):
                         yield f"data: {json.dumps({'error': error_text.decode()})}\n\n".encode()
                         return
 
-                    # Yield response line by line for SSE
-                    async for line in response.aiter_lines():
-                        # Add newline to each line and encode
-                        yield f"{line}\n".encode()
+                    # Different streaming strategies based on framework
+                    if agent_framework == "langchain":
+                        # Langchain: Use line-based streaming for complete SSE events
+                        # This ensures JSON events are not split mid-stream
+                        logger.info("[API Gateway] Using line-based streaming for Langchain")
+                        line_count = 0
+                        try:
+                            async for line in response.aiter_lines():
+                                line_count += 1
+                                logger.debug(f"[API Gateway] Langchain line #{line_count}: {line[:100]}")
+                                # Add newline to each line and encode
+                                yield f"{line}\n".encode()
+                                # Force flush after each line for real-time streaming
+                                await asyncio.sleep(0)  # This allows other tasks to run
+                            logger.info(f"[API Gateway] Langchain streaming completed: {line_count} lines")
+                        except Exception as e:
+                            logger.error(f"[API Gateway] Error in Langchain streaming: {e}")
+                            raise
+                    else:
+                        # Agno and others: Use line-based streaming
+                        # Works well for complete JSON events with newlines
+                        logger.info(f"[API Gateway] Using line-based streaming for {agent_framework or 'default'}")
+                        line_count = 0
+                        async for line in response.aiter_lines():
+                            line_count += 1
+                            logger.debug(f"[API Gateway] Line #{line_count}: {line[:100]}")
+                            # Add newline to each line and encode
+                            yield f"{line}\n".encode()
+                        logger.info(f"[API Gateway] Line-based streaming completed: {line_count} lines")
 
             return StreamingResponse(
                 content=stream_sse(),

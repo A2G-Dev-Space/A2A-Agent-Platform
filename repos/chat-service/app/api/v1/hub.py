@@ -550,9 +550,13 @@ async def _handle_langchain_stream(
                             yield f"data: {json.dumps({'type': 'error', 'message': f'Agent error: {response.status_code}'})}\n\n"
                             return
 
-                        # Forward SSE events from Langchain exactly like Agno
+                        # For Langchain, use line-based streaming for proper SSE events
+                        # This ensures complete lines are forwarded, preventing JSON splitting
+                        line_count = 0
                         async for line in response.aiter_lines():
-                            # Forward ALL lines including empty ones (SSE event separators)
+                            line_count += 1
+                            logger.debug(f"[Hub] Langchain line #{line_count}: {line[:100]}")
+                            # Forward complete line with newline
                             yield f"{line}\n"
 
                             # Try to collect assistant response for DB storage
@@ -563,8 +567,12 @@ async def _handle_langchain_stream(
                                     content = event_data.get("content") or event_data.get("output") or event_data.get("delta")
                                     if content:
                                         assistant_response += content
-                                except:
+                                        logger.debug(f"[Hub] Collected content: {content[:50]}")
+                                except Exception as e:
+                                    logger.debug(f"[Hub] Could not parse SSE line: {line[:100]}, error: {e}")
                                     pass
+
+                        logger.info(f"[Hub] Langchain streaming completed: {line_count} lines, response length: {len(assistant_response)}")
                 else:
                     # JSON blocking response
                     response = await client.post(

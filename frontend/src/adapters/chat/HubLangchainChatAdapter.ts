@@ -117,7 +117,9 @@ export class HubLangchainChatAdapter implements ChatAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',  // Required for SSE streaming
         Authorization: `Bearer ${accessToken}`,
+        'X-Agent-Framework': 'langchain',  // Indicate framework for API Gateway streaming optimization
       },
       body: JSON.stringify(body),
       signal: this.abortController.signal,
@@ -135,15 +137,33 @@ export class HubLangchainChatAdapter implements ChatAdapter {
     }
 
     let buffer = '';
+    let eventCount = 0;
+    let bytesReceived = 0;
 
     while (true) {
       const { done, value } = await reader.read();
 
       if (done) {
+        console.log('[HubLangchainChatAdapter] Stream ended:', {
+          eventCount,
+          bytesReceived,
+          finalBufferLength: buffer.length,
+          messageBuffer: this.streamingMessageBuffer.length,
+          reasoningBuffer: this.reasoningBuffer.length,
+        });
         break;
       }
 
-      buffer += decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, { stream: true });
+      bytesReceived += value.byteLength;
+      buffer += chunk;
+
+      console.log('[HubLangchainChatAdapter] Chunk received:', {
+        chunkSize: value.byteLength,
+        decodedLength: chunk.length,
+        bufferLength: buffer.length,
+        preview: chunk.substring(0, 100),
+      });
 
       // Process complete SSE events
       const lines = buffer.split('\n');
@@ -152,9 +172,14 @@ export class HubLangchainChatAdapter implements ChatAdapter {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
+          eventCount++;
 
           // Handle [DONE] marker from Langchain streaming
           if (data === '[DONE]') {
+            console.log('[HubLangchainChatAdapter] [DONE] marker received:', {
+              messageBuffer: this.streamingMessageBuffer,
+              reasoningBuffer: this.reasoningBuffer,
+            });
             callbacks.onComplete?.({
               content: this.streamingMessageBuffer,
               timestamp: new Date(),
@@ -165,12 +190,35 @@ export class HubLangchainChatAdapter implements ChatAdapter {
 
           try {
             const event = JSON.parse(data);
+            console.log('[HubLangchainChatAdapter] SSE event parsed:', {
+              eventNumber: eventCount,
+              type: event.type,
+              hasContent: !!event.content,
+              contentLength: event.content?.length,
+              contentPreview: event.content?.substring(0, 50),
+              timestamp: new Date().toISOString(),
+            });
             this.handleSSEEvent(event, callbacks);
           } catch (e) {
-            console.warn('[HubLangchainChatAdapter] Failed to parse event:', data);
+            console.warn('[HubLangchainChatAdapter] Failed to parse event:', {
+              error: e,
+              data,
+              dataLength: data.length,
+            });
           }
+        } else if (line.trim()) {
+          console.warn('[HubLangchainChatAdapter] Non-SSE line received:', line);
         }
       }
+    }
+
+    // Check if stream ended without [DONE] marker
+    if (!this.abortController?.signal.aborted) {
+      console.warn('[HubLangchainChatAdapter] Stream ended without [DONE] marker:', {
+        eventCount,
+        bytesReceived,
+        hasContent: !!this.streamingMessageBuffer || !!this.reasoningBuffer,
+      });
     }
   }
 
@@ -181,11 +229,8 @@ export class HubLangchainChatAdapter implements ChatAdapter {
     }
 
     if (event.type === 'stream_end') {
-      callbacks.onComplete?.({
-        content: this.streamingMessageBuffer,
-        timestamp: new Date(),
-        reasoningContent: this.reasoningBuffer || undefined,
-      });
+      // For Langchain, completion is handled by [DONE] marker, not stream_end
+      // to avoid duplicate completions
       return;
     }
 
@@ -244,6 +289,13 @@ export class HubLangchainChatAdapter implements ChatAdapter {
         }
       }
     }
+
+    // Log chunk processing for debugging
+    console.log('[HubLangchainChatAdapter] Chunk processed:', {
+      chunkLength: chunk.length,
+      bufferLength: this.streamingMessageBuffer.length,
+      reasoningLength: this.reasoningBuffer.length,
+    });
 
     // Send update to UI
     callbacks.onChunk?.({
