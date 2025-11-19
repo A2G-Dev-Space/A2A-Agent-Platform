@@ -13,6 +13,7 @@ interface Message {
   content: string;
   timestamp: Date;
   systemEvents?: SystemEvent[];
+  reasoningContent?: string;
 }
 
 interface HubSession {
@@ -45,7 +46,9 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
   const [inputValue, setInputValue] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [streamingReasoning, setStreamingReasoning] = useState('');
   const [expandedSystemMessages, setExpandedSystemMessages] = useState<Set<string>>(new Set());
+  const [expandedThinking, setExpandedThinking] = useState<Set<string>>(new Set());
 
   // Agno-specific: team/agent selection
   const [agnoResources, setAgnoResources] = useState<Array<{ id: string; name: string; type: 'team' | 'agent' }>>(() => {
@@ -323,6 +326,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
 
     setIsStreaming(true);
     setStreamingMessage('');
+    setStreamingReasoning('');
 
     // Create system events container for Agno
     let systemEventsMessageId: string | null = null;
@@ -353,6 +357,9 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
         {
           onChunk: (chunk) => {
             setStreamingMessage(chunk.content);
+            if (chunk.reasoningContent) {
+              setStreamingReasoning(chunk.reasoningContent);
+            }
           },
           onComplete: (response) => {
             setMessages((prev) => [
@@ -362,10 +369,12 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
                 role: 'assistant',
                 content: response.content,
                 timestamp: response.timestamp,
+                reasoningContent: response.reasoningContent,
               },
             ]);
 
             setStreamingMessage('');
+            setStreamingReasoning('');
             setIsStreaming(false);
 
             // Reload sessions to update message count
@@ -748,6 +757,57 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
                             : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#1e293b'),
                         }}
                       >
+                        {/* Thinking section for assistant messages */}
+                        {message.role === 'assistant' && message.reasoningContent && (
+                          <div className="mb-3">
+                            <button
+                              onClick={() => {
+                                setExpandedThinking((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(message.id)) {
+                                    next.delete(message.id);
+                                  } else {
+                                    next.add(message.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                              style={{
+                                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? 'rgba(147, 51, 234, 0.2)'
+                                  : 'rgba(147, 51, 234, 0.1)',
+                                color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? '#c4b5fd'
+                                  : '#7c3aed',
+                              }}
+                            >
+                              {expandedThinking.has(message.id) ? (
+                                <ChevronDown className="h-3 w-3" />
+                              ) : (
+                                <ChevronUp className="h-3 w-3" />
+                              )}
+                              <span>Thinking</span>
+                            </button>
+
+                            {expandedThinking.has(message.id) && (
+                              <div
+                                className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
+                                style={{
+                                  backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                    ? 'rgba(147, 51, 234, 0.1)'
+                                    : 'rgba(147, 51, 234, 0.05)',
+                                  borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
+                                  color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                    ? '#e5e7eb'
+                                    : '#374151',
+                                }}
+                              >
+                                {message.reasoningContent}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <MessageContent content={message.content} contentType="markdown" />
                       </div>
                     </div>
@@ -791,27 +851,80 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
                   </div>
 
                   <div className="flex-1">
-                    {streamingMessage ? (
-                      <div className="p-4 rounded-lg rounded-tl-none"
-                        style={{
-                          backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(2, 132, 199, 0.1)' : '#E0F2FE',
-                          color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#1e293b',
-                        }}
-                      >
-                        <MessageContent content={streamingMessage} contentType="markdown" />
-                        <span className="inline-block h-4 w-1 animate-pulse ml-1" style={{ backgroundColor: '#0284c7' }} />
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-lg rounded-tl-none flex items-center gap-2"
-                        style={{
-                          backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(2, 132, 199, 0.1)' : '#E0F2FE',
-                          color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280',
-                        }}
-                      >
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">{t('chat.waitingForResponse')}</span>
-                      </div>
-                    )}
+                    <div className="p-4 rounded-lg rounded-tl-none"
+                      style={{
+                        backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(2, 132, 199, 0.1)' : '#E0F2FE',
+                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#e2e8f0' : '#1e293b',
+                      }}
+                    >
+                      {/* Streaming thinking section */}
+                      {streamingReasoning && (
+                        <div className="mb-3">
+                          <button
+                            onClick={() => {
+                              setExpandedThinking((prev) => {
+                                const next = new Set(prev);
+                                if (next.has('streaming')) {
+                                  next.delete('streaming');
+                                } else {
+                                  next.add('streaming');
+                                }
+                                return next;
+                              });
+                            }}
+                            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                            style={{
+                              backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? 'rgba(147, 51, 234, 0.2)'
+                                : 'rgba(147, 51, 234, 0.1)',
+                              color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                ? '#c4b5fd'
+                                : '#7c3aed',
+                            }}
+                          >
+                            {expandedThinking.has('streaming') ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronUp className="h-3 w-3" />
+                            )}
+                            <span>Thinking...</span>
+                            <span className="inline-block h-3 w-1 animate-pulse bg-purple-500" />
+                          </button>
+
+                          {expandedThinking.has('streaming') && (
+                            <div
+                              className="mt-2 p-3 rounded-md text-xs leading-relaxed whitespace-pre-wrap"
+                              style={{
+                                backgroundColor: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? 'rgba(147, 51, 234, 0.1)'
+                                  : 'rgba(147, 51, 234, 0.05)',
+                                borderLeft: `3px solid ${document.documentElement.getAttribute('data-theme') === 'dark' ? '#c4b5fd' : '#7c3aed'}`,
+                                color: document.documentElement.getAttribute('data-theme') === 'dark'
+                                  ? '#e5e7eb'
+                                  : '#374151',
+                              }}
+                            >
+                              {streamingReasoning}
+                              <span className="inline-block h-3 w-1 animate-pulse bg-purple-500 ml-1" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {streamingMessage ? (
+                        <>
+                          <MessageContent content={streamingMessage} contentType="markdown" />
+                          <span className="inline-block h-4 w-1 animate-pulse ml-1" style={{ backgroundColor: '#0284c7' }} />
+                        </>
+                      ) : !streamingReasoning ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">{t('chat.waitingForResponse')}</span>
+                        </div>
+                      ) : (
+                        <span className="inline-block h-4 w-1 animate-pulse" style={{ backgroundColor: '#0284c7' }} />
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
