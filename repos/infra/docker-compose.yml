@@ -342,22 +342,6 @@ services:
       - ../llm-proxy-service:/app
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8006 --reload
 
-  # Flower - Celery Monitoring (Optional)
-  flower:
-    image: mher/flower:2.0
-    container_name: a2g-flower
-    ports:
-      - "5555:5555"
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/6
-      FLOWER_PORT: 5555
-    depends_on:
-      - redis
-    extra_hosts:
-    - "host.docker.internal:host-gateway"
-    networks:
-      - a2g-network
-
 networks:
   a2g-network:
     driver: bridge
