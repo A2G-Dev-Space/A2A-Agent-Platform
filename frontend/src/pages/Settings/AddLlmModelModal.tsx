@@ -57,7 +57,9 @@ const AddLlmModelModal: React.FC<AddLlmModelModalProps> = ({ isOpen, onClose }) 
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:9050/api/admin/llm-models/', {
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

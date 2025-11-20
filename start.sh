@@ -40,27 +40,43 @@ apply_host_configuration() {
     # Load HOST_IP from repos/infra/.env
     if [ -f "repos/infra/.env" ]; then
         export $(grep HOST_IP repos/infra/.env | xargs)
+        export $(grep GATEWAY_PORT repos/infra/.env | xargs)
         echo "📌 Using HOST_IP: ${HOST_IP:-localhost}"
+        echo "📌 Using GATEWAY_PORT: ${GATEWAY_PORT:-9050}"
     else
         echo "⚠️  repos/infra/.env not found, using default: localhost"
         HOST_IP="localhost"
+        GATEWAY_PORT="9050"
     fi
 
     # Update all configuration files with HOST_IP
     echo "🔧 Applying HOST_IP configuration..."
 
+    # Check if frontend/.env exists and if HOST_IP has changed
+    FRONTEND_ENV_CHANGED=false
+    if [ -f "frontend/.env" ]; then
+        # Extract current VITE_HOST_IP from frontend/.env
+        CURRENT_FRONTEND_IP=$(grep "^VITE_HOST_IP=" frontend/.env 2>/dev/null | cut -d'=' -f2)
+        if [ "$CURRENT_FRONTEND_IP" != "$HOST_IP" ]; then
+            FRONTEND_ENV_CHANGED=true
+            echo "   ⚠️  Frontend HOST_IP changed: ${CURRENT_FRONTEND_IP} → ${HOST_IP}"
+        fi
+    fi
+
     # Update frontend/.env
     if [ -f "frontend/.env" ]; then
         sed -i "s/^VITE_HOST_IP=.*/VITE_HOST_IP=${HOST_IP}/" frontend/.env
+        sed -i "s/^VITE_GATEWAY_PORT=.*/VITE_GATEWAY_PORT=${GATEWAY_PORT}/" frontend/.env
         sed -i "s/172\.26\.110\.192/${HOST_IP}/g" frontend/.env
     else
         echo "VITE_HOST_IP=${HOST_IP}" > frontend/.env
-        echo "VITE_GATEWAY_PORT=9050" >> frontend/.env
+        echo "VITE_GATEWAY_PORT=${GATEWAY_PORT}" >> frontend/.env
         echo "VITE_API_URL=/api" >> frontend/.env
         echo "# Internal network - no proxy needed" >> frontend/.env
         echo "HTTP_PROXY=" >> frontend/.env
         echo "HTTPS_PROXY=" >> frontend/.env
         echo "NO_PROXY=localhost,127.0.0.1,*.local,${HOST_IP},10.*,172.*,192.168.*" >> frontend/.env
+        FRONTEND_ENV_CHANGED=true
     fi
 
     # Update vite.config.ts
@@ -107,13 +123,7 @@ apply_host_configuration() {
     fi
 
     # Update LLM Proxy service
-    if [ -f "repos/llm-proxy-service/app/main.py" ]; then
-        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/llm-proxy-service/app/main.py
-        sed -i "s/10\.229\.95\.228/${HOST_IP}/g" repos/llm-proxy-service/app/main.py
-        # Replace multi-line CORS configuration
-        sed -i '/allow_origins=\[/,/\]/c\    allow_origins=["*"],  # Allow all origins' repos/llm-proxy-service/app/main.py
-        echo "   ✓ Updated llm-proxy-service CORS to allow all"
-    fi
+    # Note: llm-proxy already has allow_origins=["*"] configured, no need to modify CORS
 
     # Update worker-service main.py too (though it already has ["*"])
     if [ -f "repos/worker-service/app/main.py" ]; then
@@ -125,6 +135,24 @@ apply_host_configuration() {
     export GATEWAY_PORT=${GATEWAY_PORT:-9050}
 
     echo "✅ Configuration applied"
+
+    # Notify user if frontend environment changed
+    if [ "$FRONTEND_ENV_CHANGED" = true ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  IMPORTANT: Frontend environment updated!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "   The frontend/.env file has been updated with new HOST_IP."
+        echo "   You MUST restart the frontend dev server for changes to take effect:"
+        echo ""
+        echo "   1. Stop current frontend (Ctrl+C in frontend terminal)"
+        echo "   2. Restart: cd frontend && npm run dev"
+        echo ""
+        echo "   Frontend uses Vite which loads environment variables at build time,"
+        echo "   so changes to .env require a restart to be picked up."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+    fi
 }
 
 # Main execution
@@ -328,6 +356,10 @@ case $MODE in
         echo "   2. Access platform: http://${HOST_IP}:9060"
         echo "   3. Mock SSO: http://${HOST_IP}:9050/mock-sso"
         echo ""
+        echo "📌 Configuration:"
+        echo "   - All services use HOST_IP from repos/infra/.env: ${HOST_IP}"
+        echo "   - To change IP: Edit repos/infra/.env, run ./start.sh, then restart frontend"
+        echo ""
 
         exit 0
         ;;
@@ -509,9 +541,17 @@ echo ""
 echo "🎉 Development environment is starting!"
 echo ""
 echo "📌 Service URLs:"
-echo "   - Frontend:    http://${HOST_IP}:9060 (run: cd frontend && npm install && npm run dev)"
+echo "   - Frontend:    http://${HOST_IP}:9060"
 echo "   - API Gateway: http://${HOST_IP}:9050"
 echo "   - Mock SSO:    http://${HOST_IP}:9050/mock-sso"
+echo ""
+echo "📌 Frontend Setup:"
+echo "   If frontend is not running, start it with:"
+echo "   $ cd frontend && npm install && npm run dev"
+echo ""
+echo "   ⚠️  If you changed HOST_IP in repos/infra/.env:"
+echo "   - Stop the frontend dev server (Ctrl+C)"
+echo "   - Restart it: cd frontend && npm run dev"
 echo ""
 echo "📝 To view logs: cd repos/infra && $DOCKER_COMPOSE -f docker-compose.yml logs -f [service-name]"
 echo "📝 To stop all: ./start.sh stop"

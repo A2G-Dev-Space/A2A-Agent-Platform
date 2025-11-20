@@ -26,7 +26,9 @@ const LlmManagementPage: React.FC = () => {
 
   const fetchModels = async () => {
     try {
-      const response = await fetch('http://localhost:9050/api/admin/llm-models/', {
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -51,7 +53,9 @@ const LlmManagementPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this model?')) return;
 
     try {
-      const response = await fetch(`http://localhost:9050/api/admin/llm-models/${id}/`, {
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -69,7 +73,9 @@ const LlmManagementPage: React.FC = () => {
   const handleTestModel = async (id: number) => {
     setTestingModel(id);
     try {
-      const response = await fetch(`http://localhost:9050/api/admin/llm-models/${id}/health-check/`, {
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/health-check/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -88,7 +94,9 @@ const LlmManagementPage: React.FC = () => {
 
   const toggleModelActive = async (id: number, isActive: boolean) => {
     try {
-      const response = await fetch(`http://localhost:9050/api/admin/llm-models/${id}/`, {
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
