@@ -77,10 +77,21 @@ apply_host_configuration() {
         if [ -f "$config_file" ]; then
             # Replace hardcoded IPs in CORS origins
             sed -i "s/172\.26\.110\.192/${HOST_IP}/g" "$config_file"
+            sed -i "s/10\.229\.95\.228/${HOST_IP}/g" "$config_file"
             # Replace in SSO settings if exists
             sed -i "s|http://172\.26\.110\.192:9999|http://${HOST_IP}:9999|g" "$config_file"
             sed -i "s|http://172\.26\.110\.192:9050|http://${HOST_IP}:9050|g" "$config_file"
+            sed -i "s|http://10\.229\.95\.228:9999|http://${HOST_IP}:9999|g" "$config_file"
+            sed -i "s|http://10\.229\.95\.228:9050|http://${HOST_IP}:9050|g" "$config_file"
             echo "   ✓ Updated ${service}"
+        fi
+
+        # Update main.py to use allow_origins=["*"] for all services
+        main_file="repos/${service}/app/main.py"
+        if [ -f "$main_file" ]; then
+            # Replace CORS configuration to allow all origins
+            sed -i '/allow_origins.*settings\.CORS_ORIGINS/c\    allow_origins=["*"],  # Allow all origins' "$main_file"
+            echo "   ✓ Updated ${service} CORS to allow all"
         fi
     done
 
@@ -91,13 +102,22 @@ apply_host_configuration() {
     fi
     if [ -f "repos/api-gateway/app/main.py" ]; then
         sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/api-gateway/app/main.py
+        sed -i "s/10\.229\.95\.228/${HOST_IP}/g" repos/api-gateway/app/main.py
         echo "   ✓ Updated api-gateway main"
     fi
 
     # Update LLM Proxy service
     if [ -f "repos/llm-proxy-service/app/main.py" ]; then
         sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/llm-proxy-service/app/main.py
-        echo "   ✓ Updated llm-proxy-service"
+        sed -i "s/10\.229\.95\.228/${HOST_IP}/g" repos/llm-proxy-service/app/main.py
+        # Replace multi-line CORS configuration
+        sed -i '/allow_origins=\[/,/\]/c\    allow_origins=["*"],  # Allow all origins' repos/llm-proxy-service/app/main.py
+        echo "   ✓ Updated llm-proxy-service CORS to allow all"
+    fi
+
+    # Update worker-service main.py too (though it already has ["*"])
+    if [ -f "repos/worker-service/app/main.py" ]; then
+        sed -i '/allow_origins=/c\    allow_origins=["*"],  # Allow all origins' repos/worker-service/app/main.py
     fi
 
     # Update docker-compose environment

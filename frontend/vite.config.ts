@@ -10,13 +10,15 @@ export default defineConfig({
     host: '0.0.0.0',  // 모든 IP에서 접근 가능 (또는 특정 IP 입력 예: '192.168.1.100')
     proxy: {
       '/api': {
-        target: 'http://10.229.95.228:9050',  // Backend IP로 변경 필요 시: 'http://10.229.95.228:9050'
+        target: 'http://172.26.110.192:9050',
         changeOrigin: true,
+        secure: false,  // 프록시 검증 비활성화
       },
       '/ws': {
-        target: 'ws://10.229.95.228:9050',    // Backend IP로 변경 필요 시: 'ws://10.229.95.228:9050'
+        target: 'ws://172.26.110.192:9050',
         ws: true,
         changeOrigin: true,
+        secure: false,
       },
     },
   },

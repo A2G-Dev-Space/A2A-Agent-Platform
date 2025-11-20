@@ -26,9 +26,9 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: List[str] = [
-        "http://10.229.95.228:9060",
-        "http://10.229.95.228:9050",
-        "https://10.229.95.228:9050",
+        "http://172.26.110.192:9060",
+        "http://172.26.110.192:9050",
+        "https://172.26.110.192:9050",
         "http://localhost:9060",
         "http://localhost:9050"
     ]

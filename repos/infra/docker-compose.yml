@@ -61,6 +61,8 @@ services:
     ports:
       - "0.0.0.0:9050:9050"  # 모든 IP에서 접근 가능 (또는 특정 IP: "192.168.1.100:9050:9050")
     environment:
+      HOST_IP: ${HOST_IP:-localhost}
+      FRONTEND_PORT: ${FRONTEND_PORT:-9060}
       GATEWAY_PORT: 9050
       GATEWAY_HOST: 0.0.0.0
       ENVIRONMENT: development
