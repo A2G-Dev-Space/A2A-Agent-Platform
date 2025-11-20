@@ -320,7 +320,7 @@ services:
       GOOGLE_API_KEY: AIzaSyDXVahR7moDwJep7GHRmxzagzVEVF_a_Gc
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
-      CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-http://${HOST_IP:-localhost}:8000/v1}
+      CUSTOM_BASE_URL: http://${HOST_IP:-localhost}:8000/v1
     depends_on:
       postgres:
         condition: service_healthy
