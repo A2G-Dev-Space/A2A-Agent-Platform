@@ -1,30 +1,41 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
-export default defineConfig({
-  plugins: [tailwindcss(),react()],
-  server: {
-    port: 9060,
-    host: '0.0.0.0',  // 모든 IP에서 접근 가능 (또는 특정 IP 입력 예: '192.168.1.100')
-    proxy: {
-      '/api': {
-        target: 'http://172.26.110.192:9050',
-        changeOrigin: true,
-        secure: false,  // 프록시 검증 비활성화
-      },
-      '/ws': {
-        target: 'ws://172.26.110.192:9050',
-        ws: true,
-        changeOrigin: true,
-        secure: false,
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory
+  const env = loadEnv(mode, process.cwd(), '')
+
+  // Use VITE_HOST_IP from .env, fallback to localhost
+  const HOST_IP = env.VITE_HOST_IP || 'localhost'
+  const GATEWAY_PORT = env.VITE_GATEWAY_PORT || '9050'
+
+  console.log(`Vite proxy configured for: ${HOST_IP}:${GATEWAY_PORT}`)
+
+  return {
+    plugins: [tailwindcss(), react()],
+    server: {
+      port: 9060,
+      host: '0.0.0.0',  // 모든 IP에서 접근 가능
+      proxy: {
+        '/api': {
+          target: `http://${HOST_IP}:${GATEWAY_PORT}`,
+          changeOrigin: true,
+          secure: false,  // 프록시 검증 비활성화
+        },
+        '/ws': {
+          target: `ws://${HOST_IP}:${GATEWAY_PORT}`,
+          ws: true,
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
+  }
 })

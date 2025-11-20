@@ -185,8 +185,9 @@ const StatisticsPage: React.FC = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+        const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
         const response = await fetch(
-          'http://localhost:8006/api/v1/statistics/model-usage?limit=10',
+          `http://${HOST_IP}:8006/api/v1/statistics/model-usage?limit=10`,
           { signal: controller.signal }
         );
 
