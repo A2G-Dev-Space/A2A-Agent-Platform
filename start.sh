@@ -207,9 +207,10 @@ case $MODE in
         done
 
         echo ""
-        echo "📦 Starting all services..."
+        echo "📦 Starting all services (except celery-beat)..."
         cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.yml up -d
+        # Start all services except celery-beat to prevent premature health checks
+        $DOCKER_COMPOSE -f docker-compose.yml up -d --scale celery-beat=0
         cd ../..
 
         echo ""
@@ -307,6 +308,12 @@ case $MODE in
         else
             echo "✅ Migrations completed successfully!"
         fi
+
+        echo ""
+        echo "📦 Starting celery-beat (now that migrations are complete)..."
+        cd repos/infra
+        $DOCKER_COMPOSE -f docker-compose.yml up -d celery-beat
+        cd ../..
 
         echo ""
         echo "🗑️  Initializing databases with clean state..."

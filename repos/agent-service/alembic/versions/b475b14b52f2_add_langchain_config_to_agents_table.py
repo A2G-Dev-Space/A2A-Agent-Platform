@@ -30,10 +30,16 @@ def upgrade() -> None:
     op.create_index(op.f('ix_agent_call_statistics_called_at'), 'agent_call_statistics', ['called_at'], unique=False)
     op.create_index(op.f('ix_agent_call_statistics_date'), 'agent_call_statistics', ['date'], unique=False)
     op.create_index(op.f('ix_agent_call_statistics_user_id'), 'agent_call_statistics', ['user_id'], unique=False)
-    op.alter_column('agents', 'langchain_config',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
+
+    # Add langchain_config column if it doesn't exist
+    # Check if column exists to make migration idempotent
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('agents')]
+
+    if 'langchain_config' not in columns:
+        op.add_column('agents', sa.Column('langchain_config', sa.JSON(), nullable=True))
     op.drop_index(op.f('ix_agents_deployed_at'), table_name='agents')
     op.drop_index(op.f('ix_agents_deployed_by'), table_name='agents')
     op.drop_index(op.f('idx_deployment_logs_agent_id'), table_name='deployment_logs')
@@ -47,10 +53,9 @@ def downgrade() -> None:
     op.create_index(op.f('idx_deployment_logs_agent_id'), 'deployment_logs', ['agent_id'], unique=False)
     op.create_index(op.f('ix_agents_deployed_by'), 'agents', ['deployed_by'], unique=False)
     op.create_index(op.f('ix_agents_deployed_at'), 'agents', ['deployed_at'], unique=False)
-    op.alter_column('agents', 'langchain_config',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
+
+    # Drop langchain_config column
+    op.drop_column('agents', 'langchain_config')
     op.drop_index(op.f('ix_agent_call_statistics_user_id'), table_name='agent_call_statistics')
     op.drop_index(op.f('ix_agent_call_statistics_date'), table_name='agent_call_statistics')
     op.drop_index(op.f('ix_agent_call_statistics_called_at'), table_name='agent_call_statistics')
