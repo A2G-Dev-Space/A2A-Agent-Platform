@@ -8,7 +8,6 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import Optional
 from cryptography import x509
-from cryptography.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import logging
 import json
@@ -105,9 +104,9 @@ async def handle_sso_callback(
             with open(cert_file, 'rb') as f:
                 cert_data = f.read()
                 try:
-                    cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
+                    cert_obj = x509.load_pem_x509_certificate(cert_data)
                 except:
-                    cert_obj = x509.load_der_x509_certificate(cert_data, default_backend())
+                    cert_obj = x509.load_der_x509_certificate(cert_data)
                 public_key = cert_obj.public_key()
 
             # Decode and verify JWT with RS256
@@ -319,9 +318,9 @@ async def handle_callback(
 
                 # Try to load as PEM first, then DER
                 try:
-                    cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
+                    cert_obj = x509.load_pem_x509_certificate(cert_data)
                 except:
-                    cert_obj = x509.load_der_x509_certificate(cert_data, default_backend())
+                    cert_obj = x509.load_der_x509_certificate(cert_data)
 
                 public_key = cert_obj.public_key()
 
