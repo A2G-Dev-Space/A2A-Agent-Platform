@@ -144,11 +144,19 @@ const UserManagementPage: React.FC = () => {
                                     <td className="px-4 py-3"><input type="checkbox" className="h-5 w-5 rounded border-gray-400 dark:border-[#483956] bg-transparent text-primary" /></td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">{user.username_kr || user.username}</p>
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                {user.username_kr && user.username_en
+                                                    ? `${user.username_kr} / ${user.username_en}`
+                                                    : user.username_kr || user.username_en || user.username}
+                                            </p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{user.department_kr || user.department_en}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                        {user.department_kr && user.department_en
+                                            ? `${user.department_kr} / ${user.department_en}`
+                                            : user.department_kr || user.department_en || user.department || '-'}
+                                    </td>
                                     <td className="px-4 py-3">
                                         {getRoleChip(user.role)}
                                     </td>
