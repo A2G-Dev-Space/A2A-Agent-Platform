@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Agent } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface A2AEndpoint {
   name: string;
@@ -22,9 +23,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['endpoints']));
 
   // Use absolute URL with HOST_IP and GATEWAY_PORT
-  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-  const API_BASE_URL = `http://${HOST_IP}:${GATEWAY_PORT}`;
+  const API_BASE_URL = getGatewayBaseUrl();
 
   useEffect(() => {
     fetchA2AEndpoints();

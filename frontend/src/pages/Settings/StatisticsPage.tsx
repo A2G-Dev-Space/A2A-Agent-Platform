@@ -13,6 +13,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { adminAPI } from '../../services/api';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface ComprehensiveStatistics {
   total_users: number;
@@ -186,6 +187,7 @@ const StatisticsPage: React.FC = () => {
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
         const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+        // LLM Proxy service (8006) does not use SSL
         const response = await fetch(
           `http://${HOST_IP}:8006/api/v1/statistics/model-usage?limit=10`,
           { signal: controller.signal }
@@ -245,6 +247,7 @@ const StatisticsPage: React.FC = () => {
         });
 
         const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+        // Worker API service (8010) does not use SSL
         const response = await fetch(
           `http://${HOST_IP}:8010/api/statistics/historical/trends?${queryParams.toString()}`
         );
@@ -271,10 +274,8 @@ const StatisticsPage: React.FC = () => {
     const fetchUserUsage = async () => {
       if (searchUserId && !isNaN(Number(searchUserId))) {
         try {
-          const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-          const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
           const response = await fetch(
-            `http://${HOST_IP}:${GATEWAY_PORT}/api/v1/statistics/user-usage/${searchUserId}`
+            `${getGatewayBaseUrl()}/api/v1/statistics/user-usage/${searchUserId}`
           );
           if (response.ok) {
             const data = await response.json();

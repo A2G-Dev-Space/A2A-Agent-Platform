@@ -7,6 +7,7 @@ import type { ChatAdapter } from '@/adapters/chat';
 import { HubADKChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { A2AInfoSidebar } from './A2AInfoSidebar';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface Message {
   id: string;
@@ -51,9 +52,7 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
   // Use absolute URL with HOST_IP and GATEWAY_PORT
-  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-  const API_BASE_URL = `http://${HOST_IP}:${GATEWAY_PORT}`;
+  const API_BASE_URL = getGatewayBaseUrl();
 
   // Auto-scroll to bottom
   useEffect(() => {

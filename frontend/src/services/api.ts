@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import toast from 'react-hot-toast'
+import { getAdminApiBaseUrl } from '@/config/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -133,12 +134,9 @@ export const apiClient = {
 }
 
 // Admin API client (points to admin service via API Gateway)
-// Use environment variable or default to localhost
-const gatewayHost = import.meta.env.VITE_HOST_IP || 'localhost'
-const gatewayPort = import.meta.env.VITE_GATEWAY_PORT || '9050'
-
+// Use dynamic protocol based on SSL configuration
 export const adminAPI = axios.create({
-  baseURL: `http://${gatewayHost}:${gatewayPort}/api/admin`,
+  baseURL: getAdminApiBaseUrl(),
   timeout: 600000, // 10 minutes for long-running operations
   headers: {
     'Content-Type': 'application/json',
