@@ -53,7 +53,10 @@ export const HubChatLangchain: React.FC<HubChatLangchainProps> = ({ agent, onClo
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
+  // Use absolute URL with HOST_IP and GATEWAY_PORT
+  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+  const API_BASE_URL = `http://${HOST_IP}:${GATEWAY_PORT}`;
 
   // Auto-scroll to bottom
   useEffect(() => {

@@ -185,8 +185,9 @@ const StatisticsPage: React.FC = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
+        const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
         const response = await fetch(
-          'http://localhost:8006/api/v1/statistics/model-usage?limit=10',
+          `http://${HOST_IP}:8006/api/v1/statistics/model-usage?limit=10`,
           { signal: controller.signal }
         );
 
@@ -243,8 +244,9 @@ const StatisticsPage: React.FC = () => {
           ...(selectedAgentForToken === 'all' ? { top_k: selectedTopK.toString() } : {})
         });
 
+        const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
         const response = await fetch(
-          `http://localhost:8010/api/statistics/historical/trends?${queryParams.toString()}`
+          `http://${HOST_IP}:8010/api/statistics/historical/trends?${queryParams.toString()}`
         );
 
         if (response.ok) {
@@ -269,8 +271,10 @@ const StatisticsPage: React.FC = () => {
     const fetchUserUsage = async () => {
       if (searchUserId && !isNaN(Number(searchUserId))) {
         try {
+          const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+          const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
           const response = await fetch(
-            `http://localhost:9050/api/v1/statistics/user-usage/${searchUserId}`
+            `http://${HOST_IP}:${GATEWAY_PORT}/api/v1/statistics/user-usage/${searchUserId}`
           );
           if (response.ok) {
             const data = await response.json();

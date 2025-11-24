@@ -81,7 +81,7 @@ const MermaidDiagram: React.FC<{ chart: string }> = ({ chart }) => {
   return (
     <div
       ref={ref}
-      className="my-4 flex justify-center items-center p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+      className="my-4 flex justify-center items-center p-4 bg-white dark:bg-panel-dark rounded-lg border border-gray-200 dark:border-border-dark"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
@@ -108,7 +108,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ inline, className, children, ...p
   if (inline) {
     return (
       <code
-        className="px-1.5 py-0.5 mx-0.5 bg-gray-100 dark:bg-gray-800 text-pink-600 dark:text-pink-400 rounded text-sm font-mono"
+        className="px-1.5 py-0.5 mx-0.5 bg-gray-100 dark:bg-panel-dark text-pink-600 dark:text-pink-400 rounded text-sm font-mono"
         {...props}
       >
         {children}

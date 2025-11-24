@@ -25,7 +25,13 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:9060", "http://localhost:9050"]
+    CORS_ORIGINS: List[str] = [
+        "http://172.17.0.1:9060",
+        "http://172.17.0.1:9050",
+        "https://172.17.0.1:9050",
+        "http://localhost:9060",
+        "http://localhost:9050"
+    ]
     
     # OpenAI API
     OPENAI_API_KEY: Optional[str] = None

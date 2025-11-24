@@ -288,8 +288,10 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
       }
 
       try {
+        const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+        const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
         const response = await fetch(
-          `http://localhost:9050/api/tracing/logs/${traceId}`,
+          `http://${HOST_IP}:${GATEWAY_PORT}/api/tracing/logs/${traceId}`,
           {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -322,8 +324,10 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   }, [traceId, accessToken]);
 
   // WebSocket connection for real-time logs
+  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
   const wsUrl = accessToken
-    ? `ws://localhost:9050/ws/trace/${traceId}?token=${encodeURIComponent(accessToken)}`
+    ? `ws://${HOST_IP}:${GATEWAY_PORT}/ws/trace/${traceId}?token=${encodeURIComponent(accessToken)}`
     : null;
 
   const { isConnected } = useWebSocket(wsUrl, {
@@ -357,8 +361,10 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
     try {
       // Delete logs from backend
+      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
       const response = await fetch(
-        `http://localhost:9050/api/tracing/traces/${traceId}`,
+        `http://${HOST_IP}:${GATEWAY_PORT}/api/tracing/traces/${traceId}`,
         {
           method: 'DELETE',
           headers: {

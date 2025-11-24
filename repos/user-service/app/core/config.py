@@ -25,11 +25,17 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 720
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:9060", "http://localhost:9050"]
-    
+    CORS_ORIGINS: List[str] = [
+        "http://172.17.0.1:9060",
+        "http://172.17.0.1:9050",
+        "https://172.17.0.1:9050",
+        "http://localhost:9060",
+        "http://localhost:9050"
+    ]
+
     # SSO
-    IDP_ENTITY_ID: str = "http://localhost:9999/mock-sso/login"
-    SP_REDIRECT_URL: str = "http://localhost:9050/api/auth/callback/"
+    IDP_ENTITY_ID: str = "http://172.17.0.1:9999/mock-sso/login"
+    SP_REDIRECT_URL: str = "http://172.17.0.1:9050/api/auth/callback/"
     
     class Config:
         env_file = ".env.local"

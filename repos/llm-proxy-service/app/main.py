@@ -7,6 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db
 from app.core.redis_client import redis_client
+from app.api.trace_openai import trace_openai_router
+from app.api.internal import router as internal_router
+from app.api.v1.statistics import router as statistics_router
+from app.websocket import websocket_router
 from alembic.config import Config
 from alembic import command
 import os
@@ -77,26 +81,9 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:9060",  # Frontend dev
-        "http://localhost:9050",  # API Gateway
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # Allow all origins
 )
 
-# Import routers
-from app.api import proxy_router
-from app.api.openai_compatible import openai_router
-from app.api.trace_openai import trace_openai_router
-from app.api.internal import router as internal_router
-from app.api.v1.statistics import router as statistics_router
-from app.websocket import websocket_router
-
-# Include routers
-app.include_router(proxy_router, prefix="/api/proxy", tags=["proxy"])
-app.include_router(openai_router, prefix="/v1", tags=["openai-compatible"])
 app.include_router(trace_openai_router, prefix="/trace/{trace_id}/v1", tags=["trace-openai"])
 app.include_router(internal_router, prefix="/api", tags=["internal"])
 app.include_router(statistics_router, prefix="/api/v1", tags=["statistics"])

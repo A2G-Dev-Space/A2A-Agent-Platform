@@ -120,7 +120,7 @@ export const WorkbenchDashboard: React.FC = () => {
           {/* Add New Agent Card */}
           <div
             onClick={() => setIsModalOpen(true)}
-            className="flex min-h-[198px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-black/20 text-gray-500 dark:text-gray-400 transition-all hover:border-primary hover:text-primary dark:hover:border-primary/50 dark:hover:text-primary"
+            className="flex min-h-[198px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-border-dark bg-gray-50 dark:bg-panel-dark/50 text-gray-500 dark:text-text-dark-secondary transition-all hover:border-primary hover:text-primary dark:hover:border-primary dark:hover:text-primary"
           >
             <Plus className="h-12 w-12" />
             <p className="text-base font-semibold">{t('workbench.addNewAgent')}</p>

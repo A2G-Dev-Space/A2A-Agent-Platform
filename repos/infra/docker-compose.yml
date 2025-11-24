@@ -61,17 +61,19 @@ services:
     ports:
       - "0.0.0.0:9050:9050"  # 모든 IP에서 접근 가능 (또는 특정 IP: "192.168.1.100:9050:9050")
     environment:
+      HOST_IP: ${HOST_IP:-localhost}
+      FRONTEND_PORT: ${FRONTEND_PORT:-9060}
       GATEWAY_PORT: 9050
       GATEWAY_HOST: 0.0.0.0
       ENVIRONMENT: development
-      USER_SERVICE_URL: http://host.docker.internal:8001
-      AGENT_SERVICE_URL: http://host.docker.internal:8002
-      CHAT_SERVICE_URL: http://host.docker.internal:8003
-      TRACING_SERVICE_URL: http://host.docker.internal:8004
-      ADMIN_SERVICE_URL: http://host.docker.internal:8005
-      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
+      USER_SERVICE_URL: http://${HOST_IP:-localhost}:8001
+      AGENT_SERVICE_URL: http://${HOST_IP:-localhost}:8002
+      CHAT_SERVICE_URL: http://${HOST_IP:-localhost}:8003
+      TRACING_SERVICE_URL: http://${HOST_IP:-localhost}:8004
+      ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
+      LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
       ENABLE_MOCK_SSO: "true"
-      MOCK_SSO_URL: http://mock-sso:9999
+      MOCK_SSO_URL: http://${HOST_IP:-localhost}:9999
       JWT_SECRET_KEY: local-dev-secret-key
       RATE_LIMIT_PER_IP: 100
       LOG_LEVEL: INFO
@@ -102,8 +104,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: local-dev-secret-key
-      IDP_ENTITY_ID: http://localhost:9999/mock-sso/login
-      SP_REDIRECT_URL: http://localhost:9050/api/auth/callback/
+      IDP_ENTITY_ID: http://${HOST_IP:-localhost}:9999/mock-sso/login
+      SP_REDIRECT_URL: http://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/api/auth/callback/
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +113,8 @@ services:
         condition: service_healthy
       mock-sso:
         condition: service_started
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -130,6 +134,8 @@ services:
       REDIS_URL: redis://redis:6379/1
       JWT_SECRET_KEY: local-dev-secret-key
       OPENAI_API_KEY: ${OPENAI_API_KEY:-your-api-key}
+      GATEWAY_HOST: ${HOST_IP:-localhost}
+      GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -155,6 +161,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/chat_service_db
       REDIS_URL: redis://redis:6379/2
       JWT_SECRET_KEY: local-dev-secret-key
+      GATEWAY_HOST: ${HOST_IP:-localhost}
+      GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -184,6 +192,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -202,12 +212,14 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
       REDIS_URL: redis://redis:6379/4
       JWT_SECRET_KEY: local-dev-secret-key
-      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
+      LLM_PROXY_SERVICE_URL: http://host.docker.internal:8006
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -225,10 +237,10 @@ services:
       REDIS_URL: redis://redis:6379/5
       CELERY_BROKER_URL: redis://redis:6379/6
       CELERY_RESULT_BACKEND: redis://redis:6379/7
-      ADMIN_SERVICE_URL: http://admin-service:8005
-      AGENT_SERVICE_URL: http://agent-service:8002
-      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
-      USER_SERVICE_URL: http://user-service:8001
+      ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
+      AGENT_SERVICE_URL: http://${HOST_IP:-localhost}:8002
+      LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
+      USER_SERVICE_URL: http://${HOST_IP:-localhost}:8001
     depends_on:
       postgres:
         condition: service_healthy
@@ -236,6 +248,8 @@ services:
         condition: service_healthy
       admin-service:
         condition: service_started
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -253,10 +267,10 @@ services:
       REDIS_URL: redis://redis:6379/5
       CELERY_BROKER_URL: redis://redis:6379/6
       CELERY_RESULT_BACKEND: redis://redis:6379/7
-      ADMIN_SERVICE_URL: http://admin-service:8005
-      AGENT_SERVICE_URL: http://agent-service:8002
-      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
-      USER_SERVICE_URL: http://user-service:8001
+      ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
+      AGENT_SERVICE_URL: http://${HOST_IP:-localhost}:8002
+      LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
+      USER_SERVICE_URL: http://${HOST_IP:-localhost}:8001
     depends_on:
       postgres:
         condition: service_healthy
@@ -264,6 +278,8 @@ services:
         condition: service_healthy
       admin-service:
         condition: service_started
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -277,19 +293,21 @@ services:
       dockerfile: Dockerfile.dev
     container_name: a2g-worker-api
     ports:
-      - "8010:8010"
+      - "0.0.0.0:8010:8010"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/worker_db
       REDIS_URL: redis://redis:6379/5
-      ADMIN_SERVICE_URL: http://admin-service:8005
-      AGENT_SERVICE_URL: http://agent-service:8002
-      LLM_PROXY_SERVICE_URL: http://llm-proxy-service:8006
-      USER_SERVICE_URL: http://user-service:8001
+      ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
+      AGENT_SERVICE_URL: http://${HOST_IP:-localhost}:8002
+      LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
+      USER_SERVICE_URL: http://${HOST_IP:-localhost}:8001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     networks:
       - a2g-network
     volumes:
@@ -306,15 +324,15 @@ services:
       - "0.0.0.0:8006:8006"  # 모든 IP에서 접근 가능
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/llm_proxy_db
-      ADMIN_SERVICE_URL: http://admin-service:8005
-      USER_SERVICE_URL: http://user-service:8001
+      ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
+      USER_SERVICE_URL: http://${HOST_IP:-localhost}:8001
       LOG_LEVEL: DEBUG
       # LLM Provider API Keys
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: AIzaSyDXVahR7moDwJep7GHRmxzagzVEVF_a_Gc
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
-      CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-http://localhost:8000/v1}
+      CUSTOM_BASE_URL: http://${HOST_IP:-localhost}:8000/v1
     depends_on:
       postgres:
         condition: service_healthy
@@ -323,20 +341,6 @@ services:
     volumes:
       - ../llm-proxy-service:/app
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8006 --reload
-
-  # Flower - Celery Monitoring (Optional)
-  flower:
-    image: mher/flower:2.0
-    container_name: a2g-flower
-    ports:
-      - "5555:5555"
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/6
-      FLOWER_PORT: 5555
-    depends_on:
-      - redis
-    networks:
-      - a2g-network
 
 networks:
   a2g-network:

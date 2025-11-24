@@ -89,7 +89,11 @@ async def create_session(
     await redis.set_session_trace(session_id, trace_id)
 
     # Generate session-specific LLM endpoint
-    llm_endpoint = f"http://localhost:9050/api/llm/v1/session/{session_id}"
+    # Get host from environment or default to localhost
+    import os
+    host = os.getenv("GATEWAY_HOST", "localhost")
+    port = os.getenv("GATEWAY_PORT", "9050")
+    llm_endpoint = f"http://{host}:{port}/api/llm/v1/session/{session_id}"
 
     return SessionResponse(
         id=session_id,
@@ -151,7 +155,10 @@ async def get_session(
         )
 
     # Generate session-specific LLM endpoint
-    llm_endpoint = f"http://localhost:9050/api/llm/v1/session/{session.session_id}"
+    import os
+    host = os.getenv("GATEWAY_HOST", "localhost")
+    port = os.getenv("GATEWAY_PORT", "9050")
+    llm_endpoint = f"http://{host}:{port}/api/llm/v1/session/{session.session_id}"
 
     return SessionResponse(
         id=session.session_id,

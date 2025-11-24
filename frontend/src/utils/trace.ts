@@ -9,5 +9,8 @@
  * @returns Full Platform LLM Proxy endpoint URL
  */
 export function getPlatformLlmEndpointUrl(traceId: string): string {
-  return `http://localhost:9050/api/llm/trace/${traceId}/v1`;
+  // Use environment variable or default to localhost
+  const gatewayHost = import.meta.env.VITE_HOST_IP || 'localhost';
+  const gatewayPort = import.meta.env.VITE_GATEWAY_PORT || '9050';
+  return `http://${gatewayHost}:${gatewayPort}/api/llm/trace/${traceId}/v1`;
 }

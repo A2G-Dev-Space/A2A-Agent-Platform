@@ -20,7 +20,10 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['endpoints']));
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
+  // Use absolute URL with HOST_IP and GATEWAY_PORT
+  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
+  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+  const API_BASE_URL = `http://${HOST_IP}:${GATEWAY_PORT}`;
 
   useEffect(() => {
     fetchA2AEndpoints();
