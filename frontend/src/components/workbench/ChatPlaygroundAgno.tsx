@@ -93,8 +93,8 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   // Chat adapter
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
-  // API base URL
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9050';
+  // API base URL - use empty string in dev (relative paths), VITE_API_URL in production
+  const API_BASE_URL = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || '');
 
   // Agent session ID
   const [agentSessionId, setAgentSessionId] = useState<string>('');
@@ -666,7 +666,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center max-w-md">
-            <div className="mb-4 mx-auto w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <div className="mb-4 mx-auto w-20 h-20 rounded-full bg-gray-100 dark:bg-background-dark flex items-center justify-center">
               <Globe className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -801,7 +801,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             </div>
 
             {/* Text Formatting */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.textFormatting.title')}
               </h4>
@@ -813,12 +813,12 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 </p>
                 {/* Source code */}
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{`${t('workbench.guide.textFormatting.boldExample')}\n${t('workbench.guide.textFormatting.italicExample')}\n${t('workbench.guide.textFormatting.strikeExample')}\n${t('workbench.guide.textFormatting.codeExample')}`}</code>
                   </pre>
                 </div>
                 {/* Preview */}
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={`${t('workbench.guide.textFormatting.boldExample')}\n\n${t('workbench.guide.textFormatting.italicExample')}\n\n${t('workbench.guide.textFormatting.strikeExample')}\n\n${t('workbench.guide.textFormatting.codeExample')}`} />
                 </div>
               </div>
@@ -829,18 +829,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.textFormatting.taskListsLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.textFormatting.taskExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.textFormatting.taskExample')} />
                 </div>
               </div>
             </div>
 
             {/* Code Blocks */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.codeBlocks.title')}
               </h4>
@@ -861,11 +861,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>Python {t('workbench.guide.codeBlocks.exampleLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.codeBlocks.pythonExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.codeBlocks.pythonExample')} />
                 </div>
               </div>
@@ -876,18 +876,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.codeBlocks.diffLabel')}</strong> {t('workbench.guide.codeBlocks.diffNote')}
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.codeBlocks.diffExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.codeBlocks.diffExample')} />
                 </div>
               </div>
             </div>
 
             {/* Mathematics */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.math.title')}
               </h4>
@@ -898,11 +898,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.math.inlineLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.math.inlineExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.math.inlineExample')} />
                 </div>
               </div>
@@ -913,18 +913,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.math.displayLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.math.displayExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.math.displayExample')} />
                 </div>
               </div>
             </div>
 
             {/* Diagrams */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.diagrams.title')}
               </h4>
@@ -947,11 +947,11 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.diagrams.exampleLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.diagrams.flowchartExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.diagrams.flowchartExample')} />
                 </div>
               </div>
@@ -962,18 +962,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>Sequence Diagram:</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.diagrams.sequenceExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.diagrams.sequenceExample')} />
                 </div>
               </div>
             </div>
 
             {/* Tables */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.tables.title')}
               </h4>
@@ -986,18 +986,18 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                   <strong>{t('workbench.guide.tables.exampleLabel')}</strong>
                 </p>
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.tables.tableExample')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.tables.tableExample')} />
                 </div>
               </div>
             </div>
 
             {/* Images */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.images.title')}
               </h4>
@@ -1007,44 +1007,44 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             </div>
 
             {/* Links & Lists */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.links.title')}
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                {t('workbench.guide.links.markdownLabel')} <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">[링크](https://example.com)</code>
+                {t('workbench.guide.links.markdownLabel')} <code className="text-xs bg-gray-100 dark:bg-background-dark px-1 py-0.5 rounded">[링크](https://example.com)</code>
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                 <strong>{t('workbench.guide.links.autoLinkLabel')}</strong> {t('workbench.guide.links.autoLinkText')}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                {t('workbench.guide.links.unorderedLabel')} <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">- 항목</code>
+                {t('workbench.guide.links.unorderedLabel')} <code className="text-xs bg-gray-100 dark:bg-background-dark px-1 py-0.5 rounded">- 항목</code>
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('workbench.guide.links.orderedLabel')} <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">1. 항목</code>
+                {t('workbench.guide.links.orderedLabel')} <code className="text-xs bg-gray-100 dark:bg-background-dark px-1 py-0.5 rounded">1. 항목</code>
               </p>
             </div>
 
             {/* Blockquotes */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.blockquotes.title')}
               </h4>
 
               <div className="mb-3">
                 <div className="mb-2">
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 overflow-x-auto">
+                  <pre className="text-xs bg-gray-100 dark:bg-background-dark p-2 rounded border border-gray-300 dark:border-border-dark overflow-x-auto">
                     <code>{t('workbench.guide.blockquotes.example')}</code>
                   </pre>
                 </div>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-600">
+                <div className="bg-white dark:bg-panel-dark p-3 rounded border border-gray-300 dark:border-border-dark">
                   <MessageContent content={t('workbench.guide.blockquotes.example')} />
                 </div>
               </div>
             </div>
 
             {/* Best Practices */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.bestPractices.title')}
               </h4>
@@ -1061,100 +1061,100 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             </div>
 
             {/* Quick Reference */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t border-gray-200 dark:border-border-dark pt-4">
               <h4 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-200">
                 {t('workbench.guide.quickReference.title')}
               </h4>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-300 dark:border-gray-600">
+                <table className="min-w-full text-sm border border-gray-300 dark:border-border-dark">
                   <thead>
-                    <tr className="bg-gray-100 dark:bg-gray-800">
-                      <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">
+                    <tr className="bg-gray-100 dark:bg-background-dark">
+                      <th className="border border-gray-300 dark:border-border-dark px-3 py-2 text-left">
                         {t('workbench.guide.quickReference.featureCol')}
                       </th>
-                      <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">
+                      <th className="border border-gray-300 dark:border-border-dark px-3 py-2 text-left">
                         {t('workbench.guide.quickReference.useCaseCol')}
                       </th>
-                      <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left">
+                      <th className="border border-gray-300 dark:border-border-dark px-3 py-2 text-left">
                         {t('workbench.guide.quickReference.exampleCol')}
                       </th>
                     </tr>
                   </thead>
                   <tbody className="text-gray-700 dark:text-gray-300">
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.codeBlock')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.codeBlockUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.codeBlockEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.diff')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.diffUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.diffEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.latex')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.latexUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.latexEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.flowchart')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.flowchartUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.flowchartEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.sequence')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.sequenceUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.sequenceEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.table')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.tableUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.tableEx')}
                       </td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.blockquote')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.blockquoteUse')}
                       </td>
-                      <td className="border border-gray-300 dark:border-gray-600 px-3 py-2">
+                      <td className="border border-gray-300 dark:border-border-dark px-3 py-2">
                         {t('workbench.guide.quickReference.blockquoteEx')}
                       </td>
                     </tr>
@@ -1163,7 +1163,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
               </div>
             </div>
 
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center pt-2 border-t border-gray-200 dark:border-border-dark">
               {t('workbench.guide.footer')}
             </div>
           </div>
