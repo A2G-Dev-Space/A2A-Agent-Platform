@@ -433,6 +433,27 @@
       "copy": "복사",
       "image": "이미지",
       "waitingForResponse": "에이전트 응답 대기 중..."
+    },
+    "cors": {
+      "modal": {
+        "title": "CORS 설정 필요",
+        "errorTitle": "연결 실패 - CORS 정책 차단",
+        "errorMessage": "브라우저가 CORS 정책으로 인해 <code>{{endpoint}}</code>에 대한 요청을 차단했습니다.",
+        "howToFix": "해결 방법",
+        "solutionTitle": "해결책: 에이전트에 CORS 설정 추가",
+        "solutionDescription": "에이전트 코드에 CORS 설정을 추가하세요:",
+        "agnoComment": "# Agno 에이전트의 경우:",
+        "adkComment": "# ADK 또는 커스텀 FastAPI 서버의 경우:",
+        "whyTitle": "왜 이런 일이 발생하나요?",
+        "whyDescription": "브라우저는 CORS(Cross-Origin Resource Sharing) 정책을 시행하여 웹사이트가 허가 없이 다른 도메인에 요청하는 것을 방지합니다. Agno 에이전트가 다른 포트/도메인에서 실행되므로 명시적으로 교차 출처 요청을 허용해야 합니다."
+      },
+      "warning": {
+        "title": "⚠️ CORS 설정 필요",
+        "agnoDescription": "Agno 에이전트가 이 플레이그라운드와 통신하려면 CORS를 활성화해야 합니다. 다음 미들웨어를 에이전트에 추가하세요:",
+        "adkDescription": "ADK 에이전트가 이 플레이그라운드와 통신하려면 CORS를 활성화해야 합니다. 다음 미들웨어를 에이전트에 추가하세요:",
+        "langchainDescription": "커스텀 에이전트가 이 플레이그라운드와 통신하려면 CORS를 활성화해야 합니다. 다음 미들웨어를 FastAPI 애플리케이션에 추가하세요:",
+        "setupGuide": "CORS 설정 가이드 보기"
+      }
     }
   }
 }

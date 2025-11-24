@@ -10,6 +10,7 @@ import type { ChatAdapter } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { WorkflowGuideModal } from './WorkflowGuideModal';
+import { CorsGuideModal } from './CorsGuideModal';
 import { downloadExampleCode } from '@/utils/downloadExamples';
 
 interface Message {
@@ -63,6 +64,7 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
   const [agentEndpoint, setAgentEndpoint] = useState(agent.langchain_config?.endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
+  const [showCorsGuideModal, setShowCorsGuideModal] = useState(false);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   // Langchain-specific configuration
@@ -518,6 +520,43 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
       if (response.ok) {
         const data = await response.json();
         console.log('[ChatPlaygroundLangchain] Endpoint validation successful:', data);
+
+        // Test actual Langchain endpoint
+        let corsError = false;
+        let connectionSuccess = false;
+
+        try {
+          // Test if Langchain endpoint is accessible with a simple GET request
+          const testResponse = await fetch(agentEndpoint);
+          if (testResponse.ok || testResponse.status === 405) { // 405 Method Not Allowed is fine
+            connectionSuccess = true;
+            console.log('[ChatPlaygroundLangchain] Endpoint test successful');
+          } else {
+            console.warn('[ChatPlaygroundLangchain] Endpoint returned:', testResponse.status);
+          }
+        } catch (error) {
+          console.error('[ChatPlaygroundLangchain] Failed to test endpoint:', error);
+          // Check if it's a CORS error
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            corsError = true;
+          }
+        }
+
+        if (corsError) {
+          console.error('[ChatPlaygroundLangchain] CORS error detected');
+          setAgentEndpointStatus('error');
+          setShowCorsGuideModal(true);
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+          return;
+        }
+
+        if (!connectionSuccess) {
+          alert('Endpoint saved but could not connect to Langchain agent. Please check if the agent is running and accessible.');
+          setAgentEndpointStatus('error');
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+          return;
+        }
+
         setAgentEndpointStatus('success');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       } else {
@@ -1265,30 +1304,32 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
                 </div>
               )}
 
-              {/* CORS Warning */}
-              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
+              {/* CORS Warning - Always show for custom agents */}
+              {agentEndpoint && (
                 <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">{t('cors.warning.title')}</p>
                     <button
                       onClick={() => setShowCorsExample(!showCorsExample)}
                       className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
                     >
-                      {showCorsExample ? 'Hide' : 'Show'} example
+                      {showCorsExample ? t('common.close') : t('cors.warning.setupGuide')}
                     </button>
                   </div>
                   {showCorsExample && (
                     <>
                       <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
-                        For localhost testing, enable CORS in your Langchain agent:
+                        {t('cors.warning.langchainDescription')}
                       </p>
                       <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
-                        {`# Add to your FastAPI Langchain agent:
+                        {`# Configure CORS in your FastAPI agent:
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+app = FastAPI()
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=["http://localhost:9060"],
+  allow_origins=["*"],  # Or specify frontend URL
   allow_credentials=True,
   allow_methods=["*"],
   allow_headers=["*"]
@@ -1645,6 +1686,13 @@ app.add_middleware(
         onClose={() => setShowWorkflowGuide(false)}
         framework={agent.framework}
         onDownloadExamples={handleDownloadExamples}
+      />
+
+      {/* CORS Guide Modal */}
+      <CorsGuideModal
+        isOpen={showCorsGuideModal}
+        onClose={() => setShowCorsGuideModal(false)}
+        endpoint={agentEndpoint}
       />
     </div>
   );
