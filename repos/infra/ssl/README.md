@@ -41,29 +41,37 @@ SSL_CERTFILE=/app/ssl/server.crt
 
 ### 3. 서비스 시작
 
+#### 방법 A: start.sh로 직접 실행 (권장)
+
+```bash
+cd repos/api-gateway
+./start.sh
+```
+
+SSL이 활성화되어 있고 인증서가 있으면 자동으로 HTTPS로 시작!
+
+#### 방법 B: Docker Compose 사용
+
 ```bash
 cd repos/infra
-
-# SSL 인증서가 준비되면 자동으로 HTTPS로 시작
 docker-compose up -d api-gateway
-
-# 또는 전체 재시작
-docker-compose restart
 ```
 
 ## ✅ 확인
 
-### 1. 서비스 로그 확인
+### 1. 시작 로그 확인
 
-```bash
-docker-compose logs api-gateway | grep SSL
-```
-
-다음과 같은 로그가 표시되면 성공:
+**start.sh 직접 실행 시:**
+터미널에 바로 표시됨:
 ```
 ✅ Starting with HTTPS (SSL enabled)
-   Certificate: /app/ssl/server.crt
-   Private Key: /app/ssl/server.key
+   Certificate: ../infra/ssl/server.crt
+   Private Key: ../infra/ssl/server.key
+```
+
+**Docker Compose 사용 시:**
+```bash
+docker-compose logs api-gateway | grep SSL
 ```
 
 ### 2. HTTPS 접속 테스트
@@ -167,13 +175,13 @@ openssl rsa -noout -modulus -in server.key | openssl md5
 **확인 사항**:
 ```bash
 # 1. 환경변수 확인
-docker-compose config | grep SSL
+cat ../infra/.env | grep SSL
 
-# 2. 컨테이너 내부 파일 확인
-docker exec a2g-api-gateway ls -la /app/ssl/
+# 2. 인증서 파일 확인
+ls -la ../infra/ssl/server.*
 
-# 3. 로그 확인
-docker-compose logs api-gateway | head -20
+# 3. start.sh 다시 실행 (로그 확인)
+./start.sh
 ```
 
 ## 🔐 보안 권장사항
