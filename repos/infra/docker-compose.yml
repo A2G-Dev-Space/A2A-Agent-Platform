@@ -115,12 +115,7 @@ services:
       # Real SSO Settings
       SSO_ENABLED: ${SSO_ENABLED:-true}
       SSO_CLIENT_ID: ${SSO_CLIENT_ID:-41211cae-1fda-49f7-a462-f01d51ed4b6d}
-      SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET:-}
       IDP_ENTITY_ID: ${IDP_ENTITY_ID:-https://your-idp-domain.com}
-      SSO_AUTHORIZATION_URL: ${SSO_AUTHORIZATION_URL:-}
-      SSO_TOKEN_URL: ${SSO_TOKEN_URL:-}
-      SSO_USERINFO_URL: ${SSO_USERINFO_URL:-}
-      SSO_JWKS_URL: ${SSO_JWKS_URL:-}
       SP_REDIRECT_URL: ${SP_REDIRECT_URL:-https://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/callback}
       SP_LOGOUT_URL: ${SP_LOGOUT_URL:-}
       SSO_SCOPE: ${SSO_SCOPE:-openid profile}

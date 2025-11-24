@@ -29,10 +29,9 @@ cd ssl/
 ENABLE_MOCK_SSO=false  # Mock SSO 비활성화
 SSO_ENABLED=true       # 실제 SSO 활성화
 
-# Real SSO Configuration (OpenID Connect)
+# Real SSO Configuration
 SSO_CLIENT_ID=41211cae-1fda-49f7-a462-f01d51ed4b6d  # 실제 Client ID
-SSO_CLIENT_SECRET=your-actual-client-secret         # 실제 Client Secret
-IDP_ENTITY_ID=https://your-company-sso.com          # 실제 IDP URL
+IDP_ENTITY_ID=https://your-company-sso.com          # 실제 SSO 로그인 URL
 SP_REDIRECT_URL=https://${HOST_IP}:${GATEWAY_PORT}/callback
 SP_LOGOUT_URL=https://your-company-sso.com/logout   # 실제 로그아웃 URL
 
@@ -47,12 +46,13 @@ SSL_ENABLED=true  # HTTPS 활성화
 2. Frontend가 `/api/auth/login` 호출
 3. Backend가 SSO 로그인 URL 생성 및 반환:
    ```
-   https://IDP_ENTITY_ID/?client_id=xxx&redirect_uri=https://HOST:9050/callback&...
+   https://IDP_ENTITY_ID/?client_id=xxx&redirect_uri=https://HOST:9050/callback&response_mode=form_post&response_type=code+id_token&scope=openid+profile&nonce=xxx&client-request-id=xxx&pullStatus=0
    ```
 4. 사용자가 SSO 페이지로 리다이렉트
-5. SSO 인증 완료 후 `form_post`로 callback URL로 id_token 전송
-6. Backend가 id_token을 인증서로 검증
-7. 검증 성공 시 access_token 발급
+5. SSO 인증 완료 후 `form_post`로 callback URL로 암호화된 id_token 전송
+6. Backend가 id_token을 .cer 인증서로 디코딩 (RS256)
+7. 디코딩된 JWT에서 사용자 정보(user id, dept id 등) 직접 획득
+8. 자체 access_token 발급
 
 ### 3.2 토큰 검증
 ```python
@@ -127,8 +127,8 @@ docker-compose restart
 
 ## 7. 프로덕션 체크리스트
 
-- [ ] 실제 SSO 인증서 설치 완료
-- [ ] Client ID/Secret 설정 완료
+- [ ] 실제 SSO 인증서 (.cer 파일) 설치 완료
+- [ ] SSO_CLIENT_ID 설정 완료
 - [ ] 프로덕션용 SSL 인증서 (CA 서명) 사용
 - [ ] IDP_ENTITY_ID를 실제 SSO URL로 변경
 - [ ] SP_LOGOUT_URL 설정 완료

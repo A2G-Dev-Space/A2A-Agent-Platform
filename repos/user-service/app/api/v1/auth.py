@@ -76,12 +76,11 @@ async def initiate_login(request: LoginRequest):
 async def handle_callback(
     request: Optional[CallbackRequest] = None,
     id_token: Optional[str] = Form(None),  # Form data for form_post
-    code: Optional[str] = Form(None),  # Authorization code from SSO
     db: AsyncSession = Depends(get_db)
 ):
-    """Handle SSO callback with ID token"""
+    """Handle SSO callback with ID token from form_post"""
     try:
-        # Get id_token from either request body or form data
+        # Get id_token from either request body (JSON) or form data (form_post)
         token = None
         if request and request.id_token:
             token = request.id_token

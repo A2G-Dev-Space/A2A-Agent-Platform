@@ -40,12 +40,7 @@ class Settings(BaseSettings):
     # Real SSO Configuration
     SSO_ENABLED: bool = os.getenv("SSO_ENABLED", "false").lower() == "true"
     SSO_CLIENT_ID: str = os.getenv("SSO_CLIENT_ID", "41211cae-1fda-49f7-a462-f01d51ed4b6d")
-    SSO_CLIENT_SECRET: str = os.getenv("SSO_CLIENT_SECRET", "")
     IDP_ENTITY_ID: str = os.getenv("IDP_ENTITY_ID", "https://your-idp-domain.com")
-    SSO_AUTHORIZATION_URL: str = os.getenv("SSO_AUTHORIZATION_URL", "")
-    SSO_TOKEN_URL: str = os.getenv("SSO_TOKEN_URL", "")
-    SSO_USERINFO_URL: str = os.getenv("SSO_USERINFO_URL", "")
-    SSO_JWKS_URL: str = os.getenv("SSO_JWKS_URL", "")
     SP_REDIRECT_URL: str = os.getenv("SP_REDIRECT_URL", "https://172.17.0.1:9050/callback")
     SP_LOGOUT_URL: str = os.getenv("SP_LOGOUT_URL", "")
     SSO_SCOPE: str = os.getenv("SSO_SCOPE", "openid profile")
