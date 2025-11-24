@@ -179,7 +179,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
   return (
     <div
       onClick={handleCardClick}
-      className="flex flex-col min-h-[198px] rounded-xl border border-gray-200 dark:border-gray-800 p-4 transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+      className="flex flex-col min-h-[198px] rounded-xl border border-gray-200 dark:border-border-dark p-4 transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer"
       style={{ backgroundColor: getCardColor() }}
     >
       {/* Header with Logo and Status */}
@@ -196,7 +196,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, onEdit, onDelete, o
           )}
           {/* Framework Icon Badge */}
           {getFrameworkIcon() && (
-            <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-gray-800 rounded-full p-0.5 border border-gray-200 dark:border-gray-700">
+            <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-panel-dark rounded-full p-0.5 border border-gray-200 dark:border-border-dark">
               <img src={getFrameworkIcon()!} alt={agent.framework} className="w-full h-full object-contain" />
             </div>
           )}
