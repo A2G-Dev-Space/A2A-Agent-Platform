@@ -2,8 +2,8 @@
 A2G Platform API Gateway
 Centralized entry point for all backend services
 """
-from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect, Form
+from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx
@@ -182,6 +182,56 @@ async def api_health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+@app.get("/login")
+async def sso_login(request: Request):
+    """Redirect to SSO login page"""
+    # Get configuration
+    sso_enabled = os.getenv("SSO_ENABLED", "true").lower() == "true"
+    idp_entity_id = os.getenv("IDP_ENTITY_ID", "http://localhost:9999/mock-sso/login")
+    client_id = os.getenv("SSO_CLIENT_ID", "41211cae-1fda-49f7-a462-f01d51ed4b6d")
+
+    # Build callback URL based on request protocol
+    protocol = "https" if os.getenv("SSL_ENABLED", "false").lower() == "true" else "http"
+    host_ip = os.getenv("HOST_IP", "localhost")
+    gateway_port = os.getenv("GATEWAY_PORT", "9050")
+    redirect_uri = f"{protocol}://{host_ip}:{gateway_port}/callback"
+
+    # Build SSO login URL
+    sso_url = f"{idp_entity_id}?client_id={client_id}&redirect_uri={redirect_uri}&response_mode=form_post&response_type=code+id_token&scope=openid+profile&nonce=mock-nonce&client-request-id=mock-request"
+
+    logger.info(f"Redirecting to SSO: {sso_url}")
+
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=sso_url)
+
+@app.post("/callback")
+async def sso_callback(
+    id_token: str = Form(...),
+    code: Optional[str] = Form(None),
+    state: Optional[str] = Form(None)
+):
+    """Handle SSO callback with form_post"""
+    logger.info(f"SSO callback received with id_token")
+
+    # Forward to user service for processing
+    user_service_url = os.getenv('USER_SERVICE_URL', 'http://user-service:8001')
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{user_service_url}/api/auth/callback/sso",
+            data={
+                "id_token": id_token,
+                "code": code if code else "",
+                "state": state if state else ""
+            }
+        )
+
+        # Return the HTML response from user-service
+        return HTMLResponse(
+            content=response.text,
+            status_code=response.status_code
+        )
+
 async def proxy_request(request: Request, service_url: str, path: str):
     """Proxy HTTP request to backend service"""
     if not http_client:
@@ -315,6 +365,47 @@ async def proxy_request(request: Request, service_url: str, path: str):
     except Exception as e:
         logger.error(f"Error proxying request: {str(e)}")
         raise HTTPException(status_code=502, detail=f"Bad gateway: {str(e)}")
+
+@app.post("/callback")
+async def handle_sso_callback(
+    request: Request,
+    id_token: str = Form(...),
+    code: Optional[str] = Form(None)
+):
+    """
+    Handle SSO callback at the gateway level.
+    This endpoint receives form_post from SSO and forwards to user-service.
+    """
+    if not http_client:
+        raise HTTPException(status_code=500, detail="HTTP client not initialized")
+
+    # Forward to user-service callback/sso endpoint
+    user_service_url = SERVICE_ROUTES.get('/api/auth')
+    if not user_service_url:
+        raise HTTPException(status_code=500, detail="User service not configured")
+
+    try:
+        # Forward the form data to user-service
+        response = await http_client.post(
+            f"{user_service_url}/api/auth/callback/sso",
+            data={"id_token": id_token, "code": code}
+        )
+
+        # Return the HTML response from user-service
+        return HTMLResponse(content=response.text, status_code=response.status_code)
+
+    except Exception as e:
+        logger.error(f"SSO callback error: {e}")
+        # Return error page
+        return HTMLResponse(content=f"""
+            <html>
+                <body>
+                    <script>
+                        window.location.href = '/login?error=callback_failed';
+                    </script>
+                </body>
+            </html>
+        """, status_code=500)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def gateway_proxy(request: Request, path: str):
@@ -454,10 +545,37 @@ if os.getenv("ENABLE_MOCK_SSO", "false").lower() == "true":
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=9050,
-        reload=True,
-        log_level="info"
-    )
+    import ssl
+
+    # Check if SSL/HTTPS is enabled
+    ssl_enabled = os.getenv("SSL_ENABLED", "false").lower() == "true"
+    ssl_keyfile = os.getenv("SSL_KEYFILE", "/app/ssl/server.key")
+    ssl_certfile = os.getenv("SSL_CERTFILE", "/app/ssl/server.crt")
+
+    if ssl_enabled and os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):
+        logger.info(f"Starting API Gateway with HTTPS on port 9050")
+        logger.info(f"SSL Certificate: {ssl_certfile}")
+        logger.info(f"SSL Key: {ssl_keyfile}")
+
+        # Create SSL context
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(ssl_certfile, ssl_keyfile)
+
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=9050,
+            reload=True,
+            log_level="info",
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
+        )
+    else:
+        logger.info(f"Starting API Gateway with HTTP on port 9050 (SSL disabled or certificates not found)")
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=9050,
+            reload=True,
+            log_level="info"
+        )

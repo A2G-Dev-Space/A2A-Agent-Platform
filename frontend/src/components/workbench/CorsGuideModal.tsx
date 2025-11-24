@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, AlertCircle, Terminal, Globe } from 'lucide-react';
+import { X, AlertCircle, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface CorsGuideModalProps {
@@ -13,17 +13,15 @@ export const CorsGuideModal: React.FC<CorsGuideModalProps> = ({ isOpen, onClose,
 
   if (!isOpen) return null;
 
-  // Extract host from endpoint
-  const getHost = (url: string) => {
-    try {
-      const urlObj = new URL(url.startsWith('http') ? url : `http://${url}`);
-      return urlObj.hostname;
-    } catch {
-      return 'your-agno-server';
-    }
-  };
-
-  const host = getHost(endpoint);
+  // Extract host from endpoint (unused for now, but kept for potential future use)
+  // const getHost = (url: string) => {
+  //   try {
+  //     const urlObj = new URL(url.startsWith('http') ? url : `http://${url}`);
+  //     return urlObj.hostname;
+  //   } catch {
+  //     return 'your-agno-server';
+  //   }
+  // };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

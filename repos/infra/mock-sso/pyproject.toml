@@ -1,0 +1,11 @@
+[project]
+name = "mock-sso"
+version = "1.0.0"
+description = "Mock SSO Service for A2A Platform Development"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pyjwt>=2.8.0",
+    "cryptography>=41.0.0",
+]

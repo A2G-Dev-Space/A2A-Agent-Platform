@@ -10,25 +10,30 @@ export default defineConfig(({ mode }) => {
   // Use VITE_HOST_IP from .env, fallback to localhost
   const HOST_IP = env.VITE_HOST_IP || 'localhost'
   const GATEWAY_PORT = env.VITE_GATEWAY_PORT || '9050'
+  const SSL_ENABLED = env.SSL_ENABLED === 'true' || false
 
-  console.log(`Vite proxy configured for: ${HOST_IP}:${GATEWAY_PORT}`)
+  const protocol = SSL_ENABLED ? 'https' : 'http'
+  const wsProtocol = SSL_ENABLED ? 'wss' : 'ws'
+
+  console.log(`Vite proxy configured for: ${protocol}://${HOST_IP}:${GATEWAY_PORT}`)
 
   return {
     plugins: [tailwindcss(), react()],
     server: {
       port: 9060,
       host: '0.0.0.0',  // 모든 IP에서 접근 가능
+      allowedHosts: true,  // 모든 호스트 허용 (DNS, IP 제한 없음)
       proxy: {
         '/api': {
-          target: `http://${HOST_IP}:${GATEWAY_PORT}`,
+          target: `${protocol}://${HOST_IP}:${GATEWAY_PORT}`,
           changeOrigin: true,
-          secure: false,  // 프록시 검증 비활성화
+          secure: false,  // 자체 서명 인증서 허용
         },
         '/ws': {
-          target: `ws://${HOST_IP}:${GATEWAY_PORT}`,
+          target: `${wsProtocol}://${HOST_IP}:${GATEWAY_PORT}`,
           ws: true,
           changeOrigin: true,
-          secure: false,
+          secure: false,  // 자체 서명 인증서 허용
         },
       },
     },

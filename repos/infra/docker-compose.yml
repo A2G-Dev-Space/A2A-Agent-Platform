@@ -47,7 +47,7 @@ services:
       - ./mock-sso:/app
     working_dir: /app
     command: >
-      sh -c "pip install fastapi uvicorn python-jose PyJWT &&
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
              python main.py"
     networks:
       - a2g-network
@@ -72,11 +72,15 @@ services:
       TRACING_SERVICE_URL: http://${HOST_IP:-localhost}:8004
       ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
       LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
-      ENABLE_MOCK_SSO: "true"
+      ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
       MOCK_SSO_URL: http://${HOST_IP:-localhost}:9999
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       RATE_LIMIT_PER_IP: 100
       LOG_LEVEL: INFO
+      # SSL Configuration
+      SSL_ENABLED: ${SSL_ENABLED:-true}
+      SSL_KEYFILE: /app/ssl/server.key
+      SSL_CERTFILE: /app/ssl/server.crt
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -90,7 +94,8 @@ services:
       - a2g-network
     volumes:
       - ../api-gateway:/app
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload
+      - ./ssl:/app/ssl:ro  # SSL certificates
+    entrypoint: ["/app/docker-entrypoint.sh"]
 
   # User Service (DEV1)
   user-service:
@@ -103,9 +108,21 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: local-dev-secret-key
-      IDP_ENTITY_ID: http://${HOST_IP:-localhost}:9999/mock-sso/login
-      SP_REDIRECT_URL: http://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/api/auth/callback/
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:9060}
+      # Mock SSO Settings
+      ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
+      MOCK_SSO_URL: ${MOCK_SSO_URL:-http://mock-sso:9999}
+      # Real SSO Settings
+      SSO_ENABLED: ${SSO_ENABLED:-true}
+      SSO_CLIENT_ID: ${SSO_CLIENT_ID:-41211cae-1fda-49f7-a462-f01d51ed4b6d}
+      IDP_ENTITY_ID: ${IDP_ENTITY_ID:-https://your-idp-domain.com}
+      SP_REDIRECT_URL: ${SP_REDIRECT_URL:-https://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/callback}
+      SP_LOGOUT_URL: ${SP_LOGOUT_URL:-}
+      SSO_SCOPE: ${SSO_SCOPE:-openid profile}
+      SSO_RESPONSE_TYPE: ${SSO_RESPONSE_TYPE:-code id_token}
+      SSO_RESPONSE_MODE: ${SSO_RESPONSE_MODE:-form_post}
+      SSO_CERT_FILE: /app/certs/sso.cer
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,6 +136,7 @@ services:
       - a2g-network
     volumes:
       - ../user-service:/app
+      - ./certs:/app/certs:ro  # SSO certificates
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
   # Agent Service (DEV4)
@@ -132,7 +150,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/agent_service_db
       REDIS_URL: redis://redis:6379/1
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-your-api-key}
       GATEWAY_HOST: ${HOST_IP:-localhost}
       GATEWAY_PORT: ${GATEWAY_PORT:-9050}
@@ -160,7 +178,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/chat_service_db
       REDIS_URL: redis://redis:6379/2
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       GATEWAY_HOST: ${HOST_IP:-localhost}
       GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
@@ -211,7 +229,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
       REDIS_URL: redis://redis:6379/4
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       LLM_PROXY_SERVICE_URL: http://host.docker.internal:8006
     depends_on:
       postgres:

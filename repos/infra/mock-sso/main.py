@@ -245,7 +245,7 @@ async def mock_login_page(
 
             function selectUser(userKey) {{
                 // Redirect to the login endpoint with the selected user
-                const url = `/mock-sso/do-login?redirect_uri=${{encodeURIComponent(redirect_uri)}}&user=${{userKey}}`;
+                let url = `/mock-sso/do-login?redirect_uri=${{encodeURIComponent(redirect_uri)}}&user=${{userKey}}`;
                 if (state) {{
                     url += `&state=${{encodeURIComponent(state)}}`;
                 }}
@@ -301,13 +301,13 @@ async def mock_login_page(
     """
     return html
 
-@app.get("/mock-sso/do-login")
+@app.get("/mock-sso/do-login", response_class=HTMLResponse)
 async def do_login_get(
     redirect_uri: str,
     user: str = "dev1",
     state: Optional[str] = None
 ):
-    """Process login with selected user (GET method)"""
+    """Process login with selected user (GET method) and return form_post"""
     return await process_login(redirect_uri, user, state)
 
 @app.post("/mock-sso/do-login")
@@ -339,21 +339,77 @@ async def do_login_post(request: Request):
     return JSONResponse({"redirect_url": redirect_url})
 
 async def process_login(redirect_uri: str, user: str, state: Optional[str]):
-    """Common login processing logic"""
+    """Common login processing logic - returns HTML form that auto-submits (form_post)"""
     # Get user data
     user_data = MOCK_USERS.get(user, MOCK_USERS["dev1"])
 
     # Create ID token
     id_token = create_id_token(user_data)
 
-    # Redirect back to the application
-    redirect_url = f"{redirect_uri}?id_token={id_token}"
-    if state:
-        redirect_url += f"&state={state}"
-
     logger.info(f"Login successful for user: {user_data['loginid']}")
+    logger.info(f"Redirecting to: {redirect_uri} with form_post")
 
-    return RedirectResponse(url=redirect_url)
+    # Create HTML form that auto-submits (form_post response_mode)
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirecting...</title>
+        <style>
+            body {{
+                font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }}
+            .container {{
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                text-align: center;
+            }}
+            .spinner {{
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #667eea;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>🔐 Authentication Successful</h2>
+            <div class="spinner"></div>
+            <p>Redirecting to application...</p>
+        </div>
+
+        <form id="ssoForm" method="POST" action="{redirect_uri}">
+            <input type="hidden" name="id_token" value="{id_token}">
+            {"<input type='hidden' name='state' value='" + state + "'>" if state else ""}
+            <input type="hidden" name="code" value="mock-auth-code">
+        </form>
+
+        <script>
+            // Auto-submit the form
+            document.getElementById('ssoForm').submit();
+        </script>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(content=html)
 
 def create_id_token(user_data: dict) -> str:
     """Create a mock ID token"""

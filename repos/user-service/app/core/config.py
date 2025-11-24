@@ -33,9 +33,20 @@ class Settings(BaseSettings):
         "http://localhost:9050"
     ]
 
-    # SSO
-    IDP_ENTITY_ID: str = "http://172.17.0.1:9999/mock-sso/login"
-    SP_REDIRECT_URL: str = "http://172.17.0.1:9050/api/auth/callback/"
+    # Mock SSO (Development)
+    ENABLE_MOCK_SSO: bool = os.getenv("ENABLE_MOCK_SSO", "false").lower() == "true"
+    MOCK_SSO_URL: str = os.getenv("MOCK_SSO_URL", "http://mock-sso:9999")
+
+    # Real SSO Configuration
+    SSO_ENABLED: bool = os.getenv("SSO_ENABLED", "false").lower() == "true"
+    SSO_CLIENT_ID: str = os.getenv("SSO_CLIENT_ID", "41211cae-1fda-49f7-a462-f01d51ed4b6d")
+    IDP_ENTITY_ID: str = os.getenv("IDP_ENTITY_ID", "https://your-idp-domain.com")
+    SP_REDIRECT_URL: str = os.getenv("SP_REDIRECT_URL", "https://172.17.0.1:9050/callback")
+    SP_LOGOUT_URL: str = os.getenv("SP_LOGOUT_URL", "")
+    SSO_SCOPE: str = os.getenv("SSO_SCOPE", "openid profile")
+    SSO_RESPONSE_TYPE: str = os.getenv("SSO_RESPONSE_TYPE", "code id_token")
+    SSO_RESPONSE_MODE: str = os.getenv("SSO_RESPONSE_MODE", "form_post")
+    SSO_CERT_FILE: str = os.getenv("SSO_CERT_FILE", "/app/certs/sso.cer")
     
     class Config:
         env_file = ".env.local"
