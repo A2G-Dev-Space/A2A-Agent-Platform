@@ -40,7 +40,7 @@ export const WorkbenchDashboard: React.FC = () => {
   // Fetch all my agents (both development and deployed)
   const { data: developmentAgents, isLoading } = useQuery({
     queryKey: ['developmentAgents'],
-    queryFn: () => agentService.getAgents({}), // No status filter - get all my agents
+    queryFn: () => agentService.getAgents({ only_mine: true }), // Only show agents owned by current user
     select: (data: GetAgentsResponse) => data.agents,
   });
 
