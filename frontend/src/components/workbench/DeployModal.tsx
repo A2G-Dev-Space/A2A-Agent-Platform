@@ -126,7 +126,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
               {t('workbench.deployModal.deploymentScope')}
             </div>
             <div className="space-y-2">
-              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-gray-600 p-3 hover:bg-background-light dark:hover:bg-background-dark">
+              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-border-dark p-3 hover:bg-background-light dark:hover:bg-background-dark">
                 <input
                   type="radio"
                   value="team"
@@ -143,7 +143,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
                 </div>
               </label>
 
-              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-gray-600 p-3 hover:bg-background-light dark:hover:bg-background-dark">
+              <label className="flex cursor-pointer items-center rounded-lg border-2 border-border-light dark:border-border-dark p-3 hover:bg-background-light dark:hover:bg-background-dark">
                 <input
                   type="radio"
                   value="public"
@@ -202,7 +202,7 @@ export const DeployModal: React.FC<DeployModalProps> = ({
           <button
             onClick={onClose}
             disabled={isDeploying}
-            className="rounded-lg border-2 border-border-light dark:border-gray-500 px-4 py-2 text-sm font-medium text-text-light-primary dark:text-text-dark-primary hover:bg-background-light dark:hover:bg-background-dark disabled:opacity-50"
+            className="rounded-lg border-2 border-border-light dark:border-border-dark px-4 py-2 text-sm font-medium text-text-light-primary dark:text-text-dark-primary hover:bg-background-light dark:hover:bg-background-dark disabled:opacity-50"
           >
             {t('common.cancel')}
           </button>

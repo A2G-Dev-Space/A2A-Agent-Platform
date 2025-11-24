@@ -225,7 +225,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
             {log.level !== 'INFO' && <LevelIcon className={`h-3 w-3 flex-shrink-0 ${levelColor}`} />}
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
+          <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-text-dark-secondary flex-wrap">
             <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
             {log.service_name && log.service_name !== 'llm-proxy-service' && (
               <>
@@ -237,7 +237,7 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
 
           {/* Message */}
           {displayMessage && (
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-600 dark:text-text-dark-secondary mt-0.5">
               {displayMessage}
             </p>
           )}
@@ -257,8 +257,8 @@ const LogEntryItem: React.FC<{ log: LogEntry }> = ({ log }) => {
 
       {/* Expanded metadata */}
       {isExpanded && hasMetadata && (
-        <div className="ml-8 sm:ml-9 p-2 rounded bg-gray-100 dark:bg-gray-800 text-xs">
-          <pre className="overflow-x-auto text-gray-700 dark:text-gray-300">
+        <div className="ml-8 sm:ml-9 p-2 rounded bg-gray-100 dark:bg-background-dark text-xs">
+          <pre className="overflow-x-auto text-gray-700 dark:text-text-dark-primary">
             {JSON.stringify(log.metadata, null, 2)}
           </pre>
         </div>
@@ -421,7 +421,7 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
             ) : (
               <span className="text-red-500">{t('workbench.disconnected')}</span>
             )}
-            <span className="text-gray-500 dark:text-gray-400">• {logs.length} logs</span>
+            <span className="text-gray-500 dark:text-text-dark-secondary">• {logs.length} logs</span>
           </div>
         </div>
         <button
@@ -455,8 +455,8 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
         {logs.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <AlertCircle className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">{t('workbench.noLogs')}</p>
+              <AlertCircle className="mx-auto h-12 w-12 text-gray-300 dark:text-text-dark-secondary mb-4" />
+              <p className="text-gray-500 dark:text-text-dark-secondary">{t('workbench.noLogs')}</p>
             </div>
           </div>
         ) : (

@@ -291,7 +291,7 @@ const AddAgentModal: React.FC<AddAgentModalProps> = ({ isOpen, onClose, agent })
                     className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
                       watch('framework') === fw
                         ? 'border-primary bg-primary/5'
-                        : 'border-border-light dark:border-gray-700 hover:border-primary/50'
+                        : 'border-border-light dark:border-border-dark hover:border-primary/50'
                     }`}
                   >
                     <input

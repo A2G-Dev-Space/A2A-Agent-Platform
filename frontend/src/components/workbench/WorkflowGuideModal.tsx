@@ -41,18 +41,18 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-panel-dark rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-border-dark">
           <div className="flex items-center gap-3">
             <BookOpen className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">
               {t('workbench.workflow.title')} - {framework}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -66,10 +66,10 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
                 key={index}
                 className="border-l-4 border-primary pl-4 py-2"
               >
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary mb-2">
                   {step.title}
                 </h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p className="text-text-light-secondary dark:text-text-dark-secondary leading-relaxed">
                   {step.desc}
                 </p>
               </div>
@@ -104,10 +104,10 @@ export const WorkflowGuideModal: React.FC<WorkflowGuideModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-border-dark bg-gray-50 dark:bg-background-dark">
           <button
             onClick={handleDontShowAgain}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            className="text-sm text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary transition-colors"
           >
             {t('workbench.workflow.dontShowAgain')}
           </button>
