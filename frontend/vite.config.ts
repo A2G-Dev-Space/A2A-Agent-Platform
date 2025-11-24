@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   // Use VITE_HOST_IP from .env, fallback to localhost
   const HOST_IP = env.VITE_HOST_IP || 'localhost'
   const GATEWAY_PORT = env.VITE_GATEWAY_PORT || '9050'
-  const SSL_ENABLED = env.SSL_ENABLED === 'true' || false
+  const SSL_ENABLED = env.VITE_SSL_ENABLED === 'true' || false
 
   const protocol = SSL_ENABLED ? 'https' : 'http'
   const wsProtocol = SSL_ENABLED ? 'wss' : 'ws'

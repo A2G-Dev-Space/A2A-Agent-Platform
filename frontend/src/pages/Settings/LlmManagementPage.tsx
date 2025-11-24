@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
 import AddLlmModelModal from './AddLlmModelModal';
 import { useAuthStore } from '@/stores/authStore';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface LLMModel {
   id: number;
@@ -26,9 +27,7 @@ const LlmManagementPage: React.FC = () => {
 
   const fetchModels = async () => {
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/admin/llm-models/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -53,9 +52,7 @@ const LlmManagementPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this model?')) return;
 
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/admin/llm-models/${id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -73,9 +70,7 @@ const LlmManagementPage: React.FC = () => {
   const handleTestModel = async (id: number) => {
     setTestingModel(id);
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/health-check/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/admin/llm-models/${id}/health-check/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -94,9 +89,7 @@ const LlmManagementPage: React.FC = () => {
 
   const toggleModelActive = async (id: number, isActive: boolean) => {
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/${id}/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/admin/llm-models/${id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

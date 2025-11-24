@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Copy, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { copyToClipboard } from '@/utils/clipboard';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface PlatformKey {
   id: number;
@@ -23,9 +24,7 @@ const PlatformKeysPage: React.FC = () => {
 
   const fetchKeys = async () => {
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/v1/users/me/platform-keys/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/v1/users/me/platform-keys/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -50,9 +49,7 @@ const PlatformKeysPage: React.FC = () => {
     if (!newKeyName.trim()) return;
 
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/v1/users/me/platform-keys/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/v1/users/me/platform-keys/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -76,9 +73,7 @@ const PlatformKeysPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this key?')) return;
 
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/v1/users/me/platform-keys/${id}/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/v1/users/me/platform-keys/${id}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

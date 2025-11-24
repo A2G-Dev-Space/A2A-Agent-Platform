@@ -7,6 +7,7 @@ import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
 import { HubAgnoChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { A2AInfoSidebar } from './A2AInfoSidebar';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface Message {
   id: string;
@@ -73,10 +74,8 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
-  // Use absolute URL with HOST_IP and GATEWAY_PORT
-  const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-  const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-  const API_BASE_URL = `http://${HOST_IP}:${GATEWAY_PORT}`;
+  // Use absolute URL with dynamic protocol
+  const API_BASE_URL = getGatewayBaseUrl();
 
   // Auto-scroll to bottom
   useEffect(() => {

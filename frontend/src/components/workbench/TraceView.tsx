@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuthStore } from '@/stores/authStore';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface LogEntry {
   log_id: number;
@@ -288,10 +289,8 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
       }
 
       try {
-        const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-        const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
         const response = await fetch(
-          `http://${HOST_IP}:${GATEWAY_PORT}/api/tracing/logs/${traceId}`,
+          `${getGatewayBaseUrl()}/api/tracing/logs/${traceId}`,
           {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -361,10 +360,8 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
 
     try {
       // Delete logs from backend
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
       const response = await fetch(
-        `http://${HOST_IP}:${GATEWAY_PORT}/api/tracing/traces/${traceId}`,
+        `${getGatewayBaseUrl()}/api/tracing/traces/${traceId}`,
         {
           method: 'DELETE',
           headers: {

@@ -122,6 +122,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
     }
 
     // Connect to Tracing Service WebSocket
+    // Tracing service (8004) does not use SSL
     const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
     const wsUrl = `ws://${HOST_IP}:8004/ws/trace/${traceId}?token=${accessToken}`;
     console.log('[TracePanel] Connecting to WebSocket:', wsUrl);

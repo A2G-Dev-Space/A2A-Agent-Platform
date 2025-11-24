@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { getGatewayBaseUrl } from '@/config/api';
 
 interface AddLlmModelModalProps {
   isOpen: boolean;
@@ -57,9 +58,7 @@ const AddLlmModelModal: React.FC<AddLlmModelModalProps> = ({ isOpen, onClose }) 
 
     setLoading(true);
     try {
-      const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-      const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
-      const response = await fetch(`http://${HOST_IP}:${GATEWAY_PORT}/api/admin/llm-models/`, {
+      const response = await fetch(`${getGatewayBaseUrl()}/api/admin/llm-models/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
