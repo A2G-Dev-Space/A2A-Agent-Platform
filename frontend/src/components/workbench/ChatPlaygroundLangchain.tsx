@@ -1306,22 +1306,22 @@ export const ChatPlaygroundLangchain: React.FC<ChatPlaygroundLangchainProps> = (
 
               {/* CORS Warning - Always show for custom agents */}
               {agentEndpoint && (
-                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
+                <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded text-xs">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">{t('cors.warning.title')}</p>
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-200">{t('cors.warning.title')}</p>
                     <button
                       onClick={() => setShowCorsExample(!showCorsExample)}
-                      className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
+                      className="text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 underline"
                     >
                       {showCorsExample ? t('common.close') : t('cors.warning.setupGuide')}
                     </button>
                   </div>
                   {showCorsExample && (
                     <>
-                      <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
+                      <p className="text-yellow-700 dark:text-yellow-300 mt-1.5 mb-1.5">
                         {t('cors.warning.langchainDescription')}
                       </p>
-                      <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
+                      <code className="block bg-yellow-100 dark:bg-gray-800 p-1.5 rounded text-yellow-900 dark:text-yellow-100 overflow-x-auto whitespace-pre text-[10px] leading-tight border border-yellow-200 dark:border-gray-700">
                         {`# Configure CORS in your FastAPI agent:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

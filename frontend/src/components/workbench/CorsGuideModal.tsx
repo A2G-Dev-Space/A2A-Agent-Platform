@@ -26,23 +26,20 @@ export const CorsGuideModal: React.FC<CorsGuideModalProps> = ({ isOpen, onClose,
   const host = getHost(endpoint);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       {/* Modal */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-auto">
+      <div className="relative bg-panel-light dark:bg-panel-dark rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-auto border border-border-light dark:border-border-dark">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-border-light dark:border-border-dark">
           <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-yellow-500" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <AlertCircle className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />
+            <h2 className="text-xl font-semibold text-text-light-primary dark:text-text-dark-primary">
               {t('cors.modal.title')}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+            className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary rounded-lg p-1.5 hover:bg-background-light dark:hover:bg-background-dark"
           >
             <X className="h-5 w-5" />
           </button>
@@ -55,16 +52,16 @@ export const CorsGuideModal: React.FC<CorsGuideModalProps> = ({ isOpen, onClose,
             <div className="flex gap-3">
               <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
                   {t('cors.modal.errorTitle')}
                 </p>
-                <p className="text-sm text-red-600 dark:text-red-300 mt-1">
+                <p className="text-sm text-red-700 dark:text-red-200 mt-1">
                   {t('cors.modal.errorMessage', { endpoint }).split('<code>').map((part, i) => {
                     if (i === 0) return part;
                     const [code, ...rest] = part.split('</code>');
                     return (
                       <React.Fragment key={i}>
-                        <code className="font-mono bg-red-100 dark:bg-red-900/30 px-1 rounded">{code}</code>
+                        <code className="font-mono bg-red-100 dark:bg-red-800/30 px-1 rounded">{code}</code>
                         {rest.join('</code>')}
                       </React.Fragment>
                     );
@@ -76,22 +73,22 @@ export const CorsGuideModal: React.FC<CorsGuideModalProps> = ({ isOpen, onClose,
 
           {/* Instructions */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-text-light-primary dark:text-text-dark-primary">
               {t('cors.modal.howToFix')}
             </h3>
 
             {/* Configure CORS in Agent Code */}
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+            <div className="border border-border-light dark:border-border-dark rounded-lg p-4 space-y-3 bg-background-light dark:bg-background-dark">
               <div className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <h4 className="font-medium text-gray-900 dark:text-white">
+                <h4 className="font-medium text-text-light-primary dark:text-text-dark-primary">
                   {t('cors.modal.solutionTitle')}
                 </h4>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
+              <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
                 {t('cors.modal.solutionDescription')}
               </p>
-              <div className="bg-gray-900 text-gray-100 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+              <div className="bg-gray-900 dark:bg-gray-950 text-gray-100 dark:text-gray-200 rounded-lg p-3 font-mono text-sm overflow-x-auto border border-gray-700 dark:border-gray-800">
                 <pre>{`${t('cors.modal.agnoComment')}
 from agno import Agent
 from fastapi.middleware.cors import CORSMiddleware
@@ -124,7 +121,7 @@ app.add_middleware(
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex gap-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div className="text-sm text-blue-800 dark:text-blue-200">
+                <div className="text-sm text-blue-800 dark:text-blue-300">
                   <p className="font-medium mb-1">{t('cors.modal.whyTitle')}</p>
                   <p>
                     {t('cors.modal.whyDescription')}
@@ -136,10 +133,10 @@ app.add_middleware(
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 p-6 border-t border-border-light dark:border-border-dark">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-text-light-primary dark:text-text-dark-primary bg-background-light dark:bg-background-dark hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors border border-border-light dark:border-border-dark"
           >
             {t('common.close')}
           </button>
