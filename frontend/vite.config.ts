@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 9060,
       host: '0.0.0.0',  // 모든 IP에서 접근 가능
-      allowedHosts: 'all',  // 모든 호스트 허용 (DNS, IP 제한 없음)
+      allowedHosts: true,  // 모든 호스트 허용 (DNS, IP 제한 없음)
       proxy: {
         '/api': {
           target: `${protocol}://${HOST_IP}:${GATEWAY_PORT}`,
