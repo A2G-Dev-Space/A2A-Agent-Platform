@@ -433,6 +433,27 @@
       "copy": "Copy",
       "image": "Image",
       "waitingForResponse": "Waiting for agent's respond..."
+    },
+    "cors": {
+      "modal": {
+        "title": "CORS Configuration Required",
+        "errorTitle": "Connection Failed - CORS Policy Blocked",
+        "errorMessage": "The browser blocked the request to <code>{{endpoint}}</code> due to CORS policy.",
+        "howToFix": "How to Fix This Issue",
+        "solutionTitle": "Solution: Configure CORS in Your Agent",
+        "solutionDescription": "Add CORS configuration to your agent code:",
+        "agnoComment": "# For Agno agents:",
+        "adkComment": "# For ADK or custom FastAPI servers:",
+        "whyTitle": "Why is this happening?",
+        "whyDescription": "Browsers enforce CORS (Cross-Origin Resource Sharing) policy to prevent websites from making requests to different domains without permission. Since your Agno agent runs on a different port/domain, you need to explicitly allow cross-origin requests."
+      },
+      "warning": {
+        "title": "⚠️ CORS Configuration Required",
+        "agnoDescription": "Your Agno agent must have CORS enabled to communicate with this playground. Add the following middleware to your agent:",
+        "adkDescription": "Your ADK agent must have CORS enabled to communicate with this playground. Add the following middleware to your agent:",
+        "langchainDescription": "Your custom agent must have CORS enabled to communicate with this playground. Add the following middleware to your FastAPI application:",
+        "setupGuide": "View CORS setup guide"
+      }
     }
   }
 }

@@ -10,6 +10,7 @@ import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { WorkflowGuideModal } from './WorkflowGuideModal';
+import { CorsGuideModal } from './CorsGuideModal';
 import { downloadExampleCode } from '@/utils/downloadExamples';
 
 interface Message {
@@ -66,6 +67,7 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
   const [agentEndpoint, setAgentEndpoint] = useState(agent.agno_os_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
+  const [showCorsGuideModal, setShowCorsGuideModal] = useState(false);
 
   // Agno-specific state
   const [selectedResource, setSelectedResource] = useState(() => {
@@ -588,6 +590,8 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
 
         // For Agno, fetch teams and agents
         const resources: Array<{ id: string; name: string; type: 'team' | 'agent' }> = [];
+        let corsError = false;
+        let fetchErrors = 0;
 
         // Try to fetch teams
         try {
@@ -601,9 +605,17 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             }));
             resources.push(...teams);
             console.log('[ChatPlaygroundAgno] Loaded teams:', teams);
+          } else {
+            fetchErrors++;
+            console.warn('[ChatPlaygroundAgno] Teams endpoint returned:', teamsRes.status);
           }
         } catch (error) {
-          console.warn('[ChatPlaygroundAgno] Failed to load teams:', error);
+          fetchErrors++;
+          console.error('[ChatPlaygroundAgno] Failed to load teams:', error);
+          // Check if it's a CORS error (network error when fetch fails completely)
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            corsError = true;
+          }
         }
 
         // Try to fetch agents
@@ -618,16 +630,48 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
             }));
             resources.push(...agents);
             console.log('[ChatPlaygroundAgno] Loaded agents:', agents);
+          } else {
+            fetchErrors++;
+            console.warn('[ChatPlaygroundAgno] Agents endpoint returned:', agentsRes.status);
           }
         } catch (error) {
-          console.warn('[ChatPlaygroundAgno] Failed to load agents:', error);
+          fetchErrors++;
+          console.error('[ChatPlaygroundAgno] Failed to load agents:', error);
+          // Check if it's a CORS error
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            corsError = true;
+          }
+        }
+
+        // If CORS error or both fetches failed, show error
+        if (corsError || fetchErrors >= 2) {
+          console.error('[ChatPlaygroundAgno] CORS or connection error detected');
+          setAgentEndpointStatus('error');
+
+          if (corsError) {
+            // Show CORS guide modal
+            setShowCorsGuideModal(true);
+          } else {
+            alert('Failed to fetch resources from Agno agent. Please check if the agent is running and accessible.');
+          }
+
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+          return;
         }
 
         setAgnoResources(resources);
         console.log('[ChatPlaygroundAgno] Combined resources:', resources);
 
-        setAgentEndpointStatus('success');
-        setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+        // Only mark as success if we actually got some resources
+        if (resources.length > 0) {
+          setAgentEndpointStatus('success');
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+        } else {
+          // Backend saved but no resources fetched - partial success
+          setAgentEndpointStatus('error');
+          alert('Endpoint saved but could not fetch teams/agents. Check CORS configuration on your Agno server.');
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+        }
       } else {
         const errorData = await response.json();
         console.error('[ChatPlaygroundAgno] Endpoint validation failed:', errorData);
@@ -1325,25 +1369,36 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
                 <span>{isSavingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
               </button>
 
-              {/* CORS Warning */}
-              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
+              {/* CORS Warning - Always show for Agno agents */}
+              {agentEndpoint && (
                 <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">{t('cors.warning.title')}</p>
                     <button
                       onClick={() => setShowCorsExample(!showCorsExample)}
                       className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
                     >
-                      {showCorsExample ? 'Hide' : 'Show'} example
+                      {showCorsExample ? t('common.close') : t('cors.warning.setupGuide')}
                     </button>
                   </div>
                   {showCorsExample && (
                     <>
                       <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
-                        For localhost testing, enable CORS in your agent server:
+                        {t('cors.warning.agnoDescription')}
                       </p>
                       <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
-                        {`# Add CORS middleware to your Agno agent`}
+                        {`# Configure CORS in your agent code:
+from agno import Agent
+from fastapi.middleware.cors import CORSMiddleware
+
+agent = Agent()
+agent.app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or specify frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)`}
                       </code>
                     </>
                   )}
@@ -1843,6 +1898,13 @@ export const ChatPlaygroundAgno: React.FC<ChatPlaygroundAgnoProps> = ({ agentNam
         onClose={() => setShowWorkflowGuide(false)}
         framework={agent.framework}
         onDownloadExamples={handleDownloadExamples}
+      />
+
+      {/* CORS Guide Modal */}
+      <CorsGuideModal
+        isOpen={showCorsGuideModal}
+        onClose={() => setShowCorsGuideModal(false)}
+        endpoint={agentEndpoint}
       />
     </div>
   );

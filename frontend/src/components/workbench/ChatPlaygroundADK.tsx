@@ -10,6 +10,7 @@ import type { ChatAdapter } from '@/adapters/chat';
 import { ChatAdapterFactory } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { WorkflowGuideModal } from './WorkflowGuideModal';
+import { CorsGuideModal } from './CorsGuideModal';
 import { downloadExampleCode } from '@/utils/downloadExamples';
 
 interface Message {
@@ -60,6 +61,7 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
   const [agentEndpoint, setAgentEndpoint] = useState(agent.a2a_endpoint || '');
   const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
   const [showCorsExample, setShowCorsExample] = useState(false);
+  const [showCorsGuideModal, setShowCorsGuideModal] = useState(false);
   const [agentEndpointStatus, setAgentEndpointStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   // Available LLMs (healthy & active)
@@ -452,6 +454,43 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
       if (response.ok) {
         const data = await response.json();
         console.log('[ChatPlaygroundADK] Endpoint validation successful:', data);
+
+        // Test actual ADK endpoint
+        let corsError = false;
+        let connectionSuccess = false;
+
+        try {
+          // Test if ADK endpoint is accessible
+          const testResponse = await fetch(`${agentEndpoint}/.well-known/agent-card.json`);
+          if (testResponse.ok) {
+            connectionSuccess = true;
+            console.log('[ChatPlaygroundADK] ADK endpoint test successful');
+          } else {
+            console.warn('[ChatPlaygroundADK] ADK endpoint returned:', testResponse.status);
+          }
+        } catch (error) {
+          console.error('[ChatPlaygroundADK] Failed to test ADK endpoint:', error);
+          // Check if it's a CORS error
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            corsError = true;
+          }
+        }
+
+        if (corsError) {
+          console.error('[ChatPlaygroundADK] CORS error detected');
+          setAgentEndpointStatus('error');
+          setShowCorsGuideModal(true);
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+          return;
+        }
+
+        if (!connectionSuccess) {
+          alert('Endpoint saved but could not connect to ADK agent. Please check if the agent is running and accessible.');
+          setAgentEndpointStatus('error');
+          setTimeout(() => setAgentEndpointStatus('idle'), 3000);
+          return;
+        }
+
         setAgentEndpointStatus('success');
         setTimeout(() => setAgentEndpointStatus('idle'), 3000);
       } else {
@@ -1158,25 +1197,44 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
                 <span>{isSavingEndpoint ? 'Saving...' : 'Save Endpoint'}</span>
               </button>
 
-              {/* CORS Warning */}
-              {agentEndpoint && (agentEndpoint.includes('localhost') || agentEndpoint.includes('127.0.0.1')) && (
+              {/* CORS Warning - Always show for ADK agents */}
+              {agentEndpoint && (
                 <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ CORS Configuration Required</p>
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-300">{t('cors.warning.title')}</p>
                     <button
                       onClick={() => setShowCorsExample(!showCorsExample)}
                       className="text-yellow-700 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
                     >
-                      {showCorsExample ? 'Hide' : 'Show'} example
+                      {showCorsExample ? t('common.close') : t('cors.warning.setupGuide')}
                     </button>
                   </div>
                   {showCorsExample && (
                     <>
                       <p className="text-yellow-700 dark:text-yellow-400 mt-1.5 mb-1.5">
-                        For localhost testing, enable CORS in your agent server:
+                        {t('cors.warning.adkDescription')}
                       </p>
                       <code className="block bg-yellow-100 dark:bg-yellow-900/40 p-1.5 rounded text-yellow-900 dark:text-yellow-200 overflow-x-auto whitespace-pre text-[10px] leading-tight">
-                        {`# Add to your agent code:\nfrom fastapi.middleware.cors import CORSMiddleware\n\na2a_app.add_middleware(\n  CORSMiddleware,\n  allow_origins=["http://localhost:9060"],\n  allow_credentials=True,\n  allow_methods=["*"],\n  allow_headers=["*"]\n)`}
+                        {`# Configure CORS in your ADK agent:
+from fastapi.middleware.cors import CORSMiddleware
+
+# If using FastAPI directly:
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["*"],  # Or specify frontend URL
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"]
+)
+
+# If using A2A ADK:
+a2a_app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["*"],  # Or ["http://10.229.95.228:9060"]
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"]
+)`}
                       </code>
                     </>
                   )}
@@ -1380,6 +1438,13 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
         onClose={() => setShowWorkflowGuide(false)}
         framework={agent.framework}
         onDownloadExamples={handleDownloadExamples}
+      />
+
+      {/* CORS Guide Modal */}
+      <CorsGuideModal
+        isOpen={showCorsGuideModal}
+        onClose={() => setShowCorsGuideModal(false)}
+        endpoint={agentEndpoint}
       />
     </div>
   );
