@@ -454,10 +454,37 @@ if os.getenv("ENABLE_MOCK_SSO", "false").lower() == "true":
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=9050,
-        reload=True,
-        log_level="info"
-    )
+    import ssl
+
+    # Check if SSL/HTTPS is enabled
+    ssl_enabled = os.getenv("SSL_ENABLED", "false").lower() == "true"
+    ssl_keyfile = os.getenv("SSL_KEYFILE", "/app/ssl/server.key")
+    ssl_certfile = os.getenv("SSL_CERTFILE", "/app/ssl/server.crt")
+
+    if ssl_enabled and os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):
+        logger.info(f"Starting API Gateway with HTTPS on port 9050")
+        logger.info(f"SSL Certificate: {ssl_certfile}")
+        logger.info(f"SSL Key: {ssl_keyfile}")
+
+        # Create SSL context
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain(ssl_certfile, ssl_keyfile)
+
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=9050,
+            reload=True,
+            log_level="info",
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
+        )
+    else:
+        logger.info(f"Starting API Gateway with HTTP on port 9050 (SSL disabled or certificates not found)")
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=9050,
+            reload=True,
+            log_level="info"
+        )

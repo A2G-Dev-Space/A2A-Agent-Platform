@@ -72,11 +72,15 @@ services:
       TRACING_SERVICE_URL: http://${HOST_IP:-localhost}:8004
       ADMIN_SERVICE_URL: http://${HOST_IP:-localhost}:8005
       LLM_PROXY_SERVICE_URL: http://${HOST_IP:-localhost}:8006
-      ENABLE_MOCK_SSO: "true"
+      ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
       MOCK_SSO_URL: http://${HOST_IP:-localhost}:9999
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       RATE_LIMIT_PER_IP: 100
       LOG_LEVEL: INFO
+      # SSL Configuration
+      SSL_ENABLED: ${SSL_ENABLED:-true}
+      SSL_KEYFILE: /app/ssl/server.key
+      SSL_CERTFILE: /app/ssl/server.crt
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -90,6 +94,7 @@ services:
       - a2g-network
     volumes:
       - ../api-gateway:/app
+      - ./ssl:/app/ssl:ro  # SSL certificates
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload
 
   # User Service (DEV1)
@@ -103,9 +108,25 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET_KEY: local-dev-secret-key
-      IDP_ENTITY_ID: http://${HOST_IP:-localhost}:9999/mock-sso/login
-      SP_REDIRECT_URL: http://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/api/auth/callback/
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
+      # Mock SSO Settings
+      ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
+      MOCK_SSO_URL: ${MOCK_SSO_URL:-http://mock-sso:9999}
+      # Real SSO Settings
+      SSO_ENABLED: ${SSO_ENABLED:-true}
+      SSO_CLIENT_ID: ${SSO_CLIENT_ID:-41211cae-1fda-49f7-a462-f01d51ed4b6d}
+      SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET:-}
+      IDP_ENTITY_ID: ${IDP_ENTITY_ID:-https://your-idp-domain.com}
+      SSO_AUTHORIZATION_URL: ${SSO_AUTHORIZATION_URL:-}
+      SSO_TOKEN_URL: ${SSO_TOKEN_URL:-}
+      SSO_USERINFO_URL: ${SSO_USERINFO_URL:-}
+      SSO_JWKS_URL: ${SSO_JWKS_URL:-}
+      SP_REDIRECT_URL: ${SP_REDIRECT_URL:-https://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/callback}
+      SP_LOGOUT_URL: ${SP_LOGOUT_URL:-}
+      SSO_SCOPE: ${SSO_SCOPE:-openid profile}
+      SSO_RESPONSE_TYPE: ${SSO_RESPONSE_TYPE:-code id_token}
+      SSO_RESPONSE_MODE: ${SSO_RESPONSE_MODE:-form_post}
+      SSO_CERT_FILE: /app/certs/sso.cer
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,6 +140,7 @@ services:
       - a2g-network
     volumes:
       - ../user-service:/app
+      - ./certs:/app/certs:ro  # SSO certificates
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
   # Agent Service (DEV4)

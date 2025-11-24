@@ -1,17 +1,26 @@
 """
 Authentication API endpoints
 """
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Form, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import Optional
+from cryptography import x509
+from cryptography.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+import logging
+import json
+import os
 
 from app.core.config import settings
 from app.core.security import create_access_token, verify_token, get_db
 from app.core.database import async_session_maker, User
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -36,20 +45,43 @@ class LogoutResponse(BaseModel):
 @router.post("/login", response_model=LoginResponse)
 async def initiate_login(request: LoginRequest):
     """Initiate SSO login process"""
-    # In development, redirect to mock SSO
-    sso_url = f"{settings.IDP_ENTITY_ID}?redirect_uri={request.redirect_uri}"
+    # Check if real SSO is enabled
+    if settings.SSO_ENABLED and not settings.ENABLE_MOCK_SSO:
+        # Real SSO URL with all required parameters
+        import uuid
+        nonce = str(uuid.uuid4())
+        client_request_id = str(uuid.uuid4())
+
+        sso_params = {
+            "client_id": settings.SSO_CLIENT_ID,
+            "redirect_uri": settings.SP_REDIRECT_URL,
+            "response_mode": settings.SSO_RESPONSE_MODE,
+            "response_type": settings.SSO_RESPONSE_TYPE,
+            "scope": settings.SSO_SCOPE,
+            "nonce": nonce,
+            "client-request-id": client_request_id,
+            "pullStatus": "0"
+        }
+
+        # Build query string
+        query_string = "&".join([f"{k}={v}" for k, v in sso_params.items()])
+        sso_url = f"{settings.IDP_ENTITY_ID}/?{query_string}"
+    else:
+        # Development mode - use mock SSO
+        sso_url = f"{settings.IDP_ENTITY_ID}?redirect_uri={request.redirect_uri}"
 
     return LoginResponse(sso_login_url=sso_url)
 
 @router.post("/callback", response_model=CallbackResponse)
 async def handle_callback(
     request: Optional[CallbackRequest] = None,
-    id_token: Optional[str] = Query(None),
+    id_token: Optional[str] = Form(None),  # Form data for form_post
+    code: Optional[str] = Form(None),  # Authorization code from SSO
     db: AsyncSession = Depends(get_db)
 ):
     """Handle SSO callback with ID token"""
     try:
-        # Get id_token from either request body or query parameter
+        # Get id_token from either request body or form data
         token = None
         if request and request.id_token:
             token = request.id_token
@@ -58,30 +90,71 @@ async def handle_callback(
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing id_token in request body or query parameter"
+                detail="Missing id_token in request"
             )
-        
-        # Decode ID token (in production, verify signature)
-        try:
-            id_payload = jwt.decode(
-                token, 
-                settings.JWT_SECRET_KEY,  # Use configured secret
-                algorithms=["HS256"],
-                options={
-                    "verify_signature": False,  # Skip signature verification in dev
-                    "verify_aud": False,       # Skip audience verification in dev
-                    "verify_exp": True,        # Still verify expiration
-                    "verify_iat": False        # Skip issued at verification in dev
-                }
-            )
-        except Exception as e:
-            print(f"JWT decode error: {e}")
-            print(f"Token: {token}")
-            print(f"Secret: {settings.JWT_SECRET_KEY}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid ID token: {str(e)}"
-            )
+
+        # Check if real SSO is enabled
+        if settings.SSO_ENABLED and not settings.ENABLE_MOCK_SSO:
+            # Real SSO - verify with certificate
+            cert_file = settings.SSO_CERT_FILE
+            if not os.path.exists(cert_file):
+                logger.error(f"Certificate file not found: {cert_file}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"SSO certificate not configured"
+                )
+
+            # Load certificate and get public key
+            with open(cert_file, 'rb') as f:
+                cert_data = f.read()
+
+                # Try to load as PEM first, then DER
+                try:
+                    cert_obj = x509.load_pem_x509_certificate(cert_data, default_backend())
+                except:
+                    cert_obj = x509.load_der_x509_certificate(cert_data, default_backend())
+
+                public_key = cert_obj.public_key()
+
+            # Decode and verify JWT with RS256
+            try:
+                id_payload = jwt.decode(
+                    token,
+                    public_key,
+                    algorithms=["RS256"],
+                    options={
+                        "verify_signature": True,
+                        "verify_exp": True,
+                        "verify_aud": False  # May need to configure based on SSO
+                    }
+                )
+            except Exception as e:
+                logger.error(f"JWT verification failed: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid ID token: {str(e)}"
+                )
+        else:
+            # Development mode - decode without verification
+            try:
+                id_payload = jwt.decode(
+                    token,
+                    settings.JWT_SECRET_KEY,
+                    algorithms=["HS256"],
+                    options={
+                        "verify_signature": False,
+                        "verify_aud": False,
+                        "verify_exp": True,
+                        "verify_iat": False
+                    }
+                )
+            except Exception as e:
+                print(f"JWT decode error: {e}")
+                print(f"Token: {token}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid ID token: {str(e)}"
+                )
         
         username = id_payload.get("loginid")
         username_kr = id_payload.get("username")
@@ -161,7 +234,14 @@ async def handle_callback(
             detail="Invalid ID token"
         )
 
-@router.post("/logout", response_model=LogoutResponse)
+@router.get("/logout")
+@router.post("/logout")
 async def logout():
-    """Logout user (token invalidation would be handled by client)"""
+    """Logout user and redirect to SSO logout if enabled"""
+    if settings.SSO_ENABLED and not settings.ENABLE_MOCK_SSO:
+        # Redirect to SSO logout URL
+        if hasattr(settings, 'SP_LOGOUT_URL') and settings.SP_LOGOUT_URL:
+            return RedirectResponse(url=settings.SP_LOGOUT_URL, status_code=302)
+
+    # For mock SSO or no SSO, just return success
     return LogoutResponse(message="Successfully logged out")
