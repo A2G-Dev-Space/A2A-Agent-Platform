@@ -17,24 +17,24 @@ html {
   /* Light & Dark Theme Colors */
   --color-primary: #607AFB;
   --color-background-light: #f5f6f8;
-  --color-background-dark: #0f1323;
+  --color-background-dark: #1a1f35;
   --color-panel-light: #ffffff;
-  --color-panel-dark: #1f2937;
+  --color-panel-dark: #252d3f;
   --color-border-light: #e5e7eb;
-  --color-border-dark: #2d2938;
+  --color-border-dark: #3f4458;
   --color-text-light-primary: #111827;
-  --color-text-dark-primary: #f9fafb;
+  --color-text-dark-primary: #f3f4f6;
   --color-text-light-secondary: #6b7281;
-  --color-text-dark-secondary: #9ca3af;
+  --color-text-dark-secondary: #a8afc0;
 
   /* Workbench Mode Colors (Red) */
   --color-workbench-primary: #EA2831;
   --color-workbench-bg-light: #f8f6f6;
-  --color-workbench-bg-dark: #211111;
-  --color-workbench-surface-dark: #1f1c26;
-  --color-workbench-border-dark: #433c53;
-  --color-workbench-text-muted: #a59db8;
-  --color-workbench-input-dark: #131118;
+  --color-workbench-bg-dark: #2a1f20;
+  --color-workbench-surface-dark: #2d2633;
+  --color-workbench-border-dark: #534866;
+  --color-workbench-text-muted: #b8afc8;
+  --color-workbench-input-dark: #1f1a22;
 
   /* Hub Mode Colors (Blue) */
   --color-hub-primary: #359EFF;
@@ -42,29 +42,29 @@ html {
   --color-hub-accent-light: #E0F2FE;
   --color-hub-accent-dark: #0369a1;
   --color-hub-bg-light: #f5f7f8;
-  --color-hub-bg-dark: #0f1923;
-  --color-hub-surface-dark: #110d1a;
+  --color-hub-bg-dark: #1a2533;
+  --color-hub-surface-dark: #1f2538;
 
   /* Flow Mode Colors (Yellow) */
   --color-flow-primary: #FAC638;
   --color-flow-bg-light: #f8f8f5;
-  --color-flow-bg-dark: #231e0f;
+  --color-flow-bg-dark: #2d2818;
   --color-flow-accent: #CCFBF1;
   --color-flow-accent-dark: #0d9488;
 }
 
 [data-theme="dark"] {
     --color-primary: #8A9BFF;
-    --color-background-light: #0f1323;
-    --color-background-dark: #0f1323;
-    --color-panel-light: #1f2937;
-    --color-panel-dark: #1f2937;
-    --color-border-light: #2d2938;
-    --color-border-dark: #2d2938;
-    --color-text-light-primary: #f9fafb;
-    --color-text-dark-primary: #f9fafb;
-    --color-text-light-secondary: #9ca3af;
-    --color-text-dark-secondary: #9ca3af;
+    --color-background-light: #1a1f35;
+    --color-background-dark: #1a1f35;
+    --color-panel-light: #252d3f;
+    --color-panel-dark: #252d3f;
+    --color-border-light: #3f4458;
+    --color-border-dark: #3f4458;
+    --color-text-light-primary: #f3f4f6;
+    --color-text-dark-primary: #f3f4f6;
+    --color-text-light-secondary: #a8afc0;
+    --color-text-dark-secondary: #a8afc0;
 
     --color-hub-accent: #38bdf8;
     --color-hub-accent-light: #0369a1;

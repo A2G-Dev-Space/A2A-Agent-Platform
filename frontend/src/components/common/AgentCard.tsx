@@ -70,13 +70,13 @@ const AgentCard: React.FC<AgentCardProps> = ({ agent, onClick }) => {
             </div>
             {/* Health Status Indicator (Traffic Light) */}
             {agent.health_status && (
-              <div className="absolute -top-1 -left-1 size-3 rounded-full border-2 border-white dark:border-gray-800" style={{
+              <div className="absolute -top-1 -left-1 size-3 rounded-full border-2 border-white dark:border-panel-dark" style={{
                 backgroundColor: agent.health_status === HealthStatus.HEALTHY ? '#10b981' : agent.health_status === HealthStatus.UNHEALTHY ? '#ef4444' : '#6b7280'
               }}></div>
             )}
             {/* Framework Icon Badge */}
             {getFrameworkIcon() && (
-              <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-gray-800 rounded-full p-0.5 border border-gray-200 dark:border-gray-700">
+              <div className="absolute -bottom-1 -right-1 size-5 bg-white dark:bg-panel-dark rounded-full p-0.5 border border-gray-200 dark:border-border-dark">
                 <img src={getFrameworkIcon()!} alt={agent.framework} className="w-full h-full object-contain" />
               </div>
             )}

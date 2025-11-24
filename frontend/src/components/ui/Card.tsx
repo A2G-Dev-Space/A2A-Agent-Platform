@@ -30,7 +30,7 @@ export const Card: React.FC<CardProps> & {
     <div
       className={clsx(
         'rounded-xl bg-panel-light dark:bg-panel-dark',
-        'border border-border-light dark:border-gray-700',
+        'border border-border-light dark:border-border-dark',
         'shadow-sm overflow-hidden',
         className
       )}
