@@ -109,15 +109,15 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:9060}
+      FRONTEND_URL: http://${HOST_IP:-localhost}:${FRONTEND_PORT:-9060}
       # Mock SSO Settings
       ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
       MOCK_SSO_URL: ${MOCK_SSO_URL:-http://mock-sso:9999}
       # Real SSO Settings
       SSO_ENABLED: ${SSO_ENABLED:-true}
       SSO_CLIENT_ID: ${SSO_CLIENT_ID:-41211cae-1fda-49f7-a462-f01d51ed4b6d}
-      IDP_ENTITY_ID: ${IDP_ENTITY_ID:-https://your-idp-domain.com}
-      SP_REDIRECT_URL: ${SP_REDIRECT_URL:-https://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/callback}
+      IDP_ENTITY_ID: http://${HOST_IP:-localhost}:9999/mock-sso/login
+      SP_REDIRECT_URL: https://${HOST_IP:-localhost}:${GATEWAY_PORT:-9050}/callback
       SP_LOGOUT_URL: ${SP_LOGOUT_URL:-}
       SSO_SCOPE: ${SSO_SCOPE:-openid profile}
       SSO_RESPONSE_TYPE: ${SSO_RESPONSE_TYPE:-code id_token}
