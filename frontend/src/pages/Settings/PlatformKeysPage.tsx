@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Copy, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { copyToClipboard } from '@/utils/clipboard';
 
 interface PlatformKey {
   id: number;
@@ -92,10 +93,12 @@ const PlatformKeysPage: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string, id: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopyKey = async (text: string, id: number) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   const closeModal = () => {
@@ -152,7 +155,7 @@ const PlatformKeysPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <code className="text-slate-600 dark:text-slate-400 text-xs font-mono">a2g_{key.key}</code>
                         <button
-                          onClick={() => copyToClipboard(`a2g_${key.key}`, key.id)}
+                          onClick={() => handleCopyKey(`a2g_${key.key}`, key.id)}
                           className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                           {copiedId === key.id ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -199,7 +202,7 @@ const PlatformKeysPage: React.FC = () => {
                     <code className="text-xs font-mono text-gray-900 dark:text-gray-100 break-all">{createdKey}</code>
                   </div>
                   <button
-                    onClick={() => copyToClipboard(createdKey, 999)}
+                    onClick={() => handleCopyKey(createdKey, 999)}
                     className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
                   >
                     {copiedId === 999 ? (

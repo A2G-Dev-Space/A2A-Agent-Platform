@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Agent } from '@/types';
+import { copyToClipboard } from '@/utils/clipboard';
 
 interface A2AEndpoint {
   name: string;
@@ -95,13 +96,13 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
     }
   };
 
-  const copyToClipboard = async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
+  const handleCopy = async (text: string, id: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy:', error);
+    } else {
+      console.error('Failed to copy text');
     }
   };
 
@@ -216,7 +217,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
                       {endpoint.url}
                     </code>
                     <button
-                      onClick={() => copyToClipboard(endpoint.url, `url-${idx}`)}
+                      onClick={() => handleCopy(endpoint.url, `url-${idx}`)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                       title="Copy URL"
                     >
@@ -239,7 +240,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
                       {endpoint.agentCardUrl}
                     </code>
                     <button
-                      onClick={() => copyToClipboard(endpoint.agentCardUrl, `card-${idx}`)}
+                      onClick={() => handleCopy(endpoint.agentCardUrl, `card-${idx}`)}
                       className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                       title="Copy Agent Card URL"
                     >
@@ -285,7 +286,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
                   <code>{generateCurlCommand(endpoints[0])}</code>
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(generateCurlCommand(endpoints[0]), 'curl')}
+                  onClick={() => handleCopy(generateCurlCommand(endpoints[0]), 'curl')}
                   className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded transition-colors"
                   title="Copy curl command"
                 >
