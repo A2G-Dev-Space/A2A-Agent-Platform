@@ -2,8 +2,8 @@
 A2G Platform API Gateway
 Centralized entry point for all backend services
 """
-from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect, Form
+from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx
@@ -315,6 +315,47 @@ async def proxy_request(request: Request, service_url: str, path: str):
     except Exception as e:
         logger.error(f"Error proxying request: {str(e)}")
         raise HTTPException(status_code=502, detail=f"Bad gateway: {str(e)}")
+
+@app.post("/callback")
+async def handle_sso_callback(
+    request: Request,
+    id_token: str = Form(...),
+    code: Optional[str] = Form(None)
+):
+    """
+    Handle SSO callback at the gateway level.
+    This endpoint receives form_post from SSO and forwards to user-service.
+    """
+    if not http_client:
+        raise HTTPException(status_code=500, detail="HTTP client not initialized")
+
+    # Forward to user-service callback/sso endpoint
+    user_service_url = SERVICE_ROUTES.get('/api/auth')
+    if not user_service_url:
+        raise HTTPException(status_code=500, detail="User service not configured")
+
+    try:
+        # Forward the form data to user-service
+        response = await http_client.post(
+            f"{user_service_url}/api/auth/callback/sso",
+            data={"id_token": id_token, "code": code}
+        )
+
+        # Return the HTML response from user-service
+        return HTMLResponse(content=response.text, status_code=response.status_code)
+
+    except Exception as e:
+        logger.error(f"SSO callback error: {e}")
+        # Return error page
+        return HTMLResponse(content=f"""
+            <html>
+                <body>
+                    <script>
+                        window.location.href = '/login?error=callback_failed';
+                    </script>
+                </body>
+            </html>
+        """, status_code=500)
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def gateway_proxy(request: Request, path: str):
