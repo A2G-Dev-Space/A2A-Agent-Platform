@@ -15,9 +15,13 @@ router = APIRouter()
 
 class UserManagementInfo(BaseModel):
     id: int
-    name: str
+    username: str
+    username_kr: Optional[str]
+    username_en: Optional[str]
     email: str
-    department: str
+    department: Optional[str]
+    department_kr: Optional[str]
+    department_en: Optional[str]
     role: str
     status: str
 
@@ -63,9 +67,13 @@ async def list_users(
     return [
         UserManagementInfo(
             id=user.id,
-            name=user.username_kr or user.username,
+            username=user.username,
+            username_kr=user.username_kr,
+            username_en=user.username_en,
             email=user.email,
-            department=user.department_kr or user.department_en or "Unassigned",
+            department=user.department,
+            department_kr=user.department_kr,
+            department_en=user.department_en,
             role=user.role,
             status="Active"  # All users in DB are active (deleted users are removed from DB)
         )
@@ -117,9 +125,13 @@ async def invite_user(
 
     return UserManagementInfo(
         id=new_user.id,
-        name=new_user.username_kr or new_user.username,
+        username=new_user.username,
+        username_kr=new_user.username_kr,
+        username_en=new_user.username_en,
         email=new_user.email,
-        department=new_user.department_kr or new_user.department_en or "Unassigned",
+        department=new_user.department,
+        department_kr=new_user.department_kr,
+        department_en=new_user.department_en,
         role=new_user.role,
         status="Active"
     )
