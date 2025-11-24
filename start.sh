@@ -126,7 +126,7 @@ echo -e "  5. Realtime Service (포트 9003)"
 echo -e "${BLUE}========================================${NC}\n"
 
 # 1. Mock SSO 서비스 시작
-start_service "mock-sso" "repos/infra/mock-sso" "python main.py"
+start_service "mock-sso" "repos/infra/mock-sso" "uv run uvicorn main:app --host 0.0.0.0 --port 9999"
 
 # 2. API Gateway 시작 (HTTPS 지원)
 echo -e "\n${BLUE}API Gateway 설정 확인${NC}"
@@ -233,7 +233,7 @@ while true; do
 
         # Mock SSO 재시작
         if [ ! -f "$PID_DIR/mock-sso.pid" ] || ! kill -0 $(cat "$PID_DIR/mock-sso.pid") 2>/dev/null; then
-            start_service "mock-sso" "repos/infra/mock-sso" "python main.py"
+            start_service "mock-sso" "repos/infra/mock-sso" "uv run uvicorn main:app --host 0.0.0.0 --port 9999"
         fi
 
         # API Gateway 재시작

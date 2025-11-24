@@ -182,6 +182,56 @@ async def api_health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+@app.get("/login")
+async def sso_login(request: Request):
+    """Redirect to SSO login page"""
+    # Get configuration
+    sso_enabled = os.getenv("SSO_ENABLED", "true").lower() == "true"
+    idp_entity_id = os.getenv("IDP_ENTITY_ID", "http://localhost:9999/mock-sso/login")
+    client_id = os.getenv("SSO_CLIENT_ID", "41211cae-1fda-49f7-a462-f01d51ed4b6d")
+
+    # Build callback URL based on request protocol
+    protocol = "https" if os.getenv("SSL_ENABLED", "false").lower() == "true" else "http"
+    host_ip = os.getenv("HOST_IP", "localhost")
+    gateway_port = os.getenv("GATEWAY_PORT", "9050")
+    redirect_uri = f"{protocol}://{host_ip}:{gateway_port}/callback"
+
+    # Build SSO login URL
+    sso_url = f"{idp_entity_id}?client_id={client_id}&redirect_uri={redirect_uri}&response_mode=form_post&response_type=code+id_token&scope=openid+profile&nonce=mock-nonce&client-request-id=mock-request"
+
+    logger.info(f"Redirecting to SSO: {sso_url}")
+
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=sso_url)
+
+@app.post("/callback")
+async def sso_callback(
+    id_token: str = Form(...),
+    code: Optional[str] = Form(None),
+    state: Optional[str] = Form(None)
+):
+    """Handle SSO callback with form_post"""
+    logger.info(f"SSO callback received with id_token")
+
+    # Forward to user service for processing
+    user_service_url = os.getenv('USER_SERVICE_URL', 'http://user-service:8001')
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{user_service_url}/api/auth/callback/sso",
+            data={
+                "id_token": id_token,
+                "code": code if code else "",
+                "state": state if state else ""
+            }
+        )
+
+        # Return the HTML response from user-service
+        return HTMLResponse(
+            content=response.text,
+            status_code=response.status_code
+        )
+
 async def proxy_request(request: Request, service_url: str, path: str):
     """Proxy HTTP request to backend service"""
     if not http_client:

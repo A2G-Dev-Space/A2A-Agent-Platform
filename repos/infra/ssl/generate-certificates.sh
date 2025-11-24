@@ -27,9 +27,10 @@ OU = IT
 CN = localhost
 
 [v3_req]
-keyUsage = keyEncipherment, dataEncipherment
+keyUsage = digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
+basicConstraints = CA:FALSE
 
 [alt_names]
 DNS.1 = localhost

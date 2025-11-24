@@ -47,7 +47,7 @@ services:
       - ./mock-sso:/app
     working_dir: /app
     command: >
-      sh -c "pip install fastapi uvicorn python-jose PyJWT &&
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
              python main.py"
     networks:
       - a2g-network
@@ -95,7 +95,7 @@ services:
     volumes:
       - ../api-gateway:/app
       - ./ssl:/app/ssl:ro  # SSL certificates
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload
+    entrypoint: ["/app/docker-entrypoint.sh"]
 
   # User Service (DEV1)
   user-service:
