@@ -1,565 +1,251 @@
 #!/bin/bash
 
-# A2G Platform A2G Platform Startup Script
+# A2A Platform 통합 시작 스크립트 (Docker 없이 로컬 실행)
+# 모든 필요한 서비스를 한번에 시작
 
-echo "🚀 Starting A2G Platform A2G Platform..."
-echo ""
+set -e
 
-# Function to check if Docker is running
-check_docker() {
-    if ! docker info > /dev/null 2>&1; then
-        if [ "$EUID" -ne 0 ]; then
-            echo "❌ Cannot access Docker. Try one of the following:"
-            echo "   1. Run with sudo: sudo ./start.sh"
-            echo "   2. Add your user to docker group: sudo usermod -aG docker $USER"
-            echo "      (then logout and login again)"
-            echo "   3. Start Docker Desktop if not running"
-        else
-            echo "❌ Docker is not running. Please start Docker Desktop and try again."
-        fi
-        exit 1
-    fi
-    echo "✅ Docker is running"
-}
+# 색상 코드
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Function to check if docker compose is available
-check_docker_compose() {
-    if docker compose version > /dev/null 2>&1; then
-        DOCKER_COMPOSE="docker compose"
-    elif docker-compose version > /dev/null 2>&1; then
-        DOCKER_COMPOSE="docker-compose"
-    else
-        echo "❌ Docker Compose is not installed. Please install it and try again."
-        exit 1
-    fi
-    echo "✅ Docker Compose is available: $DOCKER_COMPOSE"
-}
+# 스크립트 디렉토리 (프로젝트 루트)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_ROOT"
 
-# Function to apply HOST_IP configuration
-apply_host_configuration() {
-    # Load HOST_IP from repos/infra/.env
-    if [ -f "repos/infra/.env" ]; then
-        export $(grep HOST_IP repos/infra/.env | xargs)
-        export $(grep GATEWAY_PORT repos/infra/.env | xargs)
-        echo "📌 Using HOST_IP: ${HOST_IP:-localhost}"
-        echo "📌 Using GATEWAY_PORT: ${GATEWAY_PORT:-9050}"
-    else
-        echo "⚠️  repos/infra/.env not found, using default: localhost"
-        HOST_IP="localhost"
-        GATEWAY_PORT="9050"
-    fi
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}   A2A Agent Platform 시작${NC}"
+echo -e "${BLUE}========================================${NC}"
 
-    # Update all configuration files with HOST_IP
-    echo "🔧 Applying HOST_IP configuration..."
+# 환경변수 로드
+if [ -f "repos/infra/.env" ]; then
+    echo -e "${GREEN}✓${NC} 환경변수 로드 중..."
+    set -a
+    source repos/infra/.env
+    set +a
+else
+    echo -e "${RED}✗${NC} .env 파일을 찾을 수 없습니다!"
+    exit 1
+fi
 
-    # Check if frontend/.env exists and if HOST_IP has changed
-    FRONTEND_ENV_CHANGED=false
-    if [ -f "frontend/.env" ]; then
-        # Extract current VITE_HOST_IP from frontend/.env
-        CURRENT_FRONTEND_IP=$(grep "^VITE_HOST_IP=" frontend/.env 2>/dev/null | cut -d'=' -f2)
-        if [ "$CURRENT_FRONTEND_IP" != "$HOST_IP" ]; then
-            FRONTEND_ENV_CHANGED=true
-            echo "   ⚠️  Frontend HOST_IP changed: ${CURRENT_FRONTEND_IP} → ${HOST_IP}"
-        fi
-    fi
+# SSL 설정
+SSL_ENABLED=${SSL_ENABLED:-false}
+SSL_KEYFILE="$PROJECT_ROOT/repos/infra/ssl/server.key"
+SSL_CERTFILE="$PROJECT_ROOT/repos/infra/ssl/server.crt"
 
-    # Update frontend/.env
-    if [ -f "frontend/.env" ]; then
-        sed -i "s/^VITE_HOST_IP=.*/VITE_HOST_IP=${HOST_IP}/" frontend/.env
-        sed -i "s/^VITE_GATEWAY_PORT=.*/VITE_GATEWAY_PORT=${GATEWAY_PORT}/" frontend/.env
-        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" frontend/.env
-    else
-        echo "VITE_HOST_IP=${HOST_IP}" > frontend/.env
-        echo "VITE_GATEWAY_PORT=${GATEWAY_PORT}" >> frontend/.env
-        echo "VITE_API_URL=/api" >> frontend/.env
-        echo "# Internal network - no proxy needed" >> frontend/.env
-        echo "HTTP_PROXY=" >> frontend/.env
-        echo "HTTPS_PROXY=" >> frontend/.env
-        echo "NO_PROXY=localhost,127.0.0.1,*.local,${HOST_IP},10.*,172.*,192.168.*" >> frontend/.env
-        FRONTEND_ENV_CHANGED=true
-    fi
+# PID 파일 경로
+PID_DIR="$PROJECT_ROOT/.pids"
+mkdir -p "$PID_DIR"
 
-    # Update vite.config.ts
-    if [ -f "frontend/vite.config.ts" ]; then
-        sed -i "s|http://[0-9.]*:9050|http://${HOST_IP}:9050|g" frontend/vite.config.ts
-        sed -i "s|ws://[0-9.]*:9050|ws://${HOST_IP}:9050|g" frontend/vite.config.ts
-    fi
+# 정리 함수
+cleanup() {
+    echo -e "\n${YELLOW}서비스 종료 중...${NC}"
 
-    # Update all backend service config files
-    echo "   Updating backend service configurations..."
-    for service in user-service agent-service chat-service tracing-service admin-service
-    do
-        config_file="repos/${service}/app/core/config.py"
-        if [ -f "$config_file" ]; then
-            # Replace hardcoded IPs in CORS origins
-            sed -i "s/172\.26\.110\.192/${HOST_IP}/g" "$config_file"
-            sed -i "s/10\.229\.95\.228/${HOST_IP}/g" "$config_file"
-            # Replace in SSO settings if exists
-            sed -i "s|http://172\.26\.110\.192:9999|http://${HOST_IP}:9999|g" "$config_file"
-            sed -i "s|http://172\.26\.110\.192:9050|http://${HOST_IP}:9050|g" "$config_file"
-            sed -i "s|http://10\.229\.95\.228:9999|http://${HOST_IP}:9999|g" "$config_file"
-            sed -i "s|http://10\.229\.95\.228:9050|http://${HOST_IP}:9050|g" "$config_file"
-            echo "   ✓ Updated ${service}"
-        fi
+    # 모든 서비스 종료
+    for pid_file in "$PID_DIR"/*.pid; do
+        if [ -f "$pid_file" ]; then
+            PID=$(cat "$pid_file")
+            if kill -0 $PID 2>/dev/null; then
+                SERVICE_NAME=$(basename "$pid_file" .pid)
+                echo -e "${YELLOW}  - $SERVICE_NAME 종료${NC}"
+                kill -TERM $PID 2>/dev/null || true
 
-        # Update main.py to use allow_origins=["*"] for all services
-        main_file="repos/${service}/app/main.py"
-        if [ -f "$main_file" ]; then
-            # Replace CORS configuration to allow all origins
-            sed -i '/allow_origins.*settings\.CORS_ORIGINS/c\    allow_origins=["*"],  # Allow all origins' "$main_file"
-            echo "   ✓ Updated ${service} CORS to allow all"
+                # 프로세스가 종료될 때까지 대기 (최대 5초)
+                WAIT_COUNT=0
+                while kill -0 $PID 2>/dev/null && [ $WAIT_COUNT -lt 50 ]; do
+                    sleep 0.1
+                    WAIT_COUNT=$((WAIT_COUNT + 1))
+                done
+
+                # 여전히 실행 중이면 강제 종료
+                if kill -0 $PID 2>/dev/null; then
+                    kill -KILL $PID 2>/dev/null || true
+                fi
+            fi
+            rm -f "$pid_file"
         fi
     done
 
-    # Update API Gateway config
-    if [ -f "repos/api-gateway/app/config.py" ]; then
-        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/api-gateway/app/config.py
-        echo "   ✓ Updated api-gateway config"
-    fi
-    if [ -f "repos/api-gateway/app/main.py" ]; then
-        sed -i "s/172\.26\.110\.192/${HOST_IP}/g" repos/api-gateway/app/main.py
-        sed -i "s/10\.229\.95\.228/${HOST_IP}/g" repos/api-gateway/app/main.py
-        echo "   ✓ Updated api-gateway main"
-    fi
-
-    # Update LLM Proxy service
-    # Note: llm-proxy already has allow_origins=["*"] configured, no need to modify CORS
-
-    # Update worker-service main.py too (though it already has ["*"])
-    if [ -f "repos/worker-service/app/main.py" ]; then
-        sed -i '/allow_origins=/c\    allow_origins=["*"],  # Allow all origins' repos/worker-service/app/main.py
-    fi
-
-    # Update docker-compose environment
-    export HOST_IP
-    export GATEWAY_PORT=${GATEWAY_PORT:-9050}
-
-    echo "✅ Configuration applied"
-
-    # Notify user if frontend environment changed
-    if [ "$FRONTEND_ENV_CHANGED" = true ]; then
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "⚠️  IMPORTANT: Frontend environment updated!"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "   The frontend/.env file has been updated with new HOST_IP."
-        echo "   You MUST restart the frontend dev server for changes to take effect:"
-        echo ""
-        echo "   1. Stop current frontend (Ctrl+C in frontend terminal)"
-        echo "   2. Restart: cd frontend && npm run dev"
-        echo ""
-        echo "   Frontend uses Vite which loads environment variables at build time,"
-        echo "   so changes to .env require a restart to be picked up."
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-    fi
+    echo -e "${GREEN}✓${NC} 모든 서비스가 종료되었습니다."
+    exit 0
 }
 
-# Main execution
-check_docker
-check_docker_compose
-apply_host_configuration
+# Ctrl+C 처리
+trap cleanup INT TERM EXIT
 
-# Parse arguments
-MODE=${1:-start}
+# 서비스 시작 함수
+start_service() {
+    local SERVICE_NAME=$1
+    local SERVICE_DIR=$2
+    local SERVICE_CMD=$3
+    local PID_FILE="$PID_DIR/$SERVICE_NAME.pid"
 
-case $MODE in
-    setup)
-        echo "🔧 Setting up A2G Platform for the first time..."
-        echo ""
+    echo -e "${BLUE}▶ $SERVICE_NAME 시작${NC}"
 
-        # Start infrastructure services first (PostgreSQL, Redis)
-        echo "📦 Starting infrastructure services (PostgreSQL, Redis)..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.yml up -d postgres redis
-        cd ../..
-
-        echo "⏳ Waiting for PostgreSQL to be ready..."
-        sleep 10
-
-        # Wait for PostgreSQL to be ready
-        MAX_RETRIES=30
-        RETRY_COUNT=0
-        while ! docker exec a2g-postgres pg_isready -U dev_user > /dev/null 2>&1; do
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-                echo "❌ PostgreSQL failed to start after $MAX_RETRIES attempts"
-                exit 1
-            fi
-            echo "   Waiting for PostgreSQL... (attempt $RETRY_COUNT/$MAX_RETRIES)"
-            sleep 2
-        done
-
-        echo "✅ PostgreSQL is ready"
-        echo ""
-
-        # Verify databases were created by init-db.sql
-        echo "🔍 Verifying databases..."
-        EXPECTED_DBS=("user_service_db" "agent_service_db" "chat_service_db" "tracing_service_db" "admin_service_db" "llm_proxy_db" "worker_db")
-
-        for db in "${EXPECTED_DBS[@]}"; do
-            if docker exec a2g-postgres psql -U dev_user -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
-                echo "   ✅ $db exists"
-            else
-                echo "   ❌ $db does not exist - init-db.sql may have failed"
-                exit 1
-            fi
-        done
-
-        echo ""
-        echo "📦 Starting all services (except celery-beat)..."
-        cd repos/infra
-        # Start all services except celery-beat to prevent premature health checks
-        $DOCKER_COMPOSE -f docker-compose.yml up -d --scale celery-beat=0
-        cd ../..
-
-        echo ""
-        echo "⏳ Waiting for all services to start..."
-        sleep 15
-
-        echo ""
-        echo "🔄 Running database migrations for all services..."
-        echo ""
-
-        # Map service names to container names
-        declare -A SERVICE_CONTAINERS=(
-            ["user-service"]="a2g-user-service"
-            ["agent-service"]="a2g-agent-service"
-            ["chat-service"]="a2g-chat-service"
-            ["tracing-service"]="a2g-tracing-service"
-            ["admin-service"]="a2g-admin-service"
-            ["llm-proxy-service"]="a2g-llm-proxy"
-            ["worker-service"]="a2g-worker-service"
-        )
-
-        SUCCESS_COUNT=0
-        SKIP_COUNT=0
-        FAIL_COUNT=0
-
-        for service in "${!SERVICE_CONTAINERS[@]}"; do
-            CONTAINER_NAME="${SERVICE_CONTAINERS[$service]}"
-            SERVICE_PATH="repos/$service"
-
-            if [ ! -d "$SERVICE_PATH" ]; then
-                echo "⚠️  $service: Directory not found, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Check if alembic is configured
-            if [ ! -f "$SERVICE_PATH/alembic.ini" ]; then
-                echo "⏭️  $service: No alembic configuration, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Check if there are any migrations
-            if [ ! -d "$SERVICE_PATH/alembic/versions" ] || [ -z "$(ls -A $SERVICE_PATH/alembic/versions/*.py 2>/dev/null)" ]; then
-                echo "⏭️  $service: No migration files found, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Wait for container to be ready
-            MAX_WAIT=60
-            WAIT_COUNT=0
-            while ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; do
-                WAIT_COUNT=$((WAIT_COUNT + 1))
-                if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
-                    echo "❌ $service: Container not started after ${MAX_WAIT}s"
-                    FAIL_COUNT=$((FAIL_COUNT + 1))
-                    continue 2
-                fi
-                sleep 1
-            done
-
-            echo "📦 $service: Running initial migrations..."
-
-            # Run migration
-            MIGRATION_OUTPUT=$(docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log)
-            MIGRATION_EXIT_CODE=$?
-
-            if [ $MIGRATION_EXIT_CODE -eq 0 ] || echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
-                if echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
-                    echo "   ⚠️  Some objects already exist, stamping migration..."
-                    docker exec "$CONTAINER_NAME" uv run alembic stamp head 2>/dev/null
-                fi
-                CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "applied")
-                echo "   ✅ Migration complete ($CURRENT)"
-                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            else
-                echo "   ❌ Migration failed! Check /tmp/alembic_output_$service.log"
-                FAIL_COUNT=$((FAIL_COUNT + 1))
-            fi
-            echo ""
-        done
-
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📊 Setup Summary:"
-        echo "   ✅ Success: $SUCCESS_COUNT"
-        echo "   ⏭️  Skipped: $SKIP_COUNT"
-        echo "   ❌ Failed:  $FAIL_COUNT"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-
-        if [ $FAIL_COUNT -gt 0 ]; then
-            echo "⚠️  Setup completed with some failures. Check error messages above."
-            echo "   You can try running './start.sh update' to retry migrations."
-        else
-            echo "✅ Migrations completed successfully!"
+    # 이미 실행 중인지 확인
+    if [ -f "$PID_FILE" ]; then
+        OLD_PID=$(cat "$PID_FILE")
+        if kill -0 $OLD_PID 2>/dev/null; then
+            echo -e "${YELLOW}  ! $SERVICE_NAME이(가) 이미 실행 중입니다 (PID: $OLD_PID)${NC}"
+            return
         fi
+    fi
 
-        echo ""
-        echo "📦 Starting celery-beat (now that migrations are complete)..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.yml up -d celery-beat
-        cd ../..
+    # 서비스 시작
+    cd "$PROJECT_ROOT/$SERVICE_DIR"
+    eval "$SERVICE_CMD" > "$PROJECT_ROOT/logs/${SERVICE_NAME}.log" 2>&1 &
+    local PID=$!
+    echo $PID > "$PID_FILE"
 
-        echo ""
-        echo "🗑️  Initializing databases with clean state..."
-        echo ""
-        echo "⚠️  WARNING: This will DELETE ALL existing data!"
-        echo "   This should only be done on first-time setup."
-        echo ""
-        read -p "   Do you want to clear all data and create admin user? (yes/no): " CONFIRM
+    # 시작 확인 (짧게 대기)
+    sleep 1
+    if kill -0 $PID 2>/dev/null; then
+        echo -e "${GREEN}  ✓ $SERVICE_NAME 시작됨 (PID: $PID)${NC}"
+    else
+        echo -e "${RED}  ✗ $SERVICE_NAME 시작 실패${NC}"
+        rm -f "$PID_FILE"
+        return 1
+    fi
 
-        if [ "$CONFIRM" = "yes" ]; then
-            echo ""
-            echo "   Clearing all databases..."
+    cd "$PROJECT_ROOT"
+}
 
-            # Clear all data and create admin user
-            docker exec a2g-postgres psql -U dev_user -d user_service_db -c "DELETE FROM users;" > /dev/null 2>&1
-            docker exec a2g-postgres psql -U dev_user -d user_service_db -c "INSERT INTO users (username, username_kr, username_en, email, department_kr, department_en, role, created_at, updated_at, preferences) VALUES ('admin', 'Admin', 'Admin', 'admin@company.com', 'admin-team', 'admin-team', 'ADMIN', NOW(), NOW(), '{}');" > /dev/null 2>&1
-            echo "   ✅ User database initialized (1 admin user)"
+# 로그 디렉토리 생성
+mkdir -p "$PROJECT_ROOT/logs"
 
-            docker exec a2g-postgres psql -U dev_user -d agent_service_db -c "DELETE FROM agents;" > /dev/null 2>&1
-            echo "   ✅ Agent database cleared"
+echo -e "\n${BLUE}========================================${NC}"
+echo -e "${BLUE}서비스 시작 순서:${NC}"
+echo -e "  1. Mock SSO (포트 9999)"
+echo -e "  2. API Gateway (포트 9050 - HTTPS/HTTP)"
+echo -e "  3. User Service (포트 9001)"
+echo -e "  4. Agent Service (포트 9002)"
+echo -e "  5. Realtime Service (포트 9003)"
+echo -e "${BLUE}========================================${NC}\n"
 
-            docker exec a2g-postgres psql -U dev_user -d admin_service_db -c "DELETE FROM llm_models;" > /dev/null 2>&1
-            echo "   ✅ LLM models database cleared"
+# 1. Mock SSO 서비스 시작
+start_service "mock-sso" "repos/infra/mock-sso" "python main.py"
 
-            docker exec a2g-postgres psql -U dev_user -d llm_proxy_db -c "DELETE FROM llm_calls; DELETE FROM trace_events; DELETE FROM tool_calls;" > /dev/null 2>&1
-            echo "   ✅ LLM proxy database cleared"
-
-            docker exec a2g-postgres psql -U dev_user -d chat_service_db -c "DELETE FROM sessions; DELETE FROM messages;" > /dev/null 2>&1
-            echo "   ✅ Chat database cleared"
-
-            docker exec a2g-postgres psql -U dev_user -d tracing_service_db -c "DELETE FROM trace_logs;" > /dev/null 2>&1
-            echo "   ✅ Tracing database cleared"
-
-            docker exec a2g-postgres psql -U dev_user -d worker_db -c "DELETE FROM statistics_snapshots;" > /dev/null 2>&1
-            echo "   ✅ Worker database cleared"
-        else
-            echo ""
-            echo "   ⏭️  Skipping data initialization - keeping existing data"
-        fi
-
-        echo ""
-        echo "🎉 Setup completed successfully!"
-
-        echo ""
-        echo "📌 Next steps:"
-        echo "   1. Start frontend: cd frontend && npm install && npm run dev"
-        echo "   2. Access platform: http://${HOST_IP}:9060"
-        echo "   3. Mock SSO: http://${HOST_IP}:9050/mock-sso"
-        echo ""
-        echo "📌 Configuration:"
-        echo "   - All services use HOST_IP from repos/infra/.env: ${HOST_IP}"
-        echo "   - To change IP: Edit repos/infra/.env, run ./start.sh, then restart frontend"
-        echo ""
-
-        exit 0
-        ;;
-    update)
-        echo "🔄 Updating all service databases with latest migrations..."
-        echo ""
-
-        # Check if PostgreSQL is running
-        if ! docker exec a2g-postgres pg_isready -U dev_user > /dev/null 2>&1; then
-            echo "❌ PostgreSQL is not running. Please start it first with: ./start.sh setup"
-            exit 1
-        fi
-
-        # Map service names to container names (all services with database)
-        declare -A SERVICE_CONTAINERS=(
-            ["user-service"]="a2g-user-service"
-            ["agent-service"]="a2g-agent-service"
-            ["chat-service"]="a2g-chat-service"
-            ["tracing-service"]="a2g-tracing-service"
-            ["admin-service"]="a2g-admin-service"
-            ["llm-proxy-service"]="a2g-llm-proxy"
-            ["worker-service"]="a2g-worker-service"
-        )
-
-        SUCCESS_COUNT=0
-        SKIP_COUNT=0
-        FAIL_COUNT=0
-
-        for service in "${!SERVICE_CONTAINERS[@]}"; do
-            CONTAINER_NAME="${SERVICE_CONTAINERS[$service]}"
-            SERVICE_PATH="repos/$service"
-
-            if [ ! -d "$SERVICE_PATH" ]; then
-                echo "⚠️  $service: Directory not found, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Check if container is running
-            if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-                echo "⏭️  $service: Container not running, skipping..."
-                echo "   Start services with: ./start.sh full"
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Check if alembic is configured
-            if [ ! -f "$SERVICE_PATH/alembic.ini" ]; then
-                echo "⏭️  $service: No alembic configuration, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            # Check if there are any migrations
-            if [ ! -d "$SERVICE_PATH/alembic/versions" ] || [ -z "$(ls -A $SERVICE_PATH/alembic/versions/*.py 2>/dev/null)" ]; then
-                echo "⏭️  $service: No migration files found, skipping..."
-                SKIP_COUNT=$((SKIP_COUNT + 1))
-                continue
-            fi
-
-            echo "📦 $service: Checking for migrations..."
-
-            # Check current migration status (inside container)
-            CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "none")
-            echo "   Current: $CURRENT"
-
-            # Apply migrations (inside container)
-            echo "   Running: docker exec $CONTAINER_NAME uv run alembic upgrade head"
-
-            # Run migration and capture output
-            MIGRATION_OUTPUT=$(docker exec "$CONTAINER_NAME" uv run alembic upgrade head 2>&1 | tee /tmp/alembic_output_$service.log)
-            MIGRATION_EXIT_CODE=$?
-
-            # Check if migration succeeded or if objects already exist (which is ok)
-            if [ $MIGRATION_EXIT_CODE -eq 0 ] || echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
-                NEW_CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
-
-                if echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
-                    echo "   ⚠️  Some objects already exist (likely from manual setup)"
-                    echo "   📝 Stamping migration as applied..."
-                    docker exec "$CONTAINER_NAME" uv run alembic stamp head 2>/dev/null
-                    NEW_CURRENT=$(docker exec "$CONTAINER_NAME" uv run alembic current 2>/dev/null | grep -oP '(?<=^)[a-f0-9]+' || echo "unknown")
-                    echo "   ✅ Marked as up to date ($NEW_CURRENT)"
-                elif [ "$CURRENT" = "$NEW_CURRENT" ] && [ "$CURRENT" != "none" ]; then
-                    echo "   ✅ Already up to date ($NEW_CURRENT)"
-                else
-                    echo "   ✅ Updated to: $NEW_CURRENT"
-                fi
-                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            else
-                echo "   ❌ Migration failed! Check logs above."
-                FAIL_COUNT=$((FAIL_COUNT + 1))
-            fi
-
-            echo ""
-        done
-
-        # Summary
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📊 Migration Update Summary:"
-        echo "   ✅ Success: $SUCCESS_COUNT"
-        echo "   ⏭️  Skipped: $SKIP_COUNT"
-        echo "   ❌ Failed:  $FAIL_COUNT"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-        if [ $FAIL_COUNT -gt 0 ]; then
-            echo ""
-            echo "⚠️  Some migrations failed. Please check the error messages above."
-            exit 1
-        else
-            echo ""
-            echo "🎉 All migrations completed successfully!"
-        fi
-
-        exit 0
-        ;;
-    start)
-        echo "📦 Starting all services..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.yml up -d
-        cd ../..
-        ;;
-    stop)
-        echo "🛑 Stopping all services..."
-        cd repos/infra
-        $DOCKER_COMPOSE -f docker-compose.yml down
-        cd ../..
-        exit 0
-        ;;
-    *)
-        echo "Usage: ./start.sh [setup|start|update|stop]"
-        echo ""
-        echo "Commands:"
-        echo "  setup   - First-time setup: start services and run all database migrations"
-        echo "            ⚠️  WARNING: Will ask to delete all data and create admin user"
-        echo "  start   - Start all services (default)"
-        echo "  update  - Update all service databases with latest migrations (after git pull)"
-        echo "  stop    - Stop all services"
-        echo ""
-        echo "Common workflows:"
-        echo "  First time:    ./start.sh setup (answer 'yes' to initialize with admin user)"
-        echo "  After git pull: ./start.sh && ./start.sh update"
-        echo "  Daily use:     ./start.sh"
-        echo ""
-        exit 1
-        ;;
-esac
-
-echo ""
-echo "⏳ Waiting for services to be ready..."
-sleep 5
-
-# Check service health
-echo ""
-echo "🔍 Checking service health..."
-
-# Check API Gateway
-if curl -s -o /dev/null -w "%{http_code}" http://${HOST_IP}:9050/health | grep -q "200"; then
-    echo "✅ API Gateway is healthy at http://${HOST_IP}:9050"
+# 2. API Gateway 시작 (HTTPS 지원)
+echo -e "\n${BLUE}API Gateway 설정 확인${NC}"
+if [ "$SSL_ENABLED" = "true" ] && [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
+    echo -e "${GREEN}✓${NC} HTTPS 모드로 시작 (SSL 활성화)"
+    echo -e "  인증서: ${SSL_CERTFILE#$PROJECT_ROOT/}"
+    echo -e "  개인키: ${SSL_KEYFILE#$PROJECT_ROOT/}"
+    GATEWAY_CMD="uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload --ssl-keyfile $SSL_KEYFILE --ssl-certfile $SSL_CERTFILE"
 else
-    echo "⚠️  API Gateway is not ready yet. It may take a few more seconds."
+    echo -e "${YELLOW}⚠${NC} HTTP 모드로 시작 (SSL 비활성화 또는 인증서 없음)"
+    if [ "$SSL_ENABLED" = "true" ]; then
+        [ ! -f "$SSL_KEYFILE" ] && echo -e "${RED}  ✗ 키 파일 없음: ${SSL_KEYFILE#$PROJECT_ROOT/}${NC}"
+        [ ! -f "$SSL_CERTFILE" ] && echo -e "${RED}  ✗ 인증서 없음: ${SSL_CERTFILE#$PROJECT_ROOT/}${NC}"
+    fi
+    GATEWAY_CMD="uv run uvicorn app.main:app --host 0.0.0.0 --port 9050 --reload"
+fi
+start_service "api-gateway" "repos/api-gateway" "$GATEWAY_CMD"
+
+# 3. User Service 시작
+start_service "user-service" "repos/user-service" "uv run uvicorn app.main:app --host 0.0.0.0 --port 9001 --reload"
+
+# 4. Agent Service 시작
+start_service "agent-service" "repos/agent-service" "uv run uvicorn app.main:app --host 0.0.0.0 --port 9002 --reload"
+
+# 5. Realtime Service 시작
+start_service "realtime-service" "repos/realtime-service" "uv run uvicorn app.main:app --host 0.0.0.0 --port 9003 --reload"
+
+# 접속 정보 표시
+echo -e "\n${GREEN}========================================${NC}"
+echo -e "${GREEN}✓ 모든 서비스가 시작되었습니다!${NC}"
+echo -e "${GREEN}========================================${NC}"
+
+# 접속 URL 표시
+if [ "$SSL_ENABLED" = "true" ] && [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
+    PROTOCOL="https"
+else
+    PROTOCOL="http"
 fi
 
-# Check PostgreSQL
-if docker exec a2g-postgres pg_isready -U dev_user > /dev/null 2>&1; then
-    echo "✅ PostgreSQL is ready"
-else
-    echo "⚠️  PostgreSQL is not ready yet"
+HOST_IP=${HOST_IP:-localhost}
+
+echo -e "\n${BLUE}📌 접속 정보:${NC}"
+echo -e "  API Gateway:   ${PROTOCOL}://${HOST_IP}:9050"
+echo -e "  Mock SSO:      http://${HOST_IP}:9999"
+echo -e "  Health Check:  ${PROTOCOL}://${HOST_IP}:9050/health"
+echo -e ""
+echo -e "  ${BLUE}SSO 로그인 테스트:${NC}"
+echo -e "  ${PROTOCOL}://${HOST_IP}:9050/login"
+echo -e ""
+if [ "$PROTOCOL" = "https" ]; then
+    echo -e "  ${YELLOW}⚠️  자체 서명 인증서 사용 시:${NC}"
+    echo -e "     브라우저에서 경고가 표시되면 '고급' → '계속 진행' 클릭"
 fi
 
-# Check Redis
-if docker exec a2g-redis redis-cli ping > /dev/null 2>&1; then
-    echo "✅ Redis is ready"
+echo -e "\n${BLUE}📝 로그 확인:${NC}"
+echo -e "  tail -f logs/api-gateway.log"
+echo -e "  tail -f logs/mock-sso.log"
+echo -e "  tail -f logs/user-service.log"
+
+echo -e "\n${YELLOW}종료하려면 Ctrl+C를 누르세요${NC}"
+
+# 서비스 상태 모니터링
+echo -e "\n${BLUE}========================================${NC}"
+echo -e "${BLUE}서비스 모니터링 중...${NC}"
+echo -e "${BLUE}========================================${NC}\n"
+
+# 초기 헬스 체크 (서비스 시작 대기)
+sleep 3
+
+# 헬스 체크
+echo -e "${BLUE}헬스 체크 중...${NC}"
+if curl -k -s -o /dev/null -w "%{http_code}" ${PROTOCOL}://${HOST_IP}:9050/health 2>/dev/null | grep -q "200"; then
+    echo -e "${GREEN}✓ API Gateway 정상 작동${NC}"
 else
-    echo "⚠️  Redis is not ready yet"
+    echo -e "${YELLOW}⚠ API Gateway 아직 준비 중...${NC}"
+fi
+
+if curl -s -o /dev/null -w "%{http_code}" http://${HOST_IP}:9999/ 2>/dev/null | grep -q "200"; then
+    echo -e "${GREEN}✓ Mock SSO 정상 작동${NC}"
+else
+    echo -e "${YELLOW}⚠ Mock SSO 아직 준비 중...${NC}"
 fi
 
 echo ""
-echo "🎉 Development environment is starting!"
-echo ""
-echo "📌 Service URLs:"
-echo "   - Frontend:    http://${HOST_IP}:9060"
-echo "   - API Gateway: http://${HOST_IP}:9050"
-echo "   - Mock SSO:    http://${HOST_IP}:9050/mock-sso"
-echo ""
-echo "📌 Frontend Setup:"
-echo "   If frontend is not running, start it with:"
-echo "   $ cd frontend && npm install && npm run dev"
-echo ""
-echo "   ⚠️  If you changed HOST_IP in repos/infra/.env:"
-echo "   - Stop the frontend dev server (Ctrl+C)"
-echo "   - Restart it: cd frontend && npm run dev"
-echo ""
-echo "📝 To view logs: cd repos/infra && $DOCKER_COMPOSE -f docker-compose.yml logs -f [service-name]"
-echo "📝 To stop all: ./start.sh stop"
-echo ""
+
+# 서비스가 실행 중인 동안 대기
+while true; do
+    # 모든 서비스가 실행 중인지 확인
+    ALL_RUNNING=true
+    for pid_file in "$PID_DIR"/*.pid; do
+        if [ -f "$pid_file" ]; then
+            PID=$(cat "$pid_file")
+            if ! kill -0 $PID 2>/dev/null; then
+                SERVICE_NAME=$(basename "$pid_file" .pid)
+                echo -e "${RED}✗ $SERVICE_NAME이(가) 중지되었습니다${NC}"
+                ALL_RUNNING=false
+            fi
+        fi
+    done
+
+    # 하나라도 중지되면 재시작 시도
+    if [ "$ALL_RUNNING" = false ]; then
+        echo -e "${YELLOW}서비스 재시작을 시도합니다...${NC}"
+
+        # Mock SSO 재시작
+        if [ ! -f "$PID_DIR/mock-sso.pid" ] || ! kill -0 $(cat "$PID_DIR/mock-sso.pid") 2>/dev/null; then
+            start_service "mock-sso" "repos/infra/mock-sso" "python main.py"
+        fi
+
+        # API Gateway 재시작
+        if [ ! -f "$PID_DIR/api-gateway.pid" ] || ! kill -0 $(cat "$PID_DIR/api-gateway.pid") 2>/dev/null; then
+            start_service "api-gateway" "repos/api-gateway" "$GATEWAY_CMD"
+        fi
+
+        # 다른 서비스들도 재시작
+        if [ ! -f "$PID_DIR/user-service.pid" ] || ! kill -0 $(cat "$PID_DIR/user-service.pid") 2>/dev/null; then
+            start_service "user-service" "repos/user-service" "uv run uvicorn app.main:app --host 0.0.0.0 --port 9001 --reload"
+        fi
+    fi
+
+    sleep 5
+done
