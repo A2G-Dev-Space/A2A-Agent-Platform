@@ -230,11 +230,12 @@ async def signup_request(
     # New user - create in database with PENDING status (created_at will be set on approval)
     new_user = User(
         username=current_user.username,
-        username_kr=getattr(current_user, 'username_kr', current_user.username),
-        username_en=getattr(current_user, 'username_en', None),
-        email=getattr(current_user, 'email', f"{current_user.username}@company.com"),
-        department_kr=getattr(current_user, 'department_kr', None),
-        department_en=getattr(current_user, 'department_en', None),
+        username_kr=current_user.username_kr,
+        username_en=current_user.username_en,
+        email=current_user.email,
+        department=current_user.department,
+        department_kr=current_user.department_kr,
+        department_en=current_user.department_en,
         role="PENDING",
         last_login=datetime.utcnow(),
         created_at=None  # Will be set when approved

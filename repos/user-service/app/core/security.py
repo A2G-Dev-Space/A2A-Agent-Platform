@@ -80,11 +80,15 @@ async def get_current_user(
 
     # For NEW users (not yet in DB), create a temporary User object
     if role == "NEW":
-        # Create a temporary user object with token data
+        # Create a temporary user object with token data from JWT
         temp_user = User(
             username=username,
-            username_kr=username,
-            email=f"{username}@company.com",
+            username_kr=payload.get("username_kr", username),
+            username_en=payload.get("username_en"),
+            email=payload.get("email", f"{username}@company.com"),
+            department=payload.get("department"),
+            department_kr=payload.get("department_kr"),
+            department_en=payload.get("department_en"),
             role=role
         )
         # Set id to 0 to indicate it's a temp user

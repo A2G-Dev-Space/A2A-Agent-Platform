@@ -205,6 +205,8 @@ async def handle_callback(
             access_token = create_access_token(data={
                 "sub": username,
                 "role": "NEW",
+                "username_kr": username_kr,
+                "email": email,
                 "department": department_code,
                 "department_kr": department_kr,
                 "department_en": department_en
