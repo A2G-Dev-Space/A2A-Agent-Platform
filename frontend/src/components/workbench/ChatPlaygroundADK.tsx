@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Send, User, Bot, Settings, ChevronUp, Copy, Check, HelpCircle, Globe, BookOpen } from 'lucide-react';
+import { copyToClipboard } from '@/utils/clipboard';
 import { useAuthStore } from '@/stores/authStore';
 import { type Agent, AgentStatus } from '@/types';
 import { agentService } from '@/services/agentService';
@@ -397,12 +398,12 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
   };
 
   const handleCopyMessage = async (messageId: string, content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
+    const success = await copyToClipboard(content);
+    if (success) {
       setCopiedMessageId(messageId);
       setTimeout(() => setCopiedMessageId(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy message:', error);
+    } else {
+      console.error('Failed to copy message');
     }
   };
 
@@ -1078,7 +1079,7 @@ export const ChatPlaygroundADK: React.FC<ChatPlaygroundADKProps> = ({ agentName,
                     </code>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(platformLlmEndpoint);
+                        copyToClipboard(platformLlmEndpoint);
                       }}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 p-1 ml-2 flex-shrink-0"
                       title="Copy to clipboard"
