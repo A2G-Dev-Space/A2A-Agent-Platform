@@ -109,6 +109,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/user_service_db
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:9060}
       # Mock SSO Settings
       ENABLE_MOCK_SSO: ${ENABLE_MOCK_SSO:-false}
       MOCK_SSO_URL: ${MOCK_SSO_URL:-http://mock-sso:9999}
@@ -149,7 +150,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/agent_service_db
       REDIS_URL: redis://redis:6379/1
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-your-api-key}
       GATEWAY_HOST: ${HOST_IP:-localhost}
       GATEWAY_PORT: ${GATEWAY_PORT:-9050}
@@ -177,7 +178,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/chat_service_db
       REDIS_URL: redis://redis:6379/2
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       GATEWAY_HOST: ${HOST_IP:-localhost}
       GATEWAY_PORT: ${GATEWAY_PORT:-9050}
     extra_hosts:
@@ -228,7 +229,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://dev_user:dev_password@postgres:5432/admin_service_db
       REDIS_URL: redis://redis:6379/4
-      JWT_SECRET_KEY: local-dev-secret-key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-dev-secret-key}
       LLM_PROXY_SERVICE_URL: http://host.docker.internal:8006
     depends_on:
       postgres:

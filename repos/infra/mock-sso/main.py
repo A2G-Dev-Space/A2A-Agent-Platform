@@ -245,7 +245,7 @@ async def mock_login_page(
 
             function selectUser(userKey) {{
                 // Redirect to the login endpoint with the selected user
-                const url = `/mock-sso/do-login?redirect_uri=${{encodeURIComponent(redirect_uri)}}&user=${{userKey}}`;
+                let url = `/mock-sso/do-login?redirect_uri=${{encodeURIComponent(redirect_uri)}}&user=${{userKey}}`;
                 if (state) {{
                     url += `&state=${{encodeURIComponent(state)}}`;
                 }}
