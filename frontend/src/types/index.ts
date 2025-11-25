@@ -10,6 +10,7 @@ export interface User {
   id: number
   username: string
   username_kr: string
+  username_en: string
   email: string
   role: UserRole
   department: string  // Language-neutral department code

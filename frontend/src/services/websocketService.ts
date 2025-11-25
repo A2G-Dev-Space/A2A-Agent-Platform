@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client'
 import { type WebSocketMessage } from '@/types'
+import { getWsProtocol } from '@/config/api'
 
 class WebSocketService {
   private socket: Socket | null = null
@@ -11,7 +12,12 @@ class WebSocketService {
       return
     }
 
-    const wsUrl = import.meta.env.VITE_WS_URL || window.location.origin.replace('http', 'ws')
+    // Use VITE_WS_URL if set, otherwise construct from current location with correct protocol
+    const wsUrl = import.meta.env.VITE_WS_URL || (() => {
+      const wsProtocol = getWsProtocol()
+      const host = window.location.host
+      return `${wsProtocol}://${host}`
+    })()
 
     this.socket = io(wsUrl, {
       path: '/ws',

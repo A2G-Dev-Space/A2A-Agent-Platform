@@ -947,6 +947,19 @@ async def deploy_agent(
     agent.status = new_status
     agent.deployed_at = datetime.utcnow()
     agent.deployed_by = current_user["username"]
+
+    # Save endpoint to framework-specific field
+    if agent.framework == AgentFramework.AGNO:
+        agent.agno_os_endpoint = endpoint
+    elif agent.framework == AgentFramework.ADK:
+        agent.a2a_endpoint = endpoint
+    elif agent.framework == AgentFramework.LANGCHAIN:
+        # For Langchain, update the langchain_config with the endpoint
+        if not agent.langchain_config:
+            agent.langchain_config = {}
+        agent.langchain_config["endpoint"] = endpoint
+
+    # Also save to validated_endpoint for backward compatibility
     agent.validated_endpoint = endpoint
     agent.deploy_config = request.deploy_config
 

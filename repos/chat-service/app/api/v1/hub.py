@@ -210,11 +210,29 @@ async def hub_chat_stream(
         )
 
     framework = agent_info.get("framework", "ADK")
-    agent_url = agent_info.get("a2a_endpoint")
     trace_id = agent_info.get("trace_id")
 
+    # Get agent URL based on framework
+    framework_upper = framework.upper() if framework else "ADK"
+
+    # Debug logging
+    logger.info(f"[Hub] Framework processing: original='{framework}', upper='{framework_upper}'")
+    logger.info(f"[Hub] Available endpoints: validated={agent_info.get('validated_endpoint')}, a2a={agent_info.get('a2a_endpoint')}, agno={agent_info.get('agno_os_endpoint')}")
+
+    if framework_upper.startswith("AGNO"):
+        agent_url = agent_info.get("agno_os_endpoint")
+    elif framework_upper == "LANGCHAIN" or framework_upper.startswith("LANGCHAIN"):
+        # For Langchain, try langchain_config first, then fall back to validated_endpoint
+        langchain_config = agent_info.get("langchain_config")
+        if langchain_config and isinstance(langchain_config, dict):
+            agent_url = langchain_config.get("endpoint")
+        if not agent_url:
+            agent_url = agent_info.get("validated_endpoint")
+    else:  # ADK and others
+        agent_url = agent_info.get("a2a_endpoint")
+
     if not agent_url:
-        raise HTTPException(status_code=400, detail="Agent endpoint not configured")
+        raise HTTPException(status_code=400, detail=f"Agent endpoint not configured for {framework} framework")
 
     logger.info(f"[Hub] Chat request: agent={request.agent_id}, framework={framework}, user={user_id}")
 
@@ -230,7 +248,7 @@ async def hub_chat_stream(
     await record_agent_call(request.agent_id, user_id, agent_status, token)
 
     # 6. Branch based on framework (case-insensitive comparison)
-    framework_upper = framework.upper() if framework else "ADK"
+    # framework_upper already defined above
 
     if framework_upper.startswith("AGNO"):
         # Agno: Use content + selected_resource
@@ -525,11 +543,21 @@ async def _handle_langchain_stream(
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                # Use content directly from request
+                # Build message content with conversation history (same as Agno)
                 message_content = request.content or ""
 
+                # Add conversation history if provided
+                if request.messages and len(request.messages) > 0:
+                    history_text = "Previous conversation:\n"
+                    for msg in request.messages:
+                        role = "User" if msg.role == "user" else "Assistant"
+                        history_text += f"{role}: {msg.content}\n"
+                    message_content = f"{history_text}\nCurrent message:\n{message_content}"
+
                 # Build request body using schema template
-                request_body_str = request_schema.replace("{{message}}", message_content)
+                # Escape message_content for JSON (remove surrounding quotes from json.dumps)
+                escaped_message = json.dumps(message_content)[1:-1]
+                request_body_str = request_schema.replace("{{message}}", escaped_message)
                 request_body = json.loads(request_body_str)
 
                 # Stream start
