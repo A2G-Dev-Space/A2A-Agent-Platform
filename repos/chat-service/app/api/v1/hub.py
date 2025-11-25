@@ -543,11 +543,21 @@ async def _handle_langchain_stream(
 
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                # Use content directly from request
+                # Build message content with conversation history (same as Agno)
                 message_content = request.content or ""
 
+                # Add conversation history if provided
+                if request.messages and len(request.messages) > 0:
+                    history_text = "Previous conversation:\n"
+                    for msg in request.messages:
+                        role = "User" if msg.role == "user" else "Assistant"
+                        history_text += f"{role}: {msg.content}\n"
+                    message_content = f"{history_text}\nCurrent message:\n{message_content}"
+
                 # Build request body using schema template
-                request_body_str = request_schema.replace("{{message}}", message_content)
+                # Escape message_content for JSON (remove surrounding quotes from json.dumps)
+                escaped_message = json.dumps(message_content)[1:-1]
+                request_body_str = request_schema.replace("{{message}}", escaped_message)
                 request_body = json.loads(request_body_str)
 
                 # Stream start
