@@ -215,10 +215,19 @@ async def hub_chat_stream(
     # Get agent URL based on framework
     framework_upper = framework.upper() if framework else "ADK"
 
+    # Debug logging
+    logger.info(f"[Hub] Framework processing: original='{framework}', upper='{framework_upper}'")
+    logger.info(f"[Hub] Available endpoints: validated={agent_info.get('validated_endpoint')}, a2a={agent_info.get('a2a_endpoint')}, agno={agent_info.get('agno_os_endpoint')}")
+
     if framework_upper.startswith("AGNO"):
         agent_url = agent_info.get("agno_os_endpoint")
     elif framework_upper == "LANGCHAIN" or framework_upper.startswith("LANGCHAIN"):
-        agent_url = agent_info.get("validated_endpoint")
+        # For Langchain, try langchain_config first, then fall back to validated_endpoint
+        langchain_config = agent_info.get("langchain_config")
+        if langchain_config and isinstance(langchain_config, dict):
+            agent_url = langchain_config.get("endpoint")
+        if not agent_url:
+            agent_url = agent_info.get("validated_endpoint")
     else:  # ADK and others
         agent_url = agent_info.get("a2a_endpoint")
 
