@@ -16,23 +16,34 @@ Platform LLM Proxy를 사용한 Team + Agent 아키텍처
 
 import os
 from typing import Union
+import ssl
+import certifi
 
 from agno.agent import Agent
 from agno.team import Team
 from agno.os import AgentOS
-from agno.models.openai.like import OpenAILike
+from agno.models.litellm import LiteLLM
 from fastapi.middleware.cors import CORSMiddleware
 
+# Disable SSL verification for self-signed certificates
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = ''
+os.environ['CURL_CA_BUNDLE'] = ''
+os.environ['SSL_VERIFY'] = 'false'
+
+# Configure litellm to skip SSL verification
+import litellm
+litellm.verify_ssl = False
 
 # ======================== Platform Configuration ========================
 # Use trace-specific endpoint for proper agent tracking
-# Format: http://localhost:9050/api/llm/trace/{trace_id}/v1
+# Format: https://localhost:9050/api/llm/trace/{trace_id}/v1
 # This enables:
 # - Agent identification via trace_id lookup
 # - Token usage tracking by agent
 # - Trace events in Workbench UI
-PLATFORM_LLM_ENDPOINT = "http://localhost:9050/api/llm/trace/c285a23a-88fc-4bfc-9741-714f8ac0aade/v1"
-PLATFORM_API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
+PLATFORM_LLM_ENDPOINT = "https://172.26.110.192:9050/api/llm/trace/92152211-5651-43b5-83ab-a1b5ea93766d/v1"
+PLATFORM_API_KEY = "a2g_69106c81492fd061f68e2d98fbc47b9ce4ee1477ee050a3b1b8fdc7bc2d5b082"
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration (Agno)")
@@ -197,20 +208,26 @@ def square_root(number: float) -> dict:
 
 
 # ======================== Create LLM Model Instance ========================
-def create_platform_llm(model_name: str = "qwen/qwen3-14b") -> OpenAILike:
+def create_platform_llm(model_name: str = "openai/gpt-oss-20b") -> LiteLLM:
     """
-    Platform LLM Proxy를 사용하는 OpenAILike 인스턴스를 생성합니다.
+    Platform LLM Proxy를 사용하는 LiteLLM 인스턴스를 생성합니다.
+    LiteLLM은 OpenAI compatible endpoints를 지원하며 SSL 검증을 비활성화할 수 있습니다.
 
     Args:
         model_name: 사용할 모델명
 
     Returns:
-        OpenAILike 인스턴스
+        LiteLLM 인스턴스
     """
-    return OpenAILike(
+    # Set custom OpenAI API base for LiteLLM
+    os.environ['OPENAI_API_BASE'] = PLATFORM_LLM_ENDPOINT
+    os.environ['LITELLM_API_KEY'] = PLATFORM_API_KEY
+
+    # LiteLLM will use openai/ prefix to route to OpenAI-compatible endpoint
+    return LiteLLM(
         id=model_name,
         api_key=PLATFORM_API_KEY,
-        base_url=PLATFORM_LLM_ENDPOINT,
+        api_base=PLATFORM_LLM_ENDPOINT,
     )
 
 

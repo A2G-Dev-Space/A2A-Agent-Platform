@@ -5,28 +5,43 @@
 #     "fastapi>=0.115.0",
 #     "uvicorn[standard]>=0.32.0",
 #     "langchain>=0.3.0",
-#     "langchain-openai>=0.2.0",
+#     "langchain-litellm>=0.1.0",
+#     "litellm>=1.0.0",
 #     "pydantic>=2.0.0",
 #     "httpx>=0.27.0",
+#     "certifi>=2023.0.0",
 # ]
 # ///
 """
 Test LangChain Agent for A2A Platform
-FastAPI application with invoke and stream endpoints
+FastAPI application with invoke and stream endpoints using LiteLLM
 """
 
+import os
+import ssl
+import certifi
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from langchain_openai import ChatOpenAI
+from langchain_litellm import ChatLiteLLM
 from langchain_core.messages import HumanMessage, SystemMessage
 import json
 from typing import AsyncGenerator
 
+# Disable SSL verification for self-signed certificates
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = ''
+os.environ['CURL_CA_BUNDLE'] = ''
+os.environ['SSL_VERIFY'] = 'false'
+
+# Configure litellm to skip SSL verification
+import litellm
+litellm.verify_ssl = False
+
 # Configuration
-API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
-TRACE_ENDPOINT = "http://localhost:9050/api/llm/trace/b8f5b410-1cf5-4b61-84e8-7a9d9f126aae/v1"
+API_KEY = "a2g_69106c81492fd061f68e2d98fbc47b9ce4ee1477ee050a3b1b8fdc7bc2d5b082"
+TRACE_ENDPOINT = "https://172.26.110.192:9050/api/llm/trace/97416bd5-8d32-47ab-a0da-1990bba5e5cd/v1"
 MODEL_NAME = "openai/gpt-oss-20b"
 
 app = FastAPI(
@@ -38,7 +53,13 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:9060", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:9060",
+        "http://localhost:3000",
+        "http://172.26.110.192:9060",
+        "https://172.26.110.192:9050",
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,14 +76,19 @@ class ChatResponse(BaseModel):
     trace_id: str
 
 
-def get_llm(streaming: bool = False) -> ChatOpenAI:
-    """Initialize ChatOpenAI with A2A Platform configuration"""
-    return ChatOpenAI(
+def get_llm(streaming: bool = False) -> ChatLiteLLM:
+    """Initialize ChatLiteLLM with A2A Platform configuration"""
+    # Set environment variables for LiteLLM
+    os.environ['OPENAI_API_BASE'] = TRACE_ENDPOINT
+    os.environ['LITELLM_API_KEY'] = API_KEY
+
+    return ChatLiteLLM(
         model=MODEL_NAME,
-        openai_api_key=API_KEY,
-        openai_api_base=TRACE_ENDPOINT,
+        api_key=API_KEY,
+        api_base=TRACE_ENDPOINT,
         temperature=0.7,
         streaming=streaming,
+        verify=False,  # Disable SSL verification
     )
 
 
