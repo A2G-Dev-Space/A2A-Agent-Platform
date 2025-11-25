@@ -72,3 +72,25 @@ export function buildWebSocketUrl(host: string, port: string | number, path: str
   const protocol = getWsProtocol()
   return `${protocol}://${host}:${port}${path}`
 }
+
+/**
+ * Join URL segments safely by removing redundant slashes
+ * Prevents double slashes when concatenating URLs
+ *
+ * @param baseUrl - Base URL (may have trailing slash)
+ * @param path - Path to append (may have leading slash)
+ * @returns Properly joined URL without double slashes
+ *
+ * @example
+ * joinUrl('http://localhost:8000/', '/teams') => 'http://localhost:8000/teams'
+ * joinUrl('http://localhost:8000', 'teams') => 'http://localhost:8000/teams'
+ * joinUrl('http://localhost:8000/', 'teams') => 'http://localhost:8000/teams'
+ */
+export function joinUrl(baseUrl: string, path: string): string {
+  if (!baseUrl) return path
+  if (!path) return baseUrl
+
+  const base = baseUrl.replace(/\/+$/, '')  // Remove trailing slashes
+  const segment = path.replace(/^\/+/, '')  // Remove leading slashes
+  return `${base}/${segment}`
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Copy, Check, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Agent } from '@/types';
 import { copyToClipboard } from '@/utils/clipboard';
-import { getGatewayBaseUrl } from '@/config/api';
+import { getGatewayBaseUrl, joinUrl } from '@/config/api';
 
 interface A2AEndpoint {
   name: string;
@@ -53,7 +53,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
         if (agent.agno_os_endpoint) {
           try {
             // Fetch teams
-            const teamsRes = await fetch(`${agent.agno_os_endpoint}/teams`);
+            const teamsRes = await fetch(joinUrl(agent.agno_os_endpoint, '/teams'));
             if (teamsRes.ok) {
               const teams = await teamsRes.json();
               teams.forEach((team: any) => {
@@ -68,7 +68,7 @@ export const A2AInfoSidebar: React.FC<A2AInfoSidebarProps> = ({ agent }) => {
             }
 
             // Fetch agents
-            const agentsRes = await fetch(`${agent.agno_os_endpoint}/agents`);
+            const agentsRes = await fetch(joinUrl(agent.agno_os_endpoint, '/agents'));
             if (agentsRes.ok) {
               const agents = await agentsRes.json();
               agents.forEach((agentItem: any) => {
