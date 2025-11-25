@@ -31,6 +31,8 @@ def upgrade() -> None:
         sa.Column('messages', sa.JSON(), nullable=False, server_default='[]'),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.Column('last_message_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column('session_id', sa.String(length=100), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('id')
     )
 
@@ -38,6 +40,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_hub_sessions_agent_id'), 'hub_sessions', ['agent_id'], unique=False)
     op.create_index(op.f('ix_hub_sessions_user_id'), 'hub_sessions', ['user_id'], unique=False)
     op.create_index(op.f('ix_hub_sessions_agent_user'), 'hub_sessions', ['agent_id', 'user_id'], unique=False)
+    op.create_index(op.f('ix_hub_sessions_session_id'), 'hub_sessions', ['session_id'], unique=True)
 
     # Create unique constraint for session per agent/user combination
     # Allow multiple sessions per user-agent pair
