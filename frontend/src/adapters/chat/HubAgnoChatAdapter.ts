@@ -173,8 +173,12 @@ export class HubAgnoChatAdapter implements ChatAdapter {
   private handleSSEEvent(event: any, callbacks: ChatAdapterCallbacks): void {
     // Handle different event types from backend
     if (event.type === 'stream_start') {
-      // Stream started, no action needed
-      return;
+      // Stream started, pass session_id if present
+      if (event.session_id) {
+        console.log('[HubAgnoChatAdapter] Received session_id from backend:', event.session_id);
+        callbacks.onSessionId?.(event.session_id);
+      }
+      // Don't return here - continue processing other data in the event
     }
 
     if (event.type === 'stream_end') {
