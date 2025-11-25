@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuthStore } from '@/stores/authStore';
-import { getGatewayBaseUrl } from '@/config/api';
+import { getGatewayBaseUrl, getWsProtocol } from '@/config/api';
 
 interface LogEntry {
   log_id: number;
@@ -325,8 +325,9 @@ export const TraceView: React.FC<TraceViewProps> = ({ traceId }) => {
   // WebSocket connection for real-time logs
   const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
   const GATEWAY_PORT = import.meta.env.VITE_GATEWAY_PORT || '9050';
+  const wsProtocol = getWsProtocol();
   const wsUrl = accessToken
-    ? `ws://${HOST_IP}:${GATEWAY_PORT}/ws/trace/${traceId}?token=${encodeURIComponent(accessToken)}`
+    ? `${wsProtocol}://${HOST_IP}:${GATEWAY_PORT}/ws/trace/${traceId}?token=${encodeURIComponent(accessToken)}`
     : null;
 
   const { isConnected } = useWebSocket(wsUrl, {

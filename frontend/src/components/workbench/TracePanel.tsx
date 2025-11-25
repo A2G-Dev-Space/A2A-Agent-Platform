@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, PhoneIncoming, Wrench, FileText, ArrowRightLeft, Trash2 } from 'lucide-react';
+import { getWsProtocol } from '@/config/api';
 
 interface TraceEvent {
   log_id: number;
@@ -122,9 +123,9 @@ export const TracePanel: React.FC<TracePanelProps> = ({ traceId }) => {
     }
 
     // Connect to Tracing Service WebSocket
-    // Tracing service (8004) does not use SSL
     const HOST_IP = import.meta.env.VITE_HOST_IP || 'localhost';
-    const wsUrl = `ws://${HOST_IP}:8004/ws/trace/${traceId}?token=${accessToken}`;
+    const wsProtocol = getWsProtocol();
+    const wsUrl = `${wsProtocol}://${HOST_IP}:8004/ws/trace/${traceId}?token=${accessToken}`;
     console.log('[TracePanel] Connecting to WebSocket:', wsUrl);
 
     ws.current = new WebSocket(wsUrl);
