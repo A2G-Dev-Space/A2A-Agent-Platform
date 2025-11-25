@@ -285,6 +285,7 @@
         "frameworkLabel": "Framework",
         "frameworkPlaceholder": "Select a framework",
         "colorLabel": "Card Color",
+        "logoUrlLabel": "Logo URL",
         "versionLabel": "Version",
         "documentationUrlLabel": "Documentation URL",
         "capabilitiesLabel": "Capabilities",

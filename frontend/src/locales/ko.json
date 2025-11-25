@@ -285,6 +285,7 @@
         "frameworkLabel": "프레임워크",
         "frameworkPlaceholder": "프레임워크 선택",
         "colorLabel": "카드 색상",
+        "logoUrlLabel": "로고 URL",
         "versionLabel": "버전",
         "documentationUrlLabel": "문서 URL",
         "capabilitiesLabel": "기능",
