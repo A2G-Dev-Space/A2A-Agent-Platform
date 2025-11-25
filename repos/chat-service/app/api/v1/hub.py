@@ -210,11 +210,20 @@ async def hub_chat_stream(
         )
 
     framework = agent_info.get("framework", "ADK")
-    agent_url = agent_info.get("a2a_endpoint")
     trace_id = agent_info.get("trace_id")
 
+    # Get agent URL based on framework
+    framework_upper = framework.upper() if framework else "ADK"
+
+    if framework_upper.startswith("AGNO"):
+        agent_url = agent_info.get("agno_os_endpoint")
+    elif framework_upper == "LANGCHAIN" or framework_upper.startswith("LANGCHAIN"):
+        agent_url = agent_info.get("validated_endpoint")
+    else:  # ADK and others
+        agent_url = agent_info.get("a2a_endpoint")
+
     if not agent_url:
-        raise HTTPException(status_code=400, detail="Agent endpoint not configured")
+        raise HTTPException(status_code=400, detail=f"Agent endpoint not configured for {framework} framework")
 
     logger.info(f"[Hub] Chat request: agent={request.agent_id}, framework={framework}, user={user_id}")
 
@@ -230,7 +239,7 @@ async def hub_chat_stream(
     await record_agent_call(request.agent_id, user_id, agent_status, token)
 
     # 6. Branch based on framework (case-insensitive comparison)
-    framework_upper = framework.upper() if framework else "ADK"
+    # framework_upper already defined above
 
     if framework_upper.startswith("AGNO"):
         # Agno: Use content + selected_resource
