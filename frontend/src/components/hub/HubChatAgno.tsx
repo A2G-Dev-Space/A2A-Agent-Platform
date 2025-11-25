@@ -7,7 +7,7 @@ import type { ChatAdapter, SystemEvent } from '@/adapters/chat';
 import { HubAgnoChatAdapter } from '@/adapters/chat';
 import { MessageContent } from '@/components/chat/MessageContent';
 import { A2AInfoSidebar } from './A2AInfoSidebar';
-import { getGatewayBaseUrl } from '@/config/api';
+import { getGatewayBaseUrl, joinUrl } from '@/config/api';
 
 interface Message {
   id: string;
@@ -175,7 +175,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
     try {
       // Fetch teams
       try {
-        const teamsRes = await fetch(`${agent.agno_os_endpoint}/teams`);
+        const teamsRes = await fetch(joinUrl(agent.agno_os_endpoint, '/teams'));
         if (teamsRes.ok) {
           const teamsData = await teamsRes.json();
           const teams = teamsData.map((team: any) => ({
@@ -192,7 +192,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
 
       // Fetch agents
       try {
-        const agentsRes = await fetch(`${agent.agno_os_endpoint}/agents`);
+        const agentsRes = await fetch(joinUrl(agent.agno_os_endpoint, '/agents'));
         if (agentsRes.ok) {
           const agentsData = await agentsRes.json();
           const agents = agentsData.map((agentItem: any) => ({
