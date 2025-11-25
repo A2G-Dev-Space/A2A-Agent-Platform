@@ -224,8 +224,12 @@ export class HubLangchainChatAdapter implements ChatAdapter {
 
   private handleSSEEvent(event: any, callbacks: ChatAdapterCallbacks): void {
     if (event.type === 'stream_start') {
-      // Stream started, no action needed
-      return;
+      // Stream started, pass session_id if present
+      if (event.session_id) {
+        console.log('[HubLangchainChatAdapter] Received session_id from backend:', event.session_id);
+        callbacks.onSessionId?.(event.session_id);
+      }
+      // Don't return here - continue processing other data in the event
     }
 
     if (event.type === 'stream_end') {

@@ -74,6 +74,9 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
+  // Track if we're creating a new session (use ref to avoid React batching issues)
+  const isCreatingNewSessionRef = useRef(false);
+
   // Use absolute URL with dynamic protocol
   const API_BASE_URL = getGatewayBaseUrl();
 
@@ -122,6 +125,17 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
     }
   }, [agnoResources, selectedResource, agent.id]);
 
+  // Load session messages when session ID changes (only for existing sessions)
+  useEffect(() => {
+    if (currentSessionId && !isCreatingNewSessionRef.current) {
+      loadSessionMessages(currentSessionId);
+    }
+    // Reset the flag after loading is skipped for new sessions
+    if (isCreatingNewSessionRef.current) {
+      isCreatingNewSessionRef.current = false;
+    }
+  }, [currentSessionId]);
+
   // Initialize chat adapter
   useEffect(() => {
     if (!accessToken) return;
@@ -138,7 +152,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
         agentId: agent.id,
         agentEndpoint: agent.agno_os_endpoint || '',
         apiBaseUrl: API_BASE_URL,
-        accessToken: accessToken,
+        accessToken: accessToken || '',
         sessionId: currentSessionId || undefined,
         selectedResource: resourceId,
         selectedResourceType: resourceType,
@@ -161,7 +175,7 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, currentSessionId, API_BASE_URL, selectedResource, agnoResources]);
+  }, [agent.id, agent.framework, accessToken, API_BASE_URL, selectedResource, agnoResources]);
 
   const fetchTeamsAndAgents = async () => {
     if (!agent.agno_os_endpoint) {
@@ -389,6 +403,24 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
     }
 
     try {
+      // Re-initialize adapter with current session ID before sending message
+      if (chatAdapterRef.current && currentSessionId) {
+        const resourceId = selectedResource || '';
+        const resourceType = agnoResources.find((r) => r.id === selectedResource)?.type === 'team'
+          ? 'team'
+          : 'agent';
+
+        chatAdapterRef.current.initialize({
+          apiBaseUrl: API_BASE_URL,
+          accessToken: accessToken || '',
+          agentId: agent.id,
+          agentEndpoint: agent.agno_os_endpoint || '',
+          sessionId: currentSessionId || undefined,
+          selectedResource: resourceId,
+          selectedResourceType: resourceType,
+        });
+      }
+
       const conversationHistory = messages
         .filter((msg) => msg.role !== 'system')
         .map((msg) => ({
@@ -399,6 +431,14 @@ export const HubChatAgno: React.FC<HubChatAgnoProps> = ({ agent, onClose }) => {
       await chatAdapterRef.current.sendMessage(
         { content: userMessageContent },
         {
+          onSessionId: (sessionId) => {
+            // Update current session ID when received from backend
+            if (!currentSessionId && sessionId) {
+              console.log('[HubChatAgno] Setting current session ID:', sessionId);
+              isCreatingNewSessionRef.current = true;  // Mark as new session to prevent loading empty messages
+              setCurrentSessionId(sessionId);
+            }
+          },
           onChunk: (chunk) => {
             setStreamingMessage(chunk.content);
             if (chunk.reasoningContent) {

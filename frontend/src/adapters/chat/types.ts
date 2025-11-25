@@ -66,6 +66,7 @@ export interface ChatAdapterCallbacks {
   onComplete?: (response: ChatResponse) => void;
   onError?: (error: Error) => void;
   onSystemEvent?: (event: SystemEvent) => void;
+  onSessionId?: (sessionId: string) => void; // Callback for receiving session ID from backend
 }
 
 /**

@@ -51,6 +51,9 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chatAdapterRef = useRef<ChatAdapter | null>(null);
 
+  // Track if we're creating a new session (use ref to avoid React batching issues)
+  const isCreatingNewSessionRef = useRef(false);
+
   // Use absolute URL with HOST_IP and GATEWAY_PORT
   const API_BASE_URL = getGatewayBaseUrl();
 
@@ -64,6 +67,17 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
     loadSessions();
   }, [agent.id, accessToken]);
 
+  // Load session messages when session ID changes (only for existing sessions)
+  useEffect(() => {
+    if (currentSessionId && !isCreatingNewSessionRef.current) {
+      loadSessionMessages(currentSessionId);
+    }
+    // Reset the flag after loading is skipped for new sessions
+    if (isCreatingNewSessionRef.current) {
+      isCreatingNewSessionRef.current = false;
+    }
+  }, [currentSessionId]);
+
   // Initialize chat adapter
   useEffect(() => {
     if (!accessToken) return;
@@ -75,7 +89,7 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
         agentId: agent.id,
         agentEndpoint: agent.a2a_endpoint || '',
         apiBaseUrl: API_BASE_URL,
-        accessToken: accessToken,
+        accessToken: accessToken || '',
         sessionId: currentSessionId || undefined,
       });
 
@@ -94,7 +108,7 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
         chatAdapterRef.current = null;
       }
     };
-  }, [agent.id, agent.framework, accessToken, currentSessionId, API_BASE_URL]);
+  }, [agent.id, agent.framework, accessToken, API_BASE_URL]);
 
   const loadSessions = async () => {
     if (!accessToken) return;
@@ -207,6 +221,17 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
     setStreamingMessage('');
 
     try {
+      // Re-initialize adapter with current session ID before sending message
+      if (chatAdapterRef.current && currentSessionId) {
+        chatAdapterRef.current.initialize({
+          apiBaseUrl: API_BASE_URL,
+          accessToken: accessToken || '',
+          agentId: agent.id,
+          agentEndpoint: agent.a2a_endpoint || '',
+          sessionId: currentSessionId || undefined,
+        });
+      }
+
       const conversationHistory = messages.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
@@ -215,6 +240,14 @@ export const HubChatADK: React.FC<HubChatADKProps> = ({ agent, onClose }) => {
       await chatAdapterRef.current.sendMessage(
         { content: userMessageContent },
         {
+          onSessionId: (sessionId) => {
+            // Update current session ID when received from backend
+            if (!currentSessionId && sessionId) {
+              console.log('[HubChatADK] Setting current session ID:', sessionId);
+              isCreatingNewSessionRef.current = true;  // Mark as new session to prevent loading empty messages
+              setCurrentSessionId(sessionId);
+            }
+          },
           onChunk: (chunk) => {
             setStreamingMessage(chunk.content);
           },

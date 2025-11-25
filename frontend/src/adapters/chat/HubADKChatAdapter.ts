@@ -159,7 +159,13 @@ export class HubADKChatAdapter implements ChatAdapter {
           try {
             const event = JSON.parse(data);
 
-            if (event.type === 'text_token') {
+            if (event.type === 'stream_start') {
+              // Stream started, pass session_id if present
+              if (event.session_id) {
+                console.log('[HubADKChatAdapter] Received session_id from backend:', event.session_id);
+                callbacks.onSessionId?.(event.session_id);
+              }
+            } else if (event.type === 'text_token') {
               this.streamingMessageBuffer += event.content || '';
               callbacks.onChunk?.({
                 content: this.streamingMessageBuffer,

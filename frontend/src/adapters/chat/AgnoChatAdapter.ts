@@ -280,7 +280,8 @@ export class AgnoChatAdapter implements ChatAdapter {
       case 'TeamRunError':
       case 'RunError':
       case 'error':
-        console.error('[AgnoChatAdapter] Error event:', data.event, data.message || data.error);
+        console.error('[AgnoChatAdapter] Error event:', data.event);
+        console.error('[AgnoChatAdapter] Full error data:', JSON.stringify(data, null, 2));
         callbacks.onError?.(new Error(data.message || data.error || 'Unknown error'));
         break;
 
