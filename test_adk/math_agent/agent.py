@@ -40,7 +40,7 @@ litellm.verify_ssl = False
 
 # ======================== Platform Configuration ========================
 PLATFORM_LLM_ENDPOINT = "https://172.26.110.192:9050/api/llm/trace/bfa076e8-f8df-4852-a811-443d1d18cce3/v1"
-PLATFORM_API_KEY = "a2g_30be49e641b1329050107d22655040a751f1d42368660bc907a3eb1b2b0480c5"
+PLATFORM_API_KEY = "a2g_69106c81492fd061f68e2d98fbc47b9ce4ee1477ee050a3b1b8fdc7bc2d5b082"
 
 print("=" * 70)
 print("Math Calculation Multi-Agent System Configuration")
